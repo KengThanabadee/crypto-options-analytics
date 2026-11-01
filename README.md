@@ -227,7 +227,7 @@ Returns a 2D NumPy array of implied volatilities with shape `(n_expiries, n_stri
 
 Returns bilinearly interpolated IV at the target `(T, K)`. Raises `ValueError` if the target point is outside the grid or if the grid is not valid.
 
-### `fetch_chain(underlying="BTC")`
+### `fetch_chain(underlying="BTC", base_url=DEFAULT_BYBIT_BASE_URL, timeout=DEFAULT_BYBIT_TIMEOUT)`
 
 Fetches Bybit option tickers for an underlying and returns a tidy pandas DataFrame with parsed symbol fields, bid/ask prices, bid/ask IVs, mid price, mark price, mark IV, index price, and time to expiry.
 
@@ -241,11 +241,8 @@ Filters a fetched option-chain DataFrame to usable bid/ask mid prices and return
 
 ### `build_surface_from_chain(chain, flag="call", r=0)`
 
-Convenience wrapper for:
-
-```text
-fetch_chain() -> prepare_surface_inputs() -> build_surface()
-```
+Convenience wrapper for `prepare_surface_inputs()` followed by
+`build_surface()`. The chain can come from `fetch_chain()` or a parsed snapshot.
 
 Returns the IV surface together with the option price grid, spot price, expiries, and strikes. Missing usable quotes remain `NaN` in the price grid and IV surface.
 
