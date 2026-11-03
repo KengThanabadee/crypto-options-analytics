@@ -7,6 +7,12 @@ import numpy as np
 import streamlit as st
 
 from iv_surface.deribit import load_deribit_snapshot, parse_deribit_snapshot
+from iv_surface.positioning import (
+    expiry_scope_label,
+    near_spot_range,
+    open_interest_by_strike,
+    strikes_in_range,
+)
 from iv_surface.surface_builder import build_combined_surface_from_chain
 from iv_surface.surface_transforms import (
     atm_term_structure_frame,
@@ -17,6 +23,7 @@ from iv_surface.visualization import (
     make_atm_term_structure_figure,
     make_iv_heatmap,
     make_iv_surface_figure,
+    make_open_interest_figure,
     make_smile_figure,
 )
 
@@ -29,6 +36,67 @@ MONEYNESS_RANGES = {
     "Core (0.8–1.2)": (0.8, 1.2),
     "Extended (0.7–1.3)": (0.7, 1.3),
 }
+
+
+OI_RANGE_KEY = "oi_strike_range"
+
+
+def open_interest_section(chain):
+    """OI by strike with its own expiry selection and strike zoom."""
+    st.subheader("Open interest")
+    index_price = float(chain["index_price"].iloc[0])
+    expiry_dates = chain.drop_duplicates("tau").set_index("tau")["expiry_dt"]
+    selected = st.multiselect(
+        "OI expiries",
+        sorted(expiry_dates.index),
+        format_func=lambda tau: f"{expiry_dates[tau]:%Y-%m-%d}",
+        placeholder="All expiries",
+        key="oi_expiries",
+        help="Leave empty for All expiries. The IV charts keep their own expiries.",
+    )
+    expiries = selected or None
+    scope = expiry_scope_label(chain, expiries)
+    table = open_interest_by_strike(chain, expiries)
+
+    near_spot = near_spot_range(index_price)
+    all_strikes = (
+        float(np.floor(min(chain["strike"].min(), near_spot[0]) / 1000) * 1000),
+        float(np.ceil(max(chain["strike"].max(), near_spot[1]) / 1000) * 1000),
+    )
+    if OI_RANGE_KEY not in st.session_state:
+        st.session_state[OI_RANGE_KEY] = near_spot
+
+    def set_range(strike_range):
+        st.session_state[OI_RANGE_KEY] = strike_range
+
+    range_column, reset_column = st.columns([5, 1], vertical_alignment="bottom")
+    with range_column:
+        strike_range = st.slider(
+            "Strike range (USD)",
+            min_value=all_strikes[0],
+            max_value=all_strikes[1],
+            step=500.0,
+            format="$%.0f",
+            key=OI_RANGE_KEY,
+            help="Display zoom only. OI sums use every strike in the selected expiries.",
+        )
+    with reset_column:
+        st.button("Near spot", on_click=set_range, args=(near_spot,),
+                  help="Reset to ±10% around the index.")
+    st.caption(
+        f"Open interest · {scope} · Call and Put in BTC · "
+        f"index ${index_price:,.2f}"
+    )
+    if strikes_in_range(table, strike_range).empty:
+        st.info("No strikes in this range.")
+        st.button("Zoom out to all strikes", on_click=set_range, args=(all_strikes,))
+        return
+    st.plotly_chart(
+        make_open_interest_figure(
+            table, index_price=index_price, strike_range=strike_range, scope=scope,
+        ),
+        use_container_width=True,
+    )
 
 
 def main():
@@ -80,6 +148,8 @@ def main():
         f"Shared spot: **${result.spot_price:,.2f}** · "
         "Risk-free rate: **0.00% p.a.**"
     )
+    open_interest_section(chain)
+    st.subheader("Implied volatility")
     source = frame["source"]
     counts = (
         int(source.isin(["call", "put", "near_atm_average"]).sum()),
