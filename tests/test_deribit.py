@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from iv_surface.deribit import load_deribit_snapshot, parse_deribit_snapshot
-from iv_surface.fetcher import compute_tau
+from iv_surface.chain import compute_tau
 from iv_surface.solver import bs_price
 from iv_surface.surface_builder import build_combined_surface_from_chain
 

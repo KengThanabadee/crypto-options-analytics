@@ -1,3 +1,5 @@
+> **Research record — 2026-11-03:** the project is now Deribit only. `experiments/compare_triangle_bilinear.py` and the frozen Bybit snapshot it read were removed; the script ran on commit `c15ac1c`, the commit before the removal. Recover it with `git show c15ac1c:experiments/compare_triangle_bilinear.py`. Reproduce commands below refer to that commit.
+
 # Triangle versus bilinear: geometry-only experiment
 
 ## Finding

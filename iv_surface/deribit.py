@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from iv_surface.fetcher import (
+from iv_surface.chain import (
     _compute_mid_price,
     _parse_utc_timestamp,
     _to_float,

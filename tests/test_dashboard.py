@@ -5,16 +5,21 @@ import numpy as np
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from iv_surface import deribit, fetcher, surface_builder, visualization
+import requests
+
+from iv_surface import deribit, surface_builder, visualization
 
 
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
+SNAPSHOT_PATH = APP_PATH.parent / "data/deribit_btc_options_snapshot.json"
 
 
-def _bybit_app():
-    app = AppTest.from_file(str(APP_PATH), default_timeout=30)
-    app.session_state["data_source"] = "Bybit"
-    return app.run()
+def _app():
+    return AppTest.from_file(str(APP_PATH), default_timeout=30).run()
+
+
+def _chain():
+    return deribit.parse_deribit_snapshot(deribit.load_deribit_snapshot(SNAPSHOT_PATH))
 
 
 @pytest.fixture(autouse=True)
@@ -22,10 +27,10 @@ def block_network(monkeypatch):
     def fail(*args, **kwargs):
         raise AssertionError("The dashboard must not use the network")
 
-    monkeypatch.setattr(fetcher.requests.sessions.Session, "request", fail)
+    monkeypatch.setattr(requests.sessions.Session, "request", fail)
 
 
-def test_dashboard_renders_grid_and_recalculates_rate(monkeypatch):
+def test_dashboard_opens_on_deribit_at_zero_rate_without_source_or_rate_inputs(monkeypatch):
     results = []
     build = surface_builder.build_combined_surface_from_chain
 
@@ -35,11 +40,12 @@ def test_dashboard_renders_grid_and_recalculates_rate(monkeypatch):
         return result
 
     monkeypatch.setattr(surface_builder, "build_combined_surface_from_chain", record)
-    app = _bybit_app()
+    app = _app()
     assert not app.exception
     assert not app.error
-    assert app.selectbox[0].value == "Bybit"
-    assert results[-1][0] == 0
+    assert not app.selectbox
+    assert not app.number_input
+    assert {r for r, _ in results} == {0}
     result = results[-1][1]
     counts = [int(metric.value.replace(",", "")) for metric in app.metric]
     assert sum(counts) == result.iv_surface.size
@@ -49,32 +55,26 @@ def test_dashboard_renders_grid_and_recalculates_rate(monkeypatch):
     assert app.main.radio[0].value == "Surface"
     assert [tab.label for tab in app.tabs] == ["Heatmap", "3D surface", "IV smiles", "ATM term structure"]
     assert any(
-        "211 observed · 163 interpolated · 26 blank" in caption.value
+        "270 observed · 168 interpolated · 66 blank" in caption.value
         for caption in app.caption
     )
-    assert any("Frozen snapshot" in caption.value for caption in app.caption)
+    assert any("Deribit BTC · Frozen snapshot:" in caption.value for caption in app.caption)
 
     app.main.radio[0].set_value("Observed").run()
     assert not app.exception
     assert app.main.radio[0].value == "Observed"
     assert any(
-        "211 observed · 0 interpolated · 189 blank" in caption.value
+        "270 observed · 0 interpolated · 234 blank" in caption.value
         for caption in app.caption
     )
 
     app.sidebar.radio[0].set_value("Extended (0.7–1.3)").run()
     assert not app.exception
     assert any(
-        "253 observed · 231 interpolated · 56 blank" in caption.value
+        "326 observed · 213 interpolated · 133 blank" in caption.value
         for caption in app.caption
     )
-
-    app.number_input[0].set_value(0.25).run()
-    assert not app.exception
-    assert results[-1][0] == 0.0025
-    assert not np.allclose(
-        results[0][1].iv_surface, results[-1][1].iv_surface, equal_nan=True,
-    )
+    assert {r for r, _ in results} == {0}
 
 
 def test_smile_selection_preserves_observations_and_other_views(monkeypatch):
@@ -89,12 +89,11 @@ def test_smile_selection_preserves_observations_and_other_views(monkeypatch):
 
         monkeypatch.setattr(visualization, name, record)
 
-    snapshot = fetcher.load_chain_snapshot(APP_PATH.parent / "data/bybit_btc_options_snapshot.json")
-    chain = fetcher.parse_chain_snapshot(snapshot)
+    chain = _chain()
     result = surface_builder.build_combined_surface_from_chain(chain)
     ordered_expiries = sorted(result.expiries)
     dates = chain.drop_duplicates("tau").set_index("tau")["expiry_dt"]
-    app = _bybit_app()
+    app = _app()
     assert not app.exception
     assert not app.multiselect
     assert [box.label for box in app.checkbox] == [
@@ -164,35 +163,33 @@ def test_smile_defaults_skip_expiries_without_finite_iv(monkeypatch, finite_coun
         return result
 
     monkeypatch.setattr(surface_builder, "build_combined_surface_from_chain", sparse_result)
-    app = _bybit_app()
+    app = _app()
     assert not app.exception
     assert [tau for tau, box in zip(ordered_expiries, app.checkbox) if box.value] == expected
     assert len(app.get("plotly_chart")) == (5 if finite_count else 4)
 
 
-@pytest.mark.parametrize("case", ["file", "schema", "ticker", "quotes"])
+@pytest.mark.parametrize("case", ["file", "schema", "index", "quotes"])
 def test_dashboard_input_errors_are_visible(monkeypatch, case):
     if case == "file":
         def load(path):
             raise OSError("missing file")
     else:
-        snapshot = json.loads(
-            (APP_PATH.parent / "data/bybit_btc_options_snapshot.json").read_text()
-        )
+        raw = json.loads(SNAPSHOT_PATH.read_text())
         if case == "schema":
-            snapshot["schema_version"] = -1
-        elif case == "ticker":
-            snapshot["response"]["result"]["list"][0]["symbol"] = None
+            raw["schema_version"] = -1
+        elif case == "index":
+            raw["requests"][2]["response"]["result"]["index_price"] = None
         else:
-            for ticker in snapshot["response"]["result"]["list"]:
-                ticker["bid1Price"] = ""
-                ticker["ask1Price"] = ""
+            for book in raw["requests"][1]["response"]["result"]:
+                book["bid_price"] = None
+                book["ask_price"] = None
 
         def load(path):
-            return snapshot
+            return raw
 
-    monkeypatch.setattr(fetcher, "load_chain_snapshot", load)
-    app = _bybit_app()
+    monkeypatch.setattr(deribit, "load_deribit_snapshot", load)
+    app = _app()
     assert not app.exception
     assert len(app.error) == 1
     assert not app.get("plotly_chart")
@@ -210,13 +207,12 @@ def test_atm_uses_raw_all_expiries_independent_of_view_controls(monkeypatch):
         return figure
 
     monkeypatch.setattr(visualization, "make_atm_term_structure_figure", record)
-    snapshot = fetcher.load_chain_snapshot(APP_PATH.parent / "data/bybit_btc_options_snapshot.json")
-    chain = fetcher.parse_chain_snapshot(snapshot)
+    chain = _chain()
     result = surface_builder.build_combined_surface_from_chain(chain)
     expected = atm_term_structure_frame(surface_to_long_frame(
         result.iv_surface, result.expiries, result.strikes, result.spot_price,
     ))
-    app = _bybit_app()
+    app = _app()
     assert not app.exception
     trace = figures[-1].data[0]
     np.testing.assert_allclose(trace.x, expected["tau"])
@@ -235,9 +231,6 @@ def test_atm_uses_raw_all_expiries_independent_of_view_controls(monkeypatch):
     app.main.radio[0].set_value("Observed").run()
     assert not app.exception
     assert figures[-1].to_json() == before
-    app.number_input[0].set_value(3).run()
-    assert not app.exception
-    assert not np.allclose(figures[-1].data[0].y, trace.y, equal_nan=True)
 
 
 def test_atm_rejected_expiries_remain_gaps_and_have_visible_status(monkeypatch):
@@ -251,7 +244,7 @@ def test_atm_rejected_expiries_remain_gaps_and_have_visible_status(monkeypatch):
         return result
 
     monkeypatch.setattr(surface_builder, "build_combined_surface_from_chain", sparse_result)
-    app = _bybit_app()
+    app = _app()
     assert not app.exception
     details = app.dataframe[0].value
     assert details["iv"].isna().all()
@@ -259,7 +252,7 @@ def test_atm_rejected_expiries_remain_gaps_and_have_visible_status(monkeypatch):
     assert any("remain gaps" in item.value for item in app.info)
 
 
-def test_deribit_is_default_and_all_views_follow_raw_chain(monkeypatch):
+def test_all_views_follow_the_raw_deribit_chain(monkeypatch):
     from iv_surface.surface_transforms import atm_term_structure_frame, surface_to_long_frame
 
     figures = {}
@@ -273,14 +266,11 @@ def test_deribit_is_default_and_all_views_follow_raw_chain(monkeypatch):
 
         monkeypatch.setattr(visualization, name, record)
 
-    app = AppTest.from_file(str(APP_PATH), default_timeout=30).run()
+    app = _app()
     assert not app.exception and not app.error
-    assert app.selectbox[0].value == "Deribit"
     assert len(app.get("plotly_chart")) == 5
     assert any("Deribit BTC · Frozen snapshot:" in caption.value for caption in app.caption)
-    chain = deribit.parse_deribit_snapshot(deribit.load_deribit_snapshot(
-        APP_PATH.parent / "data/deribit_btc_options_snapshot.json"
-    ))
+    chain = _chain()
     result = surface_builder.build_combined_surface_from_chain(chain)
     dates = chain.drop_duplicates("tau").set_index("tau").expiry_dt
     frame = surface_to_long_frame(
@@ -303,43 +293,3 @@ def test_deribit_is_default_and_all_views_follow_raw_chain(monkeypatch):
     app.main.radio[0].set_value("Observed").run()
     assert not app.exception
     assert figures["make_atm_term_structure_figure"].to_json() == atm_before
-    app.number_input[0].set_value(3).run()
-    assert not app.exception
-    assert figures["make_atm_term_structure_figure"].to_json() != atm_before
-
-    app.selectbox[0].set_value("Bybit").run()
-    assert not app.exception and not app.error
-    assert any("Bybit BTC · Frozen snapshot:" in caption.value for caption in app.caption)
-    assert sum(box.value for box in app.checkbox) == 3
-    assert app.number_input[0].value == 3
-    assert app.sidebar.radio[0].value == "Extended (0.7–1.3)"
-    app.selectbox[0].set_value("Deribit").run()
-    assert not app.exception and not app.error
-    assert sum(box.value for box in app.checkbox) == 3
-
-
-@pytest.mark.parametrize("case", ["file", "index", "quotes"])
-def test_deribit_errors_do_not_silently_fall_back_to_bybit(monkeypatch, case):
-    if case == "file":
-        def load(path):
-            raise OSError("missing")
-    else:
-        raw = deribit.load_deribit_snapshot(APP_PATH.parent / "data/deribit_btc_options_snapshot.json")
-        if case == "index":
-            raw["requests"][2]["response"]["result"]["index_price"] = None
-        else:
-            for book in raw["requests"][1]["response"]["result"]:
-                book["bid_price"] = None
-                book["ask_price"] = None
-
-        def load(path):
-            return raw
-
-    monkeypatch.setattr(deribit, "load_deribit_snapshot", load)
-    app = AppTest.from_file(str(APP_PATH), default_timeout=30).run()
-    assert not app.exception
-    assert len(app.error) == 1
-    assert not app.get("plotly_chart")
-    app.selectbox[0].set_value("Bybit").run()
-    assert not app.exception and not app.error
-    assert len(app.get("plotly_chart")) == 5

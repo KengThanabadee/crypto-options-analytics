@@ -19,9 +19,8 @@ API. Read it before changing analytics, inputs or the dashboard.
 - Public argument names: `option_price`, `option_price_grid`, `spot_price`,
   `iv_surface`. Surfaces are expiry rows by strike columns; arguments take
   `expiries` before `strikes` and `target_T` before `target_K`.
-- Market IV comes from usable bid/ask mids. Spot is the exchange index
-  (Bybit `index_price`; Deribit captured BTC/USD index). Mark price and mark IV
-  are comparison fields only.
+- Market IV comes from usable bid/ask mids. Spot is the Deribit captured
+  BTC/USD index. Mark price and mark IV are comparison fields only.
 - Missing quotes and failed solves stay `NaN`; Plotly traces use
   `connectgaps=False`; interpolation is a separate explicit operation.
 - Moneyness is spot-based `K / S`. Numerical `tau` drives calculations, expiry
@@ -29,14 +28,15 @@ API. Read it before changing analytics, inputs or the dashboard.
 - Combined IV and the ATM proxy follow the rules in `README.md`.
 - When a change picks a convention, tolerance or default that affects the
   numbers, name it and say why in the summary.
-- New dashboard features use the Deribit adapter (`iv_surface/deribit.py`).
+- The project is Deribit only: snapshots go through `iv_surface/deribit.py`,
+  with shared parsing helpers in `iv_surface/chain.py`.
 - `experiments/` holds research scripts and their results. Runtime behaviour
   is accepted through `tests/`.
 
 ## Validation
 
-Run `.venv/bin/python -m pytest`. Tests run offline on the frozen snapshots in
-`data/`; `scripts/check_bybit_chain.py` is a manual live diagnostic.
+Run `.venv/bin/python -m pytest`. Tests run offline on the frozen Deribit
+snapshot in `data/`.
 Launch the dashboard with `.venv/bin/python -m streamlit run app.py`.
 
 ## Agent skills

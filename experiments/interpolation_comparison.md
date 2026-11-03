@@ -1,3 +1,5 @@
+> **Research record — 2026-11-03:** the project is now Deribit only. `experiments/compare_2d_interpolation.py` and the frozen Bybit snapshot it read were removed; the script ran on commit `c15ac1c`, the commit before the removal. Recover it with `git show c15ac1c:experiments/compare_2d_interpolation.py`. Reproduce commands below refer to that commit.
+
 # 2D IV versus total-variance interpolation
 
 ## Finding

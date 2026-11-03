@@ -1,3 +1,5 @@
+> **Research record — 2026-11-03:** the project is now Deribit only. `experiments/compare_bybit_mark_iv.py` and the frozen Bybit snapshot it read were removed; the script ran on commit `c15ac1c`, the commit before the removal. Recover it with `git show c15ac1c:experiments/compare_bybit_mark_iv.py`. Reproduce commands below refer to that commit.
+
 > **Historical status — 2026-11-02:** the [accepted spec](../.scratch/options-dashboard/spec.md) takes precedence. The original pending/scope/acceptance text below is history, not the latest decision status. Under the reported-underlying assumption the gap in the frozen fixture narrows, but Bybit's full pricing convention is not established. Bybit is outside this Deribit dashboard increment, and source, price kind and input basis stay separate. The original results, numbers and scripts are preserved in full.
 
 # Bybit midpoint IV versus exchange mark IV

@@ -2,7 +2,7 @@
 
 A small personal quant library for learning and building implied-volatility tooling from first principles.
 
-`implied-vol-surface` provides Black-Scholes pricing helpers, implied-volatility root finding, surface construction, interpolation, and Deribit/Bybit option-chain inputs.
+`implied-vol-surface` provides Black-Scholes pricing helpers, implied-volatility root finding, surface construction, interpolation, and a Deribit BTC option-chain input.
 
 The implied-volatility root-finding logic is implemented without `scipy.optimize`.
 
@@ -19,8 +19,7 @@ A planned Options Dashboard extension (OI/GEX) is described in the
 - Solves implied volatility with Newton-Raphson and bisection fallback.
 - Builds a 2D IV surface from a grid of option prices.
 - Interpolates IV inside an expiry/strike grid with bilinear interpolation.
-- Fetches and parses Bybit option-chain ticker data into a DataFrame, keeping market quotes separate from exchange mark values.
-- Adapts Deribit BTC inverse-option snapshots to USD premiums using a captured BTC/USD index.
+- Adapts frozen Deribit BTC inverse-option snapshots to a chain DataFrame with USD premiums, using the captured BTC/USD index and keeping market quotes separate from exchange mark values.
 - Converts usable option-chain mid prices into the expiry/strike grid used by the surface builder.
 - Combines aligned Call and Put surfaces with a spot-based, auditable selection rule.
 
@@ -66,10 +65,10 @@ spaced by numerical maturity; expiries without an eligible proxy remain gaps.
 
 ## Module Boundaries
 
-- `iv_surface.fetcher` owns Bybit HTTP access, raw snapshot envelopes, and
-  parsing exchange responses into the canonical option-chain DataFrame.
 - `iv_surface.deribit` validates frozen BTC inverse-option snapshots and adapts
-  their metadata, BTC quotes and index to the same chain model.
+  their metadata, BTC quotes and index to the canonical option-chain DataFrame.
+- `iv_surface.chain` holds the shared parsing helpers: time to expiry, number
+  parsing, bid/ask mid price and UTC timestamps.
 - `iv_surface.surface_builder` converts that canonical chain into option-price
   grids and side-specific or Combined IV surfaces.
 - `iv_surface.solver` owns Black-Scholes pricing, IV root finding, grid solving,
@@ -121,10 +120,8 @@ pip install -e ".[dashboard]"
 python -m streamlit run app.py
 ```
 
-The dashboard defaults to the checked-in Deribit BTC snapshot. The sidebar
-**Data source** selector also opens the original Bybit snapshot. Both run offline;
-the header identifies the selected exchange and capture time. Switching sources
-resets the smile expiry checklist to the first three usable expiries.
+The dashboard opens on the checked-in Deribit BTC snapshot and runs offline;
+the header shows the capture time.
 
 The dashboard shows a Combined IV heatmap, 3D surface, IV smiles, and ATM term
 structure. IV smiles use original observed
@@ -151,8 +148,7 @@ independently of the UI and retains original IV in `observed_iv`, quote
 provenance in `source`, and the display method in `interpolation_method`.
 Fewer than three non-collinear observations leave missing cells unfilled.
 This fills the existing grid rather than adding dense display points.
-The sidebar rate is in percent per year, continuously
-compounded; changing it recomputes IV from the same frozen bid/ask quotes.
+Quote midpoint IV is solved at a zero risk-free rate.
 
 ### Deribit input
 
@@ -179,10 +175,10 @@ USD per BTC, retaining BTC fields as `bid_price_btc`, `ask_price_btc`,
 Source expiry timestamps and the frozen capture end determine `tau` on the
 365.25-day basis. `mark_iv` is normalized from percent to decimal.
 
-Computed IV uses this repository's spot Black-Scholes solver and selected rate.
+Computed IV uses this repository's spot Black-Scholes solver at a zero rate.
 Deribit's expiry-specific `underlying_price` is retained as comparison metadata;
 it is not substituted for spot. Computed IV therefore need not equal exchange
-mark IV. Combined-IV, interpolation and ATM selection rules are shared with Bybit.
+mark IV.
 
 ## Quick Example
 
@@ -230,22 +226,25 @@ Returns a 2D NumPy array of implied volatilities with shape `(n_expiries, n_stri
 
 Returns bilinearly interpolated IV at the target `(T, K)`. Raises `ValueError` if the target point is outside the grid or if the grid is not valid.
 
-### `fetch_chain(underlying="BTC", base_url=DEFAULT_BYBIT_BASE_URL, timeout=DEFAULT_BYBIT_TIMEOUT)`
+### `load_deribit_snapshot(path)` and `parse_deribit_snapshot(snapshot)`
 
-Fetches Bybit option tickers for an underlying and returns a tidy pandas DataFrame with parsed symbol fields, bid/ask prices, bid/ask IVs, mid price, mark price, mark IV, index price, and time to expiry.
+`load_deribit_snapshot` reads and validates a frozen Deribit snapshot offline.
+`parse_deribit_snapshot` returns a tidy pandas DataFrame with strike, flag, USD
+and BTC bid/ask prices, mid price, mark price, mark IV, index price, expiry and
+time to expiry.
 
-`mid_price` is computed only from valid positive bid/ask quotes. If the bid/ask quote is not usable, `mid_price` is `NaN` and `quote_source` is `"none"`; the fetcher does not silently fall back to `mark_price`.
+`mid_price` is computed only from valid positive bid/ask quotes. If the bid/ask quote is not usable, `mid_price` is `NaN` and `quote_source` is `"none"`; the adapter does not fall back to `mark_price`.
 
 ### `prepare_surface_inputs(chain, flag="call")`
 
-Filters a fetched option-chain DataFrame to usable bid/ask mid prices and returns `option_price_grid`, `spot_price`, `expiries`, and `strikes` for `build_surface`.
+Filters a parsed option-chain DataFrame to usable bid/ask mid prices and returns `option_price_grid`, `spot_price`, `expiries`, and `strikes` for `build_surface`.
 
 `spot_price` is the median `index_price` across usable rows. If usable rows have different `index_price` values, a warning is emitted.
 
 ### `build_surface_from_chain(chain, flag="call", r=0)`
 
 Convenience wrapper for `prepare_surface_inputs()` followed by
-`build_surface()`. The chain can come from `fetch_chain()` or a parsed snapshot.
+`build_surface()`. The chain comes from a parsed snapshot.
 
 Returns the IV surface together with the option price grid, spot price, expiries, and strikes. Missing usable quotes remain `NaN` in the price grid and IV surface.
 
@@ -284,28 +283,4 @@ solved Call and Put IVs at the same expiry and strike when both are available.
 pytest
 ```
 
-## Manual Live Check
-
-Unit tests use mocked data and do not call Bybit. To sanity-check the live option-chain pipeline manually:
-
-```bash
-python scripts/check_bybit_chain.py --underlying BTC
-```
-
-This fetches the live chain from Bybit's `api.bytick.com` endpoint by default, builds call and put surfaces from usable bid/ask mid prices, and prints quote counts, grid shape, and `NaN` ratios.
-
-The live check uses `--r 0.03` by default as a diagnostic risk-free-rate assumption. Override it explicitly when comparing model assumptions:
-
-```bash
-python scripts/check_bybit_chain.py --underlying BTC --r 0
-python scripts/check_bybit_chain.py --underlying BTC --r 0.05
-```
-
-To choose an explicit Bybit REST host or timeout:
-
-```bash
-python scripts/check_bybit_chain.py --underlying BTC --base-url https://api.bybit.com
-python scripts/check_bybit_chain.py --underlying BTC --base-url https://api.bytick.com --timeout 20
-```
-
-`api.bytick.com` is the default because it works in the current development environment. The script does not silently fall back between hosts; use `--base-url` to make the endpoint explicit.
+Tests run offline on the frozen Deribit snapshot in `data/`.
