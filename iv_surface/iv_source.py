@@ -13,6 +13,7 @@ import pandas as pd
 
 from iv_surface.solver import bs_price, solve_iv
 from iv_surface.surface_builder import combine_call_put_iv
+from iv_surface.surface_transforms import surface_to_long_frame
 
 
 EXCHANGE_MARK = "Exchange mark"
@@ -79,9 +80,42 @@ class IVSourceResult:
     source_grid: np.ndarray
     call_iv_surface: np.ndarray
     put_iv_surface: np.ndarray
+    band_low: np.ndarray
+    band_high: np.ndarray
     spot_price: float
     expiries: list[float]
     strikes: list[float]
+
+
+# Call/Put weights of each Combined IV label; the band reuses the line's weights.
+_LINE_WEIGHTS = {
+    "call": (1.0, 0.0),
+    "call_fallback": (1.0, 0.0),
+    "near_atm_call_only": (1.0, 0.0),
+    "put": (0.0, 1.0),
+    "put_fallback": (0.0, 1.0),
+    "near_atm_put_only": (0.0, 1.0),
+    "near_atm_average": (0.5, 0.5),
+}
+
+
+def _blend_with_line_weights(source_grid, call_grid, put_grid):
+    """Blend side grids cell by cell with the line's Call/Put weights.
+
+    A side with nonzero weight but no value leaves the cell ``NaN``.
+    """
+    blended = np.full(call_grid.shape, np.nan)
+    for (i, j), label in np.ndenumerate(source_grid):
+        weights = _LINE_WEIGHTS.get(label)
+        if weights is None:
+            continue
+        call_weight, put_weight = weights
+        value = 0.0
+        for weight, side in ((call_weight, call_grid), (put_weight, put_grid)):
+            if weight:
+                value += weight * side[i, j]
+        blended[i, j] = value
+    return blended
 
 
 def _contract_grid(chain, values, flag, expiries, strikes):
@@ -129,13 +163,40 @@ def build_iv_source_surface(chain: pd.DataFrame, iv_source: str) -> IVSourceResu
     call_iv = _contract_grid(data, iv, "call", expiries, strikes)
     put_iv = _contract_grid(data, iv, "put", expiries, strikes)
     combined, source_grid = combine_call_put_iv(call_iv, put_iv, strikes, spot_price)
+    # The bid-ask band is a display band from our solver in both modes.
+    band = {}
+    for side in ("bid", "ask"):
+        side_iv = solve_contract_iv(data, f"{side}_price")
+        band[side] = _blend_with_line_weights(
+            source_grid,
+            _contract_grid(data, side_iv, "call", expiries, strikes),
+            _contract_grid(data, side_iv, "put", expiries, strikes),
+        )
     return IVSourceResult(
         iv_source=iv_source,
         iv_surface=combined,
         source_grid=source_grid,
         call_iv_surface=call_iv,
         put_iv_surface=put_iv,
+        band_low=band["bid"],
+        band_high=band["ask"],
         spot_price=spot_price,
         expiries=expiries,
         strikes=strikes,
     )
+
+
+def iv_source_long_frame(result: IVSourceResult, expiry_datetimes=None) -> pd.DataFrame:
+    """Chart-ready long frame with Combined IV, its source labels and the band."""
+    frame = surface_to_long_frame(
+        result.iv_surface,
+        result.expiries,
+        result.strikes,
+        result.spot_price,
+        expiry_datetimes=expiry_datetimes,
+        source_grid=result.source_grid,
+    )
+    frame["band_low"] = result.band_low.reshape(-1)
+    frame["band_high"] = result.band_high.reshape(-1)
+    frame["iv_source"] = result.iv_source
+    return frame

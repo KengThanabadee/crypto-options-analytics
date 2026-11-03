@@ -112,3 +112,121 @@ def test_unusable_selected_source_iv_is_missing_and_never_filled_from_the_other(
     i, j = _cell(result, target)
     assert np.isnan(result.iv_surface[i, j])
     assert result.source_grid[i, j] == "missing"
+
+
+def _side_iv(row, price):
+    from iv_surface.solver import solve_iv
+
+    rate = np.log(row.underlying_price / row.index_price) / row.tau
+    return solve_iv(price, row.index_price, row.strike, row.tau, rate, row.flag)
+
+
+def _two_sided_pair(chain, moneyness_test):
+    spot = chain["index_price"].iloc[0]
+    quoted = chain[
+        (chain["quote_source"] == "mid") & moneyness_test(chain["strike"] / spot)
+    ]
+    for _, group in quoted.groupby(["tau", "strike"]):
+        if len(group) == 2:
+            call = group[group["flag"] == "call"].iloc[0]
+            put = group[group["flag"] == "put"].iloc[0]
+            try:
+                sides = [_side_iv(row, row[p]) for row in (call, put)
+                         for p in ("bid_price", "ask_price")]
+            except ValueError:
+                continue
+            return call, put, sides
+    raise AssertionError("no two-sided pair solved")
+
+
+@pytest.mark.parametrize("iv_source", ["Exchange mark", "Quote midpoint"])
+def test_near_atm_band_blends_bid_with_bid_and_ask_with_ask(chain, iv_source):
+    call, put, (call_bid, call_ask, put_bid, put_ask) = _two_sided_pair(
+        chain, lambda m: (m >= 0.98) & (m <= 1.02)
+    )
+    result = build_iv_source_surface(chain, iv_source)
+    i, j = _cell(result, call)
+    assert result.source_grid[i, j] == "near_atm_average"
+    assert result.band_low[i, j] == pytest.approx((call_bid + put_bid) / 2, abs=1e-4)
+    assert result.band_high[i, j] == pytest.approx((call_ask + put_ask) / 2, abs=1e-4)
+
+
+def test_wing_band_uses_the_line_side_bid_and_ask(chain):
+    call, put, (_, _, put_bid, put_ask) = _two_sided_pair(chain, lambda m: m < 0.95)
+    result = build_iv_source_surface(chain, "Exchange mark")
+    i, j = _cell(result, put)
+    assert result.source_grid[i, j] == "put"
+    assert result.band_low[i, j] == pytest.approx(put_bid, abs=1e-4)
+    assert result.band_high[i, j] == pytest.approx(put_ask, abs=1e-4)
+
+
+def test_band_is_missing_where_a_weighted_side_has_no_quote(chain):
+    call, put, _ = _two_sided_pair(chain, lambda m: (m >= 0.98) & (m <= 1.02))
+    damaged = chain.copy()
+    damaged.loc[damaged["symbol"] == call.symbol, "bid_price"] = np.nan
+    result = build_iv_source_surface(damaged, "Exchange mark")
+    i, j = _cell(result, call)
+    assert result.source_grid[i, j] == "near_atm_average"
+    assert np.isnan(result.band_low[i, j])
+    assert np.isfinite(result.band_high[i, j])
+
+
+@pytest.fixture(scope="module")
+def midpoint_frame(chain):
+    from iv_surface.iv_source import iv_source_long_frame
+
+    result = build_iv_source_surface(chain, "Quote midpoint")
+    dates = chain.drop_duplicates("tau").set_index("tau")["expiry_dt"]
+    return result, iv_source_long_frame(
+        result, expiry_datetimes=dates.reindex(result.expiries).tolist()
+    )
+
+
+def test_long_frame_carries_line_band_and_source(midpoint_frame):
+    result, frame = midpoint_frame
+    np.testing.assert_array_equal(frame["iv"], result.iv_surface.reshape(-1))
+    np.testing.assert_array_equal(frame["band_low"], result.band_low.reshape(-1))
+    np.testing.assert_array_equal(frame["band_high"], result.band_high.reshape(-1))
+    np.testing.assert_array_equal(frame["source"], result.source_grid.reshape(-1))
+    assert set(frame["iv_source"]) == {"Quote midpoint"}
+
+
+def test_smile_draws_a_labelled_display_band_and_names_the_source(midpoint_frame):
+    from iv_surface.visualization import make_smile_figure
+
+    result, frame = midpoint_frame
+    tau = result.expiries[-1]
+    figure = make_smile_figure(frame, selected_expiries=[tau], iv_source="Quote midpoint")
+    lines = [trace for trace in figure.data if trace.mode == "lines+markers"]
+    band_high, band_low = [trace for trace in figure.data if trace.mode != "lines+markers"]
+    assert len(lines) == 1
+    assert "Quote midpoint IV: %{y:.2%}" in lines[0].hovertemplate
+    assert "display band" in lines[0].hovertemplate
+    row = result.expiries.index(tau)
+    order = np.argsort(result.strikes)
+    np.testing.assert_allclose(band_high.y, result.band_high[row, order], equal_nan=True)
+    np.testing.assert_allclose(band_low.y, result.band_low[row, order], equal_nan=True)
+    assert all(trace.connectgaps is False for trace in figure.data)
+    assert "display band" in band_low.name
+
+
+@pytest.mark.parametrize("builder", ["make_iv_heatmap", "make_iv_surface_figure"])
+def test_surface_hover_names_the_iv_source(midpoint_frame, builder):
+    from iv_surface import visualization
+
+    _, frame = midpoint_frame
+    figure = getattr(visualization, builder)(frame, iv_source="Exchange mark")
+    trace = figure.data[0]
+    hover = trace.hovertemplate or " ".join(np.asarray(trace.text).reshape(-1)[:5])
+    assert "Exchange mark IV:" in hover
+
+
+def test_atm_hover_names_the_iv_source(midpoint_frame):
+    from iv_surface.surface_transforms import atm_term_structure_frame
+    from iv_surface.visualization import make_atm_term_structure_figure
+
+    _, frame = midpoint_frame
+    figure = make_atm_term_structure_figure(
+        atm_term_structure_frame(frame), iv_source="Quote midpoint"
+    )
+    assert "Quote midpoint IV: %{y:.2%}" in figure.data[0].hovertemplate
