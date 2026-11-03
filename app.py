@@ -39,10 +39,9 @@ from iv_surface.surface_transforms import (
 )
 from iv_surface.visualization import (
     make_atm_term_structure_figure,
-    make_gex_figure,
     make_iv_heatmap,
     make_iv_surface_figure,
-    make_open_interest_figure,
+    make_positioning_figure,
     make_smile_figure,
 )
 
@@ -73,14 +72,15 @@ def iv_source_control():
     ) or DEFAULT_IV_SOURCE
 
 
-def open_interest_section(chain, snapshot_id):
-    """OI by strike with its own expiry selection and strike zoom.
+def positioning_section(chain, snapshot_id):
+    """OI and GEX by strike in one figure, sharing expiries, strike zoom and axis.
 
     Widget keys carry the snapshot id so a new snapshot starts at All
-    expiries and its own Near spot range.
+    expiries, its own Near spot range and the default GEX scenario. Every
+    control renders before the chart, so an empty range keeps their values.
     """
     range_key = f"oi_strike_range_{snapshot_id}"
-    st.subheader("Open interest")
+    st.subheader("Open interest and gamma exposure")
     index_price = float(chain["index_price"].iloc[0])
     expiry_dates = chain.drop_duplicates("tau").set_index("tau")["expiry_dt"]
     selected = st.multiselect(
@@ -93,7 +93,7 @@ def open_interest_section(chain, snapshot_id):
     )
     expiries = selected or None
     scope = expiry_scope_label(chain, expiries)
-    table = open_interest_by_strike(chain, expiries)
+    oi_table = open_interest_by_strike(chain, expiries)
 
     near_spot = near_spot_range(index_price)
     all_strikes = strike_zoom_bounds(chain)
@@ -112,35 +112,46 @@ def open_interest_section(chain, snapshot_id):
             step=500.0,
             format="$%.0f",
             key=range_key,
-            help="Display zoom only. OI sums use every strike in the selected expiries.",
+            help="Display zoom only. OI and GEX use every strike in the selected expiries.",
         )
     with reset_column:
         st.button("Near spot", on_click=set_range, args=(near_spot,),
                   help="Reset to ±10% around the index.")
+    signs, mode = gex_scenario_controls(snapshot_id)
     st.caption(
         f"Open interest · {scope} · Call and Put in BTC · "
         f"index ${index_price:,.2f}"
     )
-    if strikes_in_range(table, strike_range).empty:
+    if strikes_in_range(oi_table, strike_range).empty:
         st.info("No strikes in this range.")
         st.button("Zoom out to all strikes", on_click=set_range, args=(all_strikes,))
         return
+    gex_table = net_gex_by_strike(chain, expiries, signs=signs)
     st.plotly_chart(
-        make_open_interest_figure(
-            table, index_price=index_price, strike_range=strike_range, scope=scope,
+        make_positioning_figure(
+            oi_table, gex_table, index_price=index_price, strike_range=strike_range,
+            scope=scope, assumption=assumption_label(signs),
+            oi_share=computable_oi_share(chain, expiries), mode=mode,
         ),
         use_container_width=True,
     )
-    gamma_exposure_section(chain, expiries, scope, index_price, strike_range, snapshot_id)
+    st.caption(
+        "GEX per contract = s × gamma × OI × index² × 1%, from Exchange mark IV "
+        "with the index and every forward moving 1% together. s = +1 where the "
+        "customer sells (dealer long gamma), −1 where the customer buys. "
+        "Known zero OI adds zero. A strike where some contracts lack OI or mark IV "
+        "shows Incomplete data; one where none are computable shows Insufficient "
+        "data. Neither is drawn as a bar."
+    )
 
 
 CUSTOMER_SIDES = {"Customer sells": 1, "Customer buys": -1}
+SIDE_OF_SIGN = {sign: side for side, sign in CUSTOMER_SIDES.items()}
 
 
 def gex_scenario_controls(snapshot_id):
     """Customer side per option type and Net/Gross; a new snapshot starts at the defaults."""
-    side_of = {sign: side for side, sign in CUSTOMER_SIDES.items()}
-    defaults = {flag: side_of[sign] for flag, sign in DEFAULT_SIGNS.items()}
+    defaults = {flag: SIDE_OF_SIGN[sign] for flag, sign in DEFAULT_SIGNS.items()}
     columns = st.columns(3)
     signs = {}
     for column, flag in zip(columns, ("call", "put")):
@@ -170,29 +181,6 @@ def gex_scenario_controls(snapshot_id):
     return signs, mode
 
 
-def gamma_exposure_section(chain, expiries, scope, index_price, strike_range, snapshot_id):
-    """GEX by strike below OI, sharing its expiries, strike zoom and index line."""
-    signs, mode = gex_scenario_controls(snapshot_id)
-    st.plotly_chart(
-        make_gex_figure(
-            net_gex_by_strike(chain, expiries, signs=signs),
-            index_price=index_price, strike_range=strike_range, scope=scope,
-            assumption=assumption_label(signs),
-            oi_share=computable_oi_share(chain, expiries),
-            mode=mode,
-        ),
-        use_container_width=True,
-    )
-    st.caption(
-        "GEX per contract = s × gamma × OI × index² × 1%, from Exchange mark IV "
-        "with the index and every forward moving 1% together. s = +1 where the "
-        "customer sells (dealer long gamma), −1 where the customer buys. "
-        "Known zero OI adds zero. A strike where some contracts lack OI or mark IV "
-        "shows Incomplete data; one where none are computable shows Insufficient "
-        "data. Neither is drawn as a bar."
-    )
-
-
 def _default_unless_set(key, default):
     """A widget default, or None once its value is set in session state.
 
@@ -215,10 +203,9 @@ def current_settings(chain, snapshot_id):
     state = st.session_state
     taus = _expiry_taus(chain)
     expiry_of = {tau: expiry for expiry, tau in taus.items()}
-    side_of = {sign: side for side, sign in CUSTOMER_SIDES.items()}
     signs = {
         flag: CUSTOMER_SIDES[
-            state.get(f"gex_{flag}_side_{snapshot_id}") or side_of[DEFAULT_SIGNS[flag]]
+            state.get(f"gex_{flag}_side_{snapshot_id}") or SIDE_OF_SIGN[DEFAULT_SIGNS[flag]]
         ]
         for flag in ("call", "put")
     }
@@ -274,13 +261,12 @@ def reopen_saved_analysis():
     snapshot_id = saved.snapshot["captured_at_utc"]
     taus = _expiry_taus(parse_deribit_snapshot(saved.snapshot))
     settings = saved.settings
-    side_of = {sign: side for side, sign in CUSTOMER_SIDES.items()}
     range_name = {value: name for name, value in MONEYNESS_RANGES.items()}
     widget_values = {
         f"oi_expiries_{snapshot_id}": [float(taus[e]) for e in settings["oi_expiries"]],
         f"oi_strike_range_{snapshot_id}": settings["strike_range"],
-        f"gex_call_side_{snapshot_id}": side_of[settings["signs"]["call"]],
-        f"gex_put_side_{snapshot_id}": side_of[settings["signs"]["put"]],
+        f"gex_call_side_{snapshot_id}": SIDE_OF_SIGN[settings["signs"]["call"]],
+        f"gex_put_side_{snapshot_id}": SIDE_OF_SIGN[settings["signs"]["put"]],
         f"gex_mode_{snapshot_id}": settings["gex_view"],
         "iv_source": settings["iv_source"],
         "moneyness_range": range_name[settings["moneyness_range"]],
@@ -351,7 +337,7 @@ def main():
     st.caption(f"Deribit BTC · {snapshot_label}: {captured_at:%Y-%m-%d %H:%M:%S} UTC")
     if "reopen_notice" in st.session_state:
         st.info(st.session_state["reopen_notice"])
-    open_interest_section(chain, snapshot["captured_at_utc"])
+    positioning_section(chain, snapshot["captured_at_utc"])
     st.subheader("Implied volatility")
     iv_source = iv_source_control()
     try:

@@ -122,7 +122,7 @@ def test_dashboard_opens_on_exchange_mark_without_rate_inputs(monkeypatch):
     counts = [int(metric.value.replace(",", "")) for metric in app.metric]
     assert sum(counts) == result.iv_surface.size
     assert counts[2] == np.isnan(result.iv_surface).sum()
-    assert len(app.get("plotly_chart")) == 7
+    assert len(app.get("plotly_chart")) == 6
     assert app.sidebar.radio[0].value == "Core (0.8–1.2)"
     assert app.main.radio[0].value == "Surface"
     assert [tab.label for tab in app.tabs] == ["Heatmap", "3D surface", "IV smiles", "ATM term structure"]
@@ -214,7 +214,7 @@ def test_smile_selection_preserves_observations_and_other_views(monkeypatch):
         box.uncheck()
     app.run()
     assert not app.exception
-    assert len(app.get("plotly_chart")) == 6
+    assert len(app.get("plotly_chart")) == 5
     assert any("Select an expiry" in info.value for info in app.info)
 
 
@@ -237,7 +237,7 @@ def test_smile_defaults_skip_expiries_without_finite_iv(monkeypatch, finite_coun
     app = _app()
     assert not app.exception
     assert [tau for tau, box in zip(ordered_expiries, app.checkbox) if box.value] == expected
-    assert len(app.get("plotly_chart")) == (7 if finite_count else 6)
+    assert len(app.get("plotly_chart")) == (6 if finite_count else 5)
 
 
 @pytest.mark.parametrize("case", ["file", "schema", "index"])
@@ -352,7 +352,7 @@ def test_all_views_follow_the_raw_deribit_chain(monkeypatch):
 
     app = _app()
     assert not app.exception and not app.error
-    assert len(app.get("plotly_chart")) == 7
+    assert len(app.get("plotly_chart")) == 6
     assert any("Deribit BTC · Frozen snapshot:" in caption.value for caption in app.caption)
     chain = _chain()
     result = _mark_result()
@@ -440,4 +440,4 @@ def test_failed_fetch_keeps_the_previous_snapshot_and_shows_the_error(monkeypatc
         assert "offline" in app.error[0].value
     assert any("Frozen snapshot: 2026-10-15 15:18:14 UTC" in c.value for c in app.caption)
     assert any("$82,227.73" in m.value for m in app.markdown)
-    assert len(app.get("plotly_chart")) == 7
+    assert len(app.get("plotly_chart")) == 6

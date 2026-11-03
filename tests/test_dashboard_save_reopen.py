@@ -204,3 +204,21 @@ def test_reopening_another_snapshot_switches_the_page_and_controls_keep_working(
     assert app.checkbox[0].value and app.checkbox[3].value
     assert app.slider[0].value == (70_000.0, 100_000.0)
     assert any("Reopened snapshot: 2026-10-15 16:18:14 UTC" in c.value for c in app.caption)
+
+
+def test_an_empty_strike_range_keeps_the_gex_scenario_and_saves_it(saved_files):
+    app = _app()
+    _segmented(app, "Calls").set_value("Customer buys").run()
+    _segmented(app, "GEX view").set_value("Gross").run()
+    # 81,000 and 81,500 are adjacent listed strikes; nothing lies strictly between.
+    app.slider[0].set_value((81_100.0, 81_400.0)).run()
+    app.run()
+
+    assert not app.exception and not app.error
+    assert any("No strikes in this range" in info.value for info in app.info)
+    assert _segmented(app, "Calls").value == "Customer buys"
+    assert _segmented(app, "GEX view").value == "Gross"
+    settings = json.loads(saved_files[-1])["settings"]
+    assert settings["signs"] == {"call": -1, "put": -1}
+    assert settings["gex_view"] == "Gross"
+    assert settings["strike_range"] == [81_100.0, 81_400.0]

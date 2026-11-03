@@ -25,7 +25,7 @@ def block_network(monkeypatch):
 @pytest.fixture
 def figures(monkeypatch):
     recorded = {}
-    for name in ["make_open_interest_figure", "make_gex_figure"]:
+    for name in ["make_positioning_figure"]:
         build = getattr(visualization, name)
 
         def record(*args, _name=name, _build=build, **kwargs):
@@ -50,25 +50,34 @@ def _chart_json(app, index):
     return json.loads(app.get("plotly_chart")[index].proto.spec)
 
 
+def _gex_title(figure):
+    (annotation,) = [a for a in figure.layout.annotations if a.name == "gex_title"]
+    return annotation.text
+
+
+def _gex_bars(figure):
+    return figure.data[2]
+
+
 def test_gex_sits_below_oi_with_default_assumption_and_near_spot_zoom(figures, chain):
     app = _app()
     assert not app.exception and not app.error
-    oi, gex = _chart_json(app, 0), _chart_json(app, 1)
-    assert oi["layout"]["yaxis"]["title"]["text"] == "OI · BTC"
-    assert "Net gamma exposure" in gex["layout"]["title"]["text"]
+    chart = _chart_json(app, 0)
+    assert chart["layout"]["yaxis"]["title"]["text"] == "OI · BTC"
+    assert chart["layout"]["xaxis"]["matches"] == "x2"
+    # The OI panel sits above the GEX panel.
+    assert chart["layout"]["yaxis"]["domain"][0] > chart["layout"]["yaxis2"]["domain"][1]
 
-    figure = figures["make_gex_figure"]
-    title = figure.layout.title.text
+    figure = figures["make_positioning_figure"]
+    title = _gex_title(figure)
+    assert title.startswith("Net gamma exposure")
     assert "Call+ / Put− (Calls customer sells, Puts customer buys)" in title
     assert "Exchange mark IV" in title and "100% of OI computable" in title
     low, high = near_spot_range(chain["index_price"].iloc[0])
     expected = net_gex_by_strike(chain)
     expected = expected[(expected.strike >= low) & (expected.strike <= high)]
-    assert list(figure.data[0].x) == expected["strike"].tolist()
-    np.testing.assert_allclose(list(figure.data[0].y), expected["net_gex"])
-    assert list(figure.layout.xaxis.range) == list(
-        figures["make_open_interest_figure"].layout.xaxis.range
-    )
+    assert list(_gex_bars(figure).x) == expected["strike"].tolist()
+    np.testing.assert_allclose(list(_gex_bars(figure).y), expected["net_gex"])
 
 
 def test_gex_follows_the_oi_expiries_and_strike_zoom(figures, chain):
@@ -79,16 +88,13 @@ def test_gex_follows_the_oi_expiries_and_strike_zoom(figures, chain):
     app.slider[0].set_value((60_000.0, 110_000.0)).run()
     assert not app.exception
 
-    figure = figures["make_gex_figure"]
+    figure = figures["make_positioning_figure"]
     expected = net_gex_by_strike(chain, expiries=chosen)
     expected = expected[(expected.strike >= 60_000.0) & (expected.strike <= 110_000.0)]
-    assert list(figure.data[0].x) == expected["strike"].tolist()
-    np.testing.assert_allclose(list(figure.data[0].y), expected["net_gex"])
-    assert list(figure.data[0].x) == list(figures["make_open_interest_figure"].data[0].x)
-    assert list(figure.layout.xaxis.range) == list(
-        figures["make_open_interest_figure"].layout.xaxis.range
-    )
-    assert "2026-10-17, 2026-10-23" in figure.layout.title.text
+    assert list(_gex_bars(figure).x) == expected["strike"].tolist()
+    np.testing.assert_allclose(list(_gex_bars(figure).y), expected["net_gex"])
+    assert list(_gex_bars(figure).x) == list(figure.data[0].x)
+    assert "2026-10-17, 2026-10-23" in _gex_title(figure)
 
 
 def _control(app, label):
@@ -101,44 +107,45 @@ def test_new_analysis_starts_at_call_plus_put_minus_and_net(figures):
     assert _control(app, "Calls").value == "Customer sells"
     assert _control(app, "Puts").value == "Customer buys"
     assert _control(app, "GEX view").value == "Net"
-    assert figures["make_gex_figure"].layout.title.text.startswith("Net gamma exposure")
+    assert _gex_title(figures["make_positioning_figure"]).startswith("Net gamma exposure")
 
 
 def test_flipping_an_assumption_changes_only_gex_signs_without_fetching(figures, chain):
     app = _app()
-    oi_before = figures["make_open_interest_figure"].to_json()
+    oi_before = [trace.to_plotly_json() for trace in figures["make_positioning_figure"].data[:2]]
     _control(app, "Calls").set_value("Customer buys").run()
     assert not app.exception and not app.error
 
-    figure = figures["make_gex_figure"]
+    figure = figures["make_positioning_figure"]
     low, high = near_spot_range(chain["index_price"].iloc[0])
     expected = net_gex_by_strike(chain, signs={"call": -1, "put": -1})
     expected = expected[(expected.strike >= low) & (expected.strike <= high)]
-    np.testing.assert_allclose(list(figure.data[0].y), expected["net_gex"])
-    title = figure.layout.title.text
+    np.testing.assert_allclose(list(_gex_bars(figure).y), expected["net_gex"])
+    title = _gex_title(figure)
     assert "Scenario: Call− / Put− (Calls customer buys, Puts customer buys)" in title
     assert "not observed dealer inventory" in title
-    assert figures["make_open_interest_figure"].to_json() == oi_before
+    oi_after = [trace.to_plotly_json() for trace in figure.data[:2]]
+    assert json.dumps(oi_after, default=str) == json.dumps(oi_before, default=str)
 
 
 def test_gross_view_ignores_the_assumption(figures, chain):
     app = _app()
     _control(app, "GEX view").set_value("Gross").run()
-    gross = list(figures["make_gex_figure"].data[0].y)
+    gross = list(_gex_bars(figures["make_positioning_figure"]).y)
     low, high = near_spot_range(chain["index_price"].iloc[0])
     expected = net_gex_by_strike(chain)
     expected = expected[(expected.strike >= low) & (expected.strike <= high)]
     np.testing.assert_allclose(gross, expected["gross_gex"])
 
     _control(app, "Puts").set_value("Customer sells").run()
-    figure = figures["make_gex_figure"]
-    assert list(figure.data[0].y) == gross
-    assert "Scenario: Call+ / Put+" in figure.layout.title.text
+    figure = figures["make_positioning_figure"]
+    assert list(_gex_bars(figure).y) == gross
+    assert "Scenario: Call+ / Put+" in _gex_title(figure)
 
 
 def test_switching_iv_source_never_changes_gex(figures):
     app = _app()
-    before = figures["make_gex_figure"].to_json()
+    before = figures["make_positioning_figure"].to_json()
     _control(app, "IV source").set_value("Quote midpoint").run()
     assert not app.exception
-    assert figures["make_gex_figure"].to_json() == before
+    assert figures["make_positioning_figure"].to_json() == before

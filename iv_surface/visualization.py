@@ -3,6 +3,7 @@ from html import escape
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from iv_surface.chain import DAYS_PER_YEAR
 from iv_surface.positioning import GEX_MODES, strikes_in_range
@@ -594,16 +595,15 @@ def make_atm_term_structure_figure(
     return figure
 
 
-def make_open_interest_figure(
-    oi_table: pd.DataFrame, index_price: float, strike_range, scope: str
-) -> go.Figure:
-    """Create Call and Put open interest bars (BTC) by strike.
+def _strike_axis_range(shown: pd.DataFrame, strike_range) -> list[float]:
+    """Strike axis for both panels: pad by half a strike step so end bars are whole."""
+    low, high = strike_range
+    strikes = shown["strike"].to_numpy(dtype=float)
+    step = np.diff(strikes).min() if len(strikes) > 1 else (high - low) * 0.05
+    return [low - step / 2, high + step / 2]
 
-    ``oi_table`` is the full table from ``open_interest_by_strike``;
-    ``strike_range`` only zooms the display.
-    """
-    _require_columns(oi_table, {"strike", "call_oi", "put_oi"}, "oi_table")
-    shown = strikes_in_range(oi_table, strike_range).sort_values("strike")
+
+def _open_interest_bars(shown: pd.DataFrame, scope: str) -> list[go.Bar]:
     customdata = shown[["call_oi", "put_oi"]].to_numpy(dtype=float)
     hovertemplate = (
         "Strike: $%{x:,.0f}<br>"
@@ -611,48 +611,57 @@ def make_open_interest_figure(
         "Put OI: %{customdata[1]:,.1f} BTC<br>"
         f"Expiries: {escape(scope)}<extra></extra>"
     )
-    figure = go.Figure()
-    for name, column, color in [
-        ("Call", "call_oi", "#60A5FA"), ("Put", "put_oi", "#FBBF24"),
-    ]:
-        figure.add_trace(go.Bar(
+    return [
+        go.Bar(
             x=shown["strike"].to_numpy(dtype=float),
             y=shown[column].to_numpy(dtype=float),
             customdata=customdata,
             name=name,
             marker_color=color,
             hovertemplate=hovertemplate,
-        ))
-    figure.add_vline(
-        x=index_price, line_dash="dash", line_color="gray", line_width=1,
-        annotation_text=f"Index ${index_price:,.0f}",
-        annotation_position="top",
+        )
+        for name, column, color in [
+            ("Call", "call_oi", "#60A5FA"), ("Put", "put_oi", "#FBBF24"),
+        ]
+    ]
+
+
+_GEX_DETAIL_COLUMNS = ["call_gex", "put_gex", "call_oi", "put_oi", "contracts"]
+
+
+def _gex_bar(shown: pd.DataFrame, scope: str, scenario: str, mode: str) -> go.Bar:
+    values = shown[f"{mode.lower()}_gex"].to_numpy(dtype=float)
+    details = shown[_GEX_DETAIL_COLUMNS].to_numpy(dtype=float)
+    if mode == "Gross":
+        # Each type has one sign, so its Gross share is the magnitude of its subtotal.
+        details[:, :2] = np.abs(details[:, :2])
+        colors = "#60A5FA"
+    else:
+        colors = np.where(values >= 0, "#34D399", "#F87171")
+    hovertemplate = (
+        "Strike: $%{x:,.0f}<br>"
+        f"{mode} GEX: %{{y:$,.0f}} per 1% BTC move<br>"
+        "Call GEX: %{customdata[0]:$,.0f}<br>"
+        "Put GEX: %{customdata[1]:$,.0f}<br>"
+        "Call OI: %{customdata[2]:,.1f} BTC<br>"
+        "Put OI: %{customdata[3]:,.1f} BTC<br>"
+        "Contracts: %{customdata[4]:,.0f}<br>"
+        f"{scenario}<br>"
+        f"Expiries: {escape(scope)}<extra></extra>"
     )
-    figure.update_layout(
-        title=f"Open interest · {escape(scope)}",
-        barmode="group",
-        height=430,
-        margin=dict(l=12, r=12, t=65, b=12),
-        legend=dict(orientation="h", x=1, y=1.02, xanchor="right", yanchor="bottom"),
-        xaxis_title="Strike · USD",
-        yaxis_title="OI · BTC",
-        hovermode="closest",
+    return go.Bar(
+        x=shown["strike"].to_numpy(dtype=float),
+        y=values,
+        customdata=details,
+        name=f"{mode} GEX",
+        showlegend=False,
+        marker_color=colors,
+        hovertemplate=hovertemplate,
     )
-    figure.update_xaxes(range=_strike_axis_range(shown, strike_range), tickformat=",.0f")
-    figure.update_yaxes(rangemode="tozero")
-    return figure
 
 
-def _strike_axis_range(shown: pd.DataFrame, strike_range) -> list[float]:
-    """Shared OI/GEX strike axis: pad by half a strike step so end bars are whole."""
-    low, high = strike_range
-    strikes = shown["strike"].to_numpy(dtype=float)
-    step = np.diff(strikes).min() if len(strikes) > 1 else (high - low) * 0.05
-    return [low - step / 2, high + step / 2]
-
-
-# Incomplete/Insufficient markers sit in a strip near the top of the plot on
-# their own 0..1 axis, so they never read as a GEX value or a zero bar.
+# Incomplete/Insufficient markers sit in a strip near the top of the GEX panel
+# on their own 0..1 axis, so they never read as a GEX value or a zero bar.
 _STATUS_STRIP_Y = 0.94
 
 
@@ -679,109 +688,122 @@ def _insufficient_text(row, scope: str, mode: str) -> str:
     )
 
 
-def _add_gex_status_markers(figure: go.Figure, shown: pd.DataFrame, scope: str, mode: str):
+def _gex_status_markers(shown: pd.DataFrame, scope: str, mode: str) -> list[go.Scatter]:
     styles = [
         ("incomplete", "Incomplete data", "diamond-open", "#F59E0B", _incomplete_text),
         ("insufficient", "Insufficient data", "x-thin-open", "#9CA3AF", _insufficient_text),
     ]
-    added = False
+    markers = []
     for status, name, symbol, color, describe in styles:
         rows = shown[shown["status"] == status]
         if rows.empty:
             continue
-        added = True
-        figure.add_trace(go.Scatter(
+        markers.append(go.Scatter(
             x=rows["strike"].to_numpy(dtype=float),
             y=np.full(len(rows), _STATUS_STRIP_Y),
-            yaxis="y2",
+            xaxis="x2",
+            yaxis="y3",
+            legend="legend2",
             mode="markers",
             name=name,
             marker=dict(symbol=symbol, size=11, color=color, line=dict(width=2, color=color)),
             hovertext=[describe(row, scope, mode) for row in rows.itertuples()],
             hoverinfo="text",
-            showlegend=True,
         ))
-    if added:
-        figure.update_layout(
-            yaxis2=dict(overlaying="y", range=[0, 1], visible=False, fixedrange=True),
-            legend=dict(orientation="h", x=0.01, y=0.86, bgcolor="rgba(0,0,0,0)"),
-        )
+    return markers
 
 
-def make_gex_figure(
-    gex_table: pd.DataFrame, index_price: float, strike_range, scope: str,
-    assumption: str, oi_share: float, mode: str = "Net",
+def _panel_title(name: str, text: str, yaxis) -> dict:
+    """A left-aligned title just above a panel's plot area."""
+    return dict(
+        name=name, text=text, showarrow=False, font=dict(size=16), align="left",
+        xref="paper", x=0, xanchor="left",
+        yref="paper", y=yaxis.domain[1], yanchor="bottom", yshift=8,
+    )
+
+
+def make_positioning_figure(
+    oi_table: pd.DataFrame, gex_table: pd.DataFrame, index_price: float,
+    strike_range, scope: str, assumption: str, oi_share: float, mode: str = "Net",
 ) -> go.Figure:
-    """Create Net or Gross GEX bars by strike in USD per 1% BTC move.
+    """Open interest (top) and gamma exposure (bottom) by strike in one figure.
 
-    ``gex_table`` is the full table from ``net_gex_by_strike``; ``strike_range``
-    only zooms the display and the strike axis matches the OI figure's.
-    ``mode`` picks ``net_gex`` (signed) or ``gross_gex`` (magnitudes). The
-    title states ``assumption`` as a scenario, not observed dealer inventory.
+    Both panels share one strike axis (``xaxis`` matches ``xaxis2``), so a
+    strike sits at the same x in both and a drag-zoom in either zooms both.
+    ``oi_table`` comes from ``open_interest_by_strike`` and ``gex_table`` from
+    ``net_gex_by_strike``; ``strike_range`` only zooms the display. OI bars
+    are Call and Put BTC. GEX bars are USD per 1% BTC move: ``mode`` picks
+    ``net_gex`` (signed) or ``gross_gex`` (magnitudes), and the GEX title
+    states ``assumption`` as a scenario, not observed dealer inventory. The
+    panel titles are annotations named ``oi_title`` and ``gex_title``.
     """
     if mode not in GEX_MODES:
         raise ValueError(f"mode must be one of {GEX_MODES}, got {mode!r}")
-    detail_columns = ["call_gex", "put_gex", "call_oi", "put_oi", "contracts"]
+    _require_columns(oi_table, {"strike", "call_oi", "put_oi"}, "oi_table")
     value_column = f"{mode.lower()}_gex"
     _require_columns(
         gex_table,
-        {"strike", value_column, *detail_columns, "status", f"partial_{value_column}",
-         "usable", "oi_share", "reason"},
+        {"strike", value_column, *_GEX_DETAIL_COLUMNS, "status",
+         f"partial_{value_column}", "usable", "oi_share", "reason"},
         "gex_table",
     )
-    shown = strikes_in_range(gex_table, strike_range).sort_values("strike")
-    values = shown[value_column].to_numpy(dtype=float)
-    details = shown[detail_columns].to_numpy(dtype=float)
-    if mode == "Gross":
-        # Each type has one sign, so its Gross share is the magnitude of its subtotal.
-        details[:, :2] = np.abs(details[:, :2])
-        colors = "#60A5FA"
-    else:
-        colors = np.where(values >= 0, "#34D399", "#F87171")
-    share = "unknown share" if not np.isfinite(oi_share) else f"{oi_share:.0%}"
+    oi_shown = strikes_in_range(oi_table, strike_range).sort_values("strike")
+    gex_shown = strikes_in_range(gex_table, strike_range).sort_values("strike")
     scenario = f"Scenario: {escape(assumption)}"
-    hovertemplate = (
-        "Strike: $%{x:,.0f}<br>"
-        f"{mode} GEX: %{{y:$,.0f}} per 1% BTC move<br>"
-        "Call GEX: %{customdata[0]:$,.0f}<br>"
-        "Put GEX: %{customdata[1]:$,.0f}<br>"
-        "Call OI: %{customdata[2]:,.1f} BTC<br>"
-        "Put OI: %{customdata[3]:,.1f} BTC<br>"
-        "Contracts: %{customdata[4]:,.0f}<br>"
-        f"{scenario}<br>"
-        f"Expiries: {escape(scope)}<extra></extra>"
+
+    figure = make_subplots(
+        rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.16, row_heights=[0.45, 0.55],
     )
-    figure = go.Figure(go.Bar(
-        x=shown["strike"].to_numpy(dtype=float),
-        y=values,
-        customdata=details,
-        name=f"{mode} GEX",
-        showlegend=False,
-        marker_color=colors,
-        hovertemplate=hovertemplate,
-    ))
-    _add_gex_status_markers(figure, shown, scope, mode)
+    for bar in _open_interest_bars(oi_shown, scope):
+        figure.add_trace(bar, row=1, col=1)
+    figure.add_trace(_gex_bar(gex_shown, scope, scenario, mode), row=2, col=1)
+    markers = _gex_status_markers(gex_shown, scope, mode)
+    figure.add_traces(markers)
     figure.add_vline(
-        x=index_price, line_dash="dash", line_color="gray", line_width=1,
-        annotation_text=f"Index ${index_price:,.0f}",
-        annotation_position="top",
+        x=index_price, row="all", col=1,
+        line_dash="dash", line_color="gray", line_width=1,
+        annotation_text=f"Index ${index_price:,.0f}", annotation_position="top",
     )
+
+    share = "unknown share" if not np.isfinite(oi_share) else f"{oi_share:.0%}"
     complete = int((gex_table["status"] == "complete").sum())
+    layout = figure.layout
+    figure.add_annotation(_panel_title(
+        "oi_title", f"Open interest · {escape(scope)}", layout.yaxis,
+    ))
+    figure.add_annotation(_panel_title(
+        "gex_title",
+        f"{mode} gamma exposure · {escape(scope)}<br><sup>"
+        f"USD per 1% BTC move · Exchange mark IV · "
+        f"{share} of OI computable · {complete} of {len(gex_table)} strikes "
+        f"complete (every strike in {escape(scope)})<br>"
+        f"{scenario}, not observed dealer inventory</sup>",
+        layout.yaxis2,
+    ))
     figure.update_layout(
-        title=(
-            f"{mode} gamma exposure · {escape(scope)}<br><sup>"
-            f"USD per 1% BTC move · Exchange mark IV · "
-            f"{share} of OI computable · {complete} of {len(gex_table)} strikes "
-            f"complete (every strike in {escape(scope)})<br>"
-            f"{scenario}, not observed dealer inventory</sup>"
-        ),
-        height=450,
-        margin=dict(l=12, r=12, t=100, b=12),
-        showlegend=len(figure.data) > 1,
-        xaxis_title="Strike · USD",
-        yaxis_title=f"{mode} GEX · USD per 1% BTC move",
+        barmode="group",
+        height=900,
+        margin=dict(l=12, r=12, t=45, b=12),
+        legend=dict(orientation="h", x=1, y=1, xanchor="right", yanchor="bottom"),
         hovermode="closest",
+        yaxis=dict(title="OI · BTC", rangemode="tozero"),
+        yaxis2=dict(
+            title=f"{mode} GEX · USD per 1% BTC move", zeroline=True, tickformat="$,.3s",
+        ),
     )
-    figure.update_xaxes(range=_strike_axis_range(shown, strike_range), tickformat=",.0f")
-    figure.update_yaxes(zeroline=True, tickformat="$,.3s")
+    if markers:
+        figure.update_layout(
+            yaxis3=dict(
+                overlaying="y2", anchor="x2", range=[0, 1], visible=False, fixedrange=True,
+            ),
+            legend2=dict(
+                orientation="h", x=0.01, y=layout.yaxis2.domain[1] - 0.02,
+                yanchor="top", bgcolor="rgba(0,0,0,0)",
+            ),
+        )
+    figure.update_xaxes(
+        range=_strike_axis_range(gex_shown, strike_range), tickformat=",.0f",
+        showticklabels=True,
+    )
+    figure.update_xaxes(title="Strike · USD", row=2, col=1)
     return figure

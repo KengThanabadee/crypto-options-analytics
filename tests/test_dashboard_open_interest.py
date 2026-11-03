@@ -24,7 +24,7 @@ def block_network(monkeypatch):
 @pytest.fixture
 def figures(monkeypatch):
     recorded = {}
-    for name in ["make_open_interest_figure", "make_smile_figure"]:
+    for name in ["make_positioning_figure", "make_smile_figure"]:
         build = getattr(visualization, name)
 
         def record(*args, _name=name, _build=build, **kwargs):
@@ -46,7 +46,7 @@ def _app():
 
 
 def _bars(figure):
-    call, put = figure.data
+    call, put = figure.data[:2]
     return dict(zip(call.x, call.y)), dict(zip(put.x, put.y))
 
 
@@ -60,14 +60,14 @@ def test_open_interest_opens_on_all_expiries_near_spot(figures, chain):
     assert app.slider[0].value == pytest.approx((low, high))
     assert any("All expiries" in caption.value for caption in app.caption)
 
-    figure = figures["make_open_interest_figure"]
+    figure = figures["make_positioning_figure"]
     calls, puts = _bars(figure)
     expected = open_interest_by_strike(chain)
     expected = expected[(expected.strike >= low) & (expected.strike <= high)]
     assert sorted(calls) == expected["strike"].tolist()
     np.testing.assert_allclose([calls[k] for k in expected.strike], expected.call_oi)
     np.testing.assert_allclose([puts[k] for k in expected.strike], expected.put_oi)
-    assert [shape.x0 for shape in figure.layout.shapes] == [index_price]
+    assert [shape.x0 for shape in figure.layout.shapes] == [index_price, index_price]
     assert "All expiries" in figure.data[0].hovertemplate
 
 
@@ -84,7 +84,7 @@ def test_oi_expiry_selection_sums_only_those_expiries_and_leaves_iv_alone(figure
              for tau in chosen]
     scope = ", ".join(dates)
     assert any(scope in caption.value for caption in app.caption)
-    figure = figures["make_open_interest_figure"]
+    figure = figures["make_positioning_figure"]
     assert scope in figure.data[0].hovertemplate
     calls, puts = _bars(figure)
     subset = chain[chain.tau.isin(chosen)]
@@ -104,7 +104,7 @@ def test_strike_range_zooms_and_resets_to_near_spot(figures, chain):
     near = near_spot_range(chain["index_price"].iloc[0])
     app.slider[0].set_value((60_000.0, 110_000.0)).run()
     assert not app.exception
-    calls, _ = _bars(figures["make_open_interest_figure"])
+    calls, _ = _bars(figures["make_positioning_figure"])
     assert min(calls) >= 60_000.0 and max(calls) <= 110_000.0
     assert min(calls) < near[0] and max(calls) > near[1]
 
@@ -120,12 +120,12 @@ def test_empty_strike_range_shows_a_state_that_zooms_out(figures, chain):
     assert not app.exception
     assert any("No strikes in this range" in info.value for info in app.info)
     charts_with_oi_and_gex = len(_app().get("plotly_chart"))
-    assert len(app.get("plotly_chart")) == charts_with_oi_and_gex - 2
+    assert len(app.get("plotly_chart")) == charts_with_oi_and_gex - 1
 
     next(b for b in app.button if b.label == "Zoom out to all strikes").click().run()
     assert not app.exception
     assert not any("No strikes in this range" in info.value for info in app.info)
     low, high = app.slider[0].value
     assert low <= chain.strike.min() and high >= chain.strike.max()
-    calls, _ = _bars(figures["make_open_interest_figure"])
+    calls, _ = _bars(figures["make_positioning_figure"])
     assert sorted(calls) == sorted(chain.strike.unique())

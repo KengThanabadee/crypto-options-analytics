@@ -168,34 +168,29 @@ def test_computable_oi_share_counts_oi_with_a_gamma(chain):
     assert computable_oi_share(damaged) == pytest.approx(expected)
 
 
-def test_gex_figure_shares_the_oi_strike_axis_and_labels_source_unit_and_assumption(chain):
-    from iv_surface.positioning import net_gex_by_strike, open_interest_by_strike
-    from iv_surface.visualization import make_gex_figure, make_open_interest_figure
+def _title(figure, name):
+    (annotation,) = [a for a in figure.layout.annotations if a.name == name]
+    return annotation.text
 
-    index_price = float(chain["index_price"].iloc[0])
-    strike_range = (75_000.0, 90_000.0)
+
+def test_gex_panel_labels_source_unit_and_assumption(chain):
+    from iv_surface.positioning import net_gex_by_strike
+
     table = net_gex_by_strike(chain)
-    figure = make_gex_figure(
-        table, index_price=index_price, strike_range=strike_range,
-        scope="All expiries", assumption="Call+ / Put−", oi_share=1.0,
-    )
-    oi_figure = make_open_interest_figure(
-        open_interest_by_strike(chain), index_price=index_price,
-        strike_range=strike_range, scope="All expiries",
-    )
-    (bars,) = figure.data
+    figure = _positioning_figure(chain, table)
+    bars = figure.data[2]
     shown = table[(table.strike >= 75_000.0) & (table.strike <= 90_000.0)]
-    assert bars.type == "bar"
-    assert list(bars.x) == list(oi_figure.data[0].x) == shown["strike"].tolist()
+    assert bars.type == "bar" and bars.yaxis == "y2"
+    assert list(bars.x) == shown["strike"].tolist()
     np.testing.assert_allclose(list(bars.y), shown["net_gex"])
-    assert list(figure.layout.xaxis.range) == list(oi_figure.layout.xaxis.range)
-    assert [shape.x0 for shape in figure.layout.shapes] == [index_price]
 
-    label = figure.layout.title.text
+    label = _title(figure, "gex_title")
     for text in ("Exchange mark IV", "USD per 1% BTC move", "Call+ / Put−",
                  "100% of OI computable", "All expiries"):
         assert text in label
-    assert "USD per 1% BTC move" in figure.layout.yaxis.title.text
+    assert _title(figure, "oi_title") == "Open interest · All expiries"
+    assert figure.layout.yaxis.title.text == "OI · BTC"
+    assert "USD per 1% BTC move" in figure.layout.yaxis2.title.text
 
     hover = bars.hovertemplate
     assert "Strike: $%{x:,.0f}" in hover
@@ -211,29 +206,24 @@ def test_gex_figure_shares_the_oi_strike_axis_and_labels_source_unit_and_assumpt
 
 def test_gross_figure_plots_gross_and_states_the_assumption_as_a_scenario(chain):
     from iv_surface.positioning import assumption_label, net_gex_by_strike
-    from iv_surface.visualization import make_gex_figure
 
     table = net_gex_by_strike(chain)
     label = assumption_label({"call": -1, "put": -1})
     figures = {
-        mode: make_gex_figure(
-            table, index_price=float(chain["index_price"].iloc[0]),
-            strike_range=(75_000.0, 90_000.0), scope="All expiries",
-            assumption=label, oi_share=1.0, mode=mode,
-        )
+        mode: _positioning_figure(chain, table, assumption=label, mode=mode)
         for mode in ("Net", "Gross")
     }
     shown = table[(table.strike >= 75_000.0) & (table.strike <= 90_000.0)]
     gross = figures["Gross"]
-    np.testing.assert_allclose(list(gross.data[0].y), shown["gross_gex"])
-    assert gross.layout.title.text.startswith("Gross gamma exposure")
-    assert "Gross GEX" in gross.layout.yaxis.title.text
-    assert "Gross GEX: %{y:$,.0f} per 1% BTC move" in gross.data[0].hovertemplate
+    np.testing.assert_allclose(list(gross.data[2].y), shown["gross_gex"])
+    assert _title(gross, "gex_title").startswith("Gross gamma exposure")
+    assert "Gross GEX" in gross.layout.yaxis2.title.text
+    assert "Gross GEX: %{y:$,.0f} per 1% BTC move" in gross.data[2].hovertemplate
     for figure in figures.values():
-        title = figure.layout.title.text
+        title = _title(figure, "gex_title")
         assert "Scenario: Call− / Put− (Calls customer buys, Puts customer buys)" in title
         assert "not observed dealer inventory" in title
-        assert "Scenario: Call− / Put−" in figure.data[0].hovertemplate
+        assert "Scenario: Call− / Put−" in figure.data[2].hovertemplate
 
 
 ALL_SIGNS = [
@@ -383,10 +373,10 @@ def test_partial_subtotal_adds_magnitudes_for_gross():
 
 def test_incomplete_strike_shows_the_partial_subtotal_of_the_selected_mode():
     from iv_surface.positioning import gex_contributions, net_gex_by_strike
-    from iv_surface.visualization import make_gex_figure
 
     full = gex_contributions(_strike_chain()).set_index("symbol")["contribution"]
-    table = net_gex_by_strike(_strike_chain(C2=dict(mark_iv=np.nan)))
+    chain = _strike_chain(C2=dict(mark_iv=np.nan))
+    table = net_gex_by_strike(chain)
     row = table.iloc[0]
     assert full["C1"] > 0 > full["P1"]
     assert row["partial_net_gex"] == pytest.approx(full["C1"] + full["P1"])
@@ -394,11 +384,10 @@ def test_incomplete_strike_shows_the_partial_subtotal_of_the_selected_mode():
     assert np.isnan(row["gross_gex"])
 
     for mode, partial in (("Net", full["C1"] + full["P1"]), ("Gross", full["C1"] - full["P1"])):
-        figure = make_gex_figure(
-            table, index_price=80_000.0, strike_range=(75_000.0, 85_000.0),
-            scope="All expiries", assumption="Call+ / Put−", oi_share=np.nan, mode=mode,
+        figure = _positioning_figure(
+            chain, table, strike_range=(75_000.0, 85_000.0), oi_share=np.nan, mode=mode,
         )
-        (text,) = figure.data[1].hovertext
+        (text,) = figure.data[3].hovertext
         assert f"Partial {mode} GEX (computable contracts only): ${partial:,.0f}" in text
 
 
@@ -422,18 +411,13 @@ def test_real_snapshot_damage_marks_only_the_damaged_strike(chain):
 
 def test_gex_figure_marks_incomplete_and_insufficient_strikes_without_bars(chain):
     from iv_surface.positioning import net_gex_by_strike
-    from iv_surface.visualization import make_gex_figure
 
     damaged = chain.copy()
     damaged.loc[damaged.symbol == "BTC-30OCT26-82000-C", "mark_iv"] = np.nan
     damaged.loc[damaged.strike == 84_000.0, "open_interest"] = np.nan
     table = net_gex_by_strike(damaged)
-    figure = make_gex_figure(
-        table, index_price=float(chain["index_price"].iloc[0]),
-        strike_range=(75_000.0, 90_000.0), scope="All expiries",
-        assumption="Call+ / Put−", oi_share=np.nan,
-    )
-    bars, incomplete, insufficient = figure.data
+    figure = _positioning_figure(damaged, table, oi_share=np.nan)
+    bars, incomplete, insufficient = figure.data[2:]
     shown_bars = dict(zip(bars.x, bars.y))
     assert np.isnan(shown_bars[82_000.0]) and np.isnan(shown_bars[84_000.0])
     assert all(np.isfinite(y) for x, y in shown_bars.items() if x not in (82_000.0, 84_000.0))
@@ -441,8 +425,9 @@ def test_gex_figure_marks_incomplete_and_insufficient_strikes_without_bars(chain
     assert incomplete.name == "Incomplete data" and list(incomplete.x) == [82_000.0]
     assert insufficient.name == "Insufficient data" and list(insufficient.x) == [84_000.0]
     # Markers sit in a strip on their own axis, away from the GEX zero line.
-    assert incomplete.yaxis == insufficient.yaxis == "y2"
-    assert figure.layout.yaxis2.overlaying == "y"
+    assert incomplete.yaxis == insufficient.yaxis == "y3"
+    assert incomplete.xaxis == insufficient.xaxis == "x2"
+    assert figure.layout.yaxis3.overlaying == "y2"
 
     row = table.set_index("strike").loc[82_000.0]
     (text,) = incomplete.hovertext
@@ -455,7 +440,37 @@ def test_gex_figure_marks_incomplete_and_insufficient_strikes_without_bars(chain
     assert "Insufficient data" in text and "Reason:" in text and "no OI" in text
 
     complete = int((table.status == "complete").sum())
-    title = figure.layout.title.text
+    title = _title(figure, "gex_title")
     assert "unknown share of OI computable" in title
     assert f"{complete} of {len(table)} strikes complete" in title
     assert "every strike in All expiries" in title
+
+
+def _positioning_figure(chain, gex_table=None, strike_range=(75_000.0, 90_000.0), **kwargs):
+    from iv_surface.positioning import net_gex_by_strike, open_interest_by_strike
+    from iv_surface.visualization import make_positioning_figure
+
+    options = dict(scope="All expiries", assumption="Call+ / Put−", oi_share=1.0)
+    options.update(kwargs)
+    return make_positioning_figure(
+        open_interest_by_strike(chain),
+        net_gex_by_strike(chain) if gex_table is None else gex_table,
+        index_price=float(chain["index_price"].iloc[0]),
+        strike_range=strike_range,
+        **options,
+    )
+
+
+def test_oi_and_gex_share_one_strike_axis_so_strikes_line_up_and_zoom_together(chain):
+    figure = _positioning_figure(chain)
+    call, put, gex = figure.data[:3]
+    assert (call.name, put.name, gex.name) == ("Call", "Put", "Net GEX")
+    assert list(call.x) == list(gex.x)
+    assert call.xaxis == put.xaxis == "x" and gex.xaxis == "x2"
+    # Same horizontal domain: a strike sits at the same pixel in both panels.
+    assert figure.layout.xaxis.domain == figure.layout.xaxis2.domain
+    # Matched axes: a drag-zoom in either panel zooms the other.
+    assert figure.layout.xaxis.matches == "x2"
+    assert list(figure.layout.xaxis.range) == [74_750.0, 90_250.0]
+    index_price = float(chain["index_price"].iloc[0])
+    assert [shape.x0 for shape in figure.layout.shapes] == [index_price, index_price]

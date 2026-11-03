@@ -110,13 +110,16 @@ async def capture(browser, url):
             await page.call("Page.navigate", url=url)
             await asyncio.sleep(25)
 
-            top = await page.rect(HEADING % "Open interest")
-            gex = await page.rect(VISIBLE_PLOT % 1)
+            top = await page.rect(HEADING % "Open interest and gamma exposure")
+            positioning = await page.rect(VISIBLE_PLOT % 0)
             x = top[0] - 8
-            await page.save("oi-gex", x, top[1] - 8, gex[2] + 16, gex[1] + gex[3] - top[1] + 16)
+            await page.save(
+                "oi-gex", x, top[1] - 8, positioning[2] + 16,
+                positioning[1] + positioning[3] - top[1] + 16,
+            )
 
             iv = await page.rect(HEADING % "Implied volatility")
-            heatmap = await page.rect(VISIBLE_PLOT % 2)
+            heatmap = await page.rect(VISIBLE_PLOT % 1)
             await page.save(
                 "heatmap", x, iv[1] - 8, heatmap[2] + 16, heatmap[1] + heatmap[3] - iv[1] + 16,
             )
@@ -124,7 +127,7 @@ async def capture(browser, url):
             for label, name in [("3D surface", "surface"), ("IV smiles", "iv-smiles"),
                                 ("ATM term structure", "atm-term-structure")]:
                 await page.click_tab(label)
-                plot = await page.rect(VISIBLE_PLOT % 2)
+                plot = await page.rect(VISIBLE_PLOT % 1)
                 await page.save(name, plot[0] - 8, plot[1] - 8, plot[2] + 16, plot[3] + 16)
     finally:
         process.kill()

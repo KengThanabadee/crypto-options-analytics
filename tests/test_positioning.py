@@ -14,8 +14,10 @@ from iv_surface.positioning import (
 
 def _contract(flag, tau, strike, oi, day):
     return {
-        "flag": flag, "tau": tau, "strike": strike, "open_interest": oi,
+        "symbol": f"{flag}-{day}-{strike:.0f}", "flag": flag, "tau": tau,
+        "strike": strike, "open_interest": oi,
         "expiry_dt": datetime(2026, 10, day, 8, tzinfo=timezone.utc),
+        "mark_iv": 0.5, "underlying_price": 81_000.0, "index_price": 81_000.0,
     }
 
 
@@ -77,24 +79,27 @@ def test_expiry_scope_names_all_expiries_or_the_selected_dates(chain):
     assert expiry_scope_label(chain, [0.03, 0.01]) == "2026-10-16, 2026-10-23"
 
 
-def test_open_interest_figure_shows_calls_and_puts_in_range_with_index_line(chain):
-    from iv_surface.visualization import make_open_interest_figure
+def test_open_interest_panel_shows_calls_and_puts_in_range_with_index_line(chain):
+    from iv_surface.positioning import net_gex_by_strike
+    from iv_surface.visualization import make_positioning_figure
 
     table = open_interest_by_strike(chain)
-    figure = make_open_interest_figure(
-        table, index_price=81_000.0, strike_range=(75_000.0, 95_000.0),
-        scope="2026-10-16",
+    figure = make_positioning_figure(
+        table, net_gex_by_strike(chain), index_price=81_000.0,
+        strike_range=(75_000.0, 95_000.0), scope="2026-10-16",
+        assumption="Call+ / Put−", oi_share=1.0,
     )
-    call, put = figure.data
+    call, put = figure.data[:2]
     assert (call.type, call.name, put.type, put.name) == ("bar", "Call", "bar", "Put")
     assert list(call.x) == [80_000.0, 90_000.0]
     assert list(call.y) == [11.5, 2.5]
     assert list(put.y) == [4.0, 0.0]
     low, high = figure.layout.xaxis.range
     assert low <= 75_000.0 and high >= 95_000.0
-    assert [shape.x0 for shape in figure.layout.shapes] == [81_000.0]
+    assert [shape.x0 for shape in figure.layout.shapes] == [81_000.0, 81_000.0]
     assert "BTC" in figure.layout.yaxis.title.text
-    assert "2026-10-16" in figure.layout.title.text
+    (title,) = [a.text for a in figure.layout.annotations if a.name == "oi_title"]
+    assert "2026-10-16" in title
     for trace in (call, put):
         hover = trace.hovertemplate
         assert "Strike" in hover and "%{x" in hover
