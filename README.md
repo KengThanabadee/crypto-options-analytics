@@ -99,6 +99,8 @@ spaced by numerical maturity; expiries without an eligible proxy remain gaps.
   and interpolation.
 - `iv_surface.surface_transforms` reshapes IV surfaces and selects the bounded
   ATM proxy without requiring Plotly.
+- `iv_surface.positioning` sums open interest by strike and holds the Near
+  spot strike range, without requiring Plotly.
 - `iv_surface.visualization` constructs Plotly figures from prepared frames.
 
 ## Core Data Shape
@@ -145,9 +147,21 @@ python -m streamlit run app.py
 ```
 
 The dashboard opens on the checked-in Deribit BTC snapshot and runs offline;
-the header shows the capture time.
+the header shows the capture time. **Fetch latest** pulls a new snapshot from
+Deribit's public API and the whole page switches to it, with its capture time.
+A failed fetch keeps the current snapshot and shows the error. Only that button
+fetches; every other control reuses the current snapshot.
 
-The dashboard shows a Combined IV heatmap, 3D surface, IV smiles, and ATM term
+The top of the page shows Open Interest by strike: Call and Put bars in BTC,
+summed over the selected expiries, with a dashed line at the index. It starts
+at All expiries; the OI expiry selection is separate from the IV charts'
+expiries. The strike range starts at Near spot, ±10% around the index with
+both ends included, and **Near spot** resets it. The range is a display zoom
+only. A range with no listed strikes shows "No strikes in this range" with a
+button that zooms out to every strike. Hover shows the strike, Call and Put OI
+in BTC and the expiry scope.
+
+Below it, the dashboard shows a Combined IV heatmap, 3D surface, IV smiles, and ATM term
 structure. IV smiles use original observed
 values across all strikes, with an independent expiry checklist. The ATM view
 uses every expiry and selects the nearest finite Combined IV within 2% of spot,
@@ -264,6 +278,15 @@ interest (BTC), reported forward (`underlying_price`),
 `estimated_delivery_price`, expiry and time to expiry. Settled contracts are
 left out.
 
+### `fetch_deribit_snapshot(session=None)`
+
+Captures a new snapshot from Deribit's public API in the same version-1
+envelope as the frozen file: the three requests in order, each with its UTC
+receive time and unchanged JSON-RPC response. The capture starts just before
+the first request and ends at the last response. Each request has a 15 s
+timeout. Network, HTTP, JSON-RPC and validation failures raise
+`DeribitFetchError`.
+
 `mid_price` is computed only from valid positive bid/ask quotes. If the bid/ask quote is not usable, `mid_price` is `NaN` and `quote_source` is `"none"`; the adapter does not fall back to `mark_price`.
 
 ### `prepare_surface_inputs(chain, flag="call")`
@@ -305,6 +328,15 @@ If the preferred side is unavailable, the other side may be used with an
 explicit value in `source_grid`; if neither side solves, the Combined IV stays
 `NaN`. Within the near-ATM band, the blend is the arithmetic mean of separately
 solved Call and Put IVs at the same expiry and strike when both are available.
+
+### `open_interest_by_strike(chain, expiries=None)`
+
+Returns `strike`, `call_oi` and `put_oi` (BTC) summed over the given `tau`
+values, or over All expiries when `expiries` is `None`. A strike with no
+contract of one type has zero OI for that type; a contract with missing OI
+makes that strike's sum `NaN`, never zero. `near_spot_range(index_price)`
+returns the ±10% default range and `strikes_in_range(table, strike_range)`
+keeps rows inside it, both ends included.
 
 ## Assumptions And Limitations
 

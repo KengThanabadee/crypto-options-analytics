@@ -122,7 +122,7 @@ def test_dashboard_opens_on_exchange_mark_without_rate_inputs(monkeypatch):
     counts = [int(metric.value.replace(",", "")) for metric in app.metric]
     assert sum(counts) == result.iv_surface.size
     assert counts[2] == np.isnan(result.iv_surface).sum()
-    assert len(app.get("plotly_chart")) == 5
+    assert len(app.get("plotly_chart")) == 6
     assert app.sidebar.radio[0].value == "Core (0.8–1.2)"
     assert app.main.radio[0].value == "Surface"
     assert [tab.label for tab in app.tabs] == ["Heatmap", "3D surface", "IV smiles", "ATM term structure"]
@@ -168,7 +168,7 @@ def test_smile_selection_preserves_observations_and_other_views(monkeypatch):
     dates = chain.drop_duplicates("tau").set_index("tau")["expiry_dt"]
     app = _app()
     assert not app.exception
-    assert not app.multiselect
+    assert [select.label for select in app.multiselect] == ["OI expiries"]
     assert [box.label for box in app.checkbox] == [
         dates[tau].strftime("%Y-%m-%d") for tau in ordered_expiries
     ]
@@ -214,7 +214,7 @@ def test_smile_selection_preserves_observations_and_other_views(monkeypatch):
         box.uncheck()
     app.run()
     assert not app.exception
-    assert len(app.get("plotly_chart")) == 4
+    assert len(app.get("plotly_chart")) == 5
     assert any("Select an expiry" in info.value for info in app.info)
 
 
@@ -237,7 +237,7 @@ def test_smile_defaults_skip_expiries_without_finite_iv(monkeypatch, finite_coun
     app = _app()
     assert not app.exception
     assert [tau for tau, box in zip(ordered_expiries, app.checkbox) if box.value] == expected
-    assert len(app.get("plotly_chart")) == (5 if finite_count else 4)
+    assert len(app.get("plotly_chart")) == (6 if finite_count else 5)
 
 
 @pytest.mark.parametrize("case", ["file", "schema", "index"])
@@ -352,7 +352,7 @@ def test_all_views_follow_the_raw_deribit_chain(monkeypatch):
 
     app = _app()
     assert not app.exception and not app.error
-    assert len(app.get("plotly_chart")) == 5
+    assert len(app.get("plotly_chart")) == 6
     assert any("Deribit BTC · Frozen snapshot:" in caption.value for caption in app.caption)
     chain = _chain()
     result = _mark_result()
@@ -377,3 +377,67 @@ def test_all_views_follow_the_raw_deribit_chain(monkeypatch):
     app.main.radio[0].set_value("Observed").run()
     assert not app.exception
     assert figures["make_atm_term_structure_figure"].to_json() == atm_before
+
+
+def _fetched_snapshot():
+    """The frozen responses, captured one hour later with a different index."""
+    raw = json.loads(SNAPSHOT_PATH.read_text())
+    raw["capture_started_at_utc"] = "2026-10-15T16:18:12.000000Z"
+    raw["captured_at_utc"] = "2026-10-15T16:18:14.000000Z"
+    for request in raw["requests"]:
+        request["received_at_utc"] = "2026-10-15T16:18:13.000000Z"
+    raw["requests"][2]["response"]["result"]["index_price"] = 90000.0
+    return raw
+
+
+def _fetch_button(app):
+    return next(button for button in app.button if button.label == "Fetch latest")
+
+
+def test_fetch_latest_switches_the_whole_page_and_controls_do_not_fetch(monkeypatch):
+    calls = []
+
+    def fetch():
+        calls.append(1)
+        return _fetched_snapshot()
+
+    monkeypatch.setattr(deribit, "fetch_deribit_snapshot", fetch)
+    app = _app()
+    assert not calls
+    assert any("Frozen snapshot: 2026-10-15 15:18:14 UTC" in c.value for c in app.caption)
+
+    _fetch_button(app).click().run()
+    assert not app.exception and not app.error
+    assert len(calls) == 1
+    assert any("Fetched snapshot: 2026-10-15 16:18:14 UTC" in c.value for c in app.caption)
+    assert not any("Frozen snapshot" in c.value for c in app.caption)
+    assert any("$90,000.00" in m.value for m in app.markdown)
+
+    app.sidebar.radio[0].set_value("Extended (0.7–1.3)").run()
+    app.main.radio[0].set_value("Observed").run()
+    app.checkbox[0].set_value(not app.checkbox[0].value).run()
+    assert not app.exception
+    assert len(calls) == 1
+    assert any("Fetched snapshot: 2026-10-15 16:18:14 UTC" in c.value for c in app.caption)
+    assert any("$90,000.00" in m.value for m in app.markdown)
+
+
+@pytest.mark.parametrize("failure", ["network", "unusable"])
+def test_failed_fetch_keeps_the_previous_snapshot_and_shows_the_error(monkeypatch, failure):
+    def fetch():
+        if failure == "network":
+            raise deribit.DeribitFetchError("Deribit request failed: offline")
+        raw = _fetched_snapshot()
+        raw["requests"][2]["response"]["result"]["index_price"] = None
+        return raw
+
+    monkeypatch.setattr(deribit, "fetch_deribit_snapshot", fetch)
+    app = _app()
+    _fetch_button(app).click().run()
+    assert not app.exception
+    assert len(app.error) == 1
+    if failure == "network":
+        assert "offline" in app.error[0].value
+    assert any("Frozen snapshot: 2026-10-15 15:18:14 UTC" in c.value for c in app.caption)
+    assert any("$82,227.73" in m.value for m in app.markdown)
+    assert len(app.get("plotly_chart")) == 6

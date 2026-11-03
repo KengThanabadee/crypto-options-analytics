@@ -5,6 +5,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from iv_surface.chain import DAYS_PER_YEAR
+from iv_surface.positioning import strikes_in_range
 
 
 _LONG_FRAME_COLUMNS = {"tau", "strike", "iv", "moneyness"}
@@ -590,4 +591,57 @@ def make_atm_term_structure_figure(
         automargin=True,
     )
     figure.update_yaxes(tickformat=".0%")
+    return figure
+
+
+def make_open_interest_figure(
+    oi_table: pd.DataFrame, index_price: float, strike_range, scope: str
+) -> go.Figure:
+    """Create Call and Put open interest bars (BTC) by strike.
+
+    ``oi_table`` is the full table from ``open_interest_by_strike``;
+    ``strike_range`` only zooms the display.
+    """
+    _require_columns(oi_table, {"strike", "call_oi", "put_oi"}, "oi_table")
+    shown = strikes_in_range(oi_table, strike_range).sort_values("strike")
+    customdata = shown[["call_oi", "put_oi"]].to_numpy(dtype=float)
+    hovertemplate = (
+        "Strike: $%{x:,.0f}<br>"
+        "Call OI: %{customdata[0]:,.1f} BTC<br>"
+        "Put OI: %{customdata[1]:,.1f} BTC<br>"
+        f"Expiries: {escape(scope)}<extra></extra>"
+    )
+    figure = go.Figure()
+    for name, column, color in [
+        ("Call", "call_oi", "#60A5FA"), ("Put", "put_oi", "#FBBF24"),
+    ]:
+        figure.add_trace(go.Bar(
+            x=shown["strike"].to_numpy(dtype=float),
+            y=shown[column].to_numpy(dtype=float),
+            customdata=customdata,
+            name=name,
+            marker_color=color,
+            hovertemplate=hovertemplate,
+        ))
+    figure.add_vline(
+        x=index_price, line_dash="dash", line_color="gray", line_width=1,
+        annotation_text=f"Index ${index_price:,.0f}",
+        annotation_position="top",
+    )
+    low, high = strike_range
+    strikes = shown["strike"].to_numpy(dtype=float)
+    # Pad by half a strike step so bars at the range ends are drawn whole.
+    step = np.diff(strikes).min() if len(strikes) > 1 else (high - low) * 0.05
+    figure.update_layout(
+        title=f"Open interest · {escape(scope)}",
+        barmode="group",
+        height=430,
+        margin=dict(l=12, r=12, t=65, b=12),
+        legend=dict(orientation="h", x=1, y=1.02, xanchor="right", yanchor="bottom"),
+        xaxis_title="Strike · USD",
+        yaxis_title="OI · BTC",
+        hovermode="closest",
+    )
+    figure.update_xaxes(range=[low - step / 2, high + step / 2], tickformat=",.0f")
+    figure.update_yaxes(rangemode="tozero")
     return figure

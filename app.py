@@ -6,12 +6,23 @@ from pathlib import Path
 import numpy as np
 import streamlit as st
 
-from iv_surface.deribit import load_deribit_snapshot, parse_deribit_snapshot
+from iv_surface.deribit import (
+    DeribitFetchError,
+    fetch_deribit_snapshot,
+    load_deribit_snapshot,
+    parse_deribit_snapshot,
+)
 from iv_surface.iv_source import (
     DEFAULT_IV_SOURCE,
     IV_SOURCES,
     build_iv_source_surface,
     iv_source_long_frame,
+)
+from iv_surface.positioning import (
+    expiry_scope_label,
+    near_spot_range,
+    open_interest_by_strike,
+    strikes_in_range,
 )
 from iv_surface.surface_transforms import (
     atm_term_structure_frame,
@@ -21,6 +32,7 @@ from iv_surface.visualization import (
     make_atm_term_structure_figure,
     make_iv_heatmap,
     make_iv_surface_figure,
+    make_open_interest_figure,
     make_smile_figure,
 )
 
@@ -55,6 +67,84 @@ def iv_source_control():
     ) or DEFAULT_IV_SOURCE
 
 
+def open_interest_section(chain, snapshot_id):
+    """OI by strike with its own expiry selection and strike zoom.
+
+    Widget keys carry the snapshot id so a new snapshot starts at All
+    expiries and its own Near spot range.
+    """
+    range_key = f"oi_strike_range_{snapshot_id}"
+    st.subheader("Open interest")
+    index_price = float(chain["index_price"].iloc[0])
+    expiry_dates = chain.drop_duplicates("tau").set_index("tau")["expiry_dt"]
+    selected = st.multiselect(
+        "OI expiries",
+        sorted(expiry_dates.index),
+        format_func=lambda tau: f"{expiry_dates[tau]:%Y-%m-%d}",
+        placeholder="All expiries",
+        key=f"oi_expiries_{snapshot_id}",
+        help="Leave empty for All expiries. The IV charts keep their own expiries.",
+    )
+    expiries = selected or None
+    scope = expiry_scope_label(chain, expiries)
+    table = open_interest_by_strike(chain, expiries)
+
+    near_spot = near_spot_range(index_price)
+    all_strikes = (
+        float(np.floor(min(chain["strike"].min(), near_spot[0]) / 1000) * 1000),
+        float(np.ceil(max(chain["strike"].max(), near_spot[1]) / 1000) * 1000),
+    )
+    if range_key not in st.session_state:
+        st.session_state[range_key] = near_spot
+
+    def set_range(strike_range):
+        st.session_state[range_key] = strike_range
+
+    range_column, reset_column = st.columns([5, 1], vertical_alignment="bottom")
+    with range_column:
+        strike_range = st.slider(
+            "Strike range (USD)",
+            min_value=all_strikes[0],
+            max_value=all_strikes[1],
+            step=500.0,
+            format="$%.0f",
+            key=range_key,
+            help="Display zoom only. OI sums use every strike in the selected expiries.",
+        )
+    with reset_column:
+        st.button("Near spot", on_click=set_range, args=(near_spot,),
+                  help="Reset to ±10% around the index.")
+    st.caption(
+        f"Open interest · {scope} · Call and Put in BTC · "
+        f"index ${index_price:,.2f}"
+    )
+    if strikes_in_range(table, strike_range).empty:
+        st.info("No strikes in this range.")
+        st.button("Zoom out to all strikes", on_click=set_range, args=(all_strikes,))
+        return
+    st.plotly_chart(
+        make_open_interest_figure(
+            table, index_price=index_price, strike_range=strike_range, scope=scope,
+        ),
+        use_container_width=True,
+    )
+
+
+def fetch_latest_snapshot():
+    """Fetch only on the button; a failure keeps the current snapshot."""
+    if not st.button("Fetch latest", help="Pull a new snapshot from Deribit's public API."):
+        return
+    try:
+        with st.spinner("Fetching from Deribit…"):
+            fetched = fetch_deribit_snapshot()
+            parse_deribit_snapshot(fetched)
+    except (DeribitFetchError, ValueError, TypeError, AttributeError) as exc:
+        st.error(f"Fetch failed; still showing the previous snapshot. {exc}")
+        return
+    st.session_state["snapshot"] = fetched
+    st.session_state["snapshot_label"] = "Fetched snapshot"
+
+
 def main():
     st.set_page_config(page_title="BTC volatility", layout="wide")
     st.markdown(
@@ -70,14 +160,24 @@ def main():
         unsafe_allow_html=True,
     )
     st.title("BTC volatility")
+    fetch_latest_snapshot()
+    snapshot = st.session_state.get("snapshot")
+    snapshot_label = st.session_state.get("snapshot_label", "Frozen snapshot")
     # Catch input errors at the loading boundary, not errors in chart rendering.
     try:
-        snapshot = load_deribit_snapshot(DATA_PATH / SNAPSHOT_FILE)
+        if snapshot is None:
+            snapshot = load_deribit_snapshot(DATA_PATH / SNAPSHOT_FILE)
         chain = parse_deribit_snapshot(snapshot)
     except (OSError, ValueError, TypeError, RuntimeError, AttributeError):
         st.error("Cannot read the frozen Deribit snapshot. Check its file and schema.")
         return
 
+    captured_at = datetime.fromisoformat(
+        snapshot["captured_at_utc"].replace("Z", "+00:00")
+    )
+    st.caption(f"Deribit BTC · {snapshot_label}: {captured_at:%Y-%m-%d %H:%M:%S} UTC")
+    open_interest_section(chain, snapshot["captured_at_utc"])
+    st.subheader("Implied volatility")
     iv_source = iv_source_control()
     try:
         result = _iv_source_surface(chain, iv_source)
@@ -92,10 +192,6 @@ def main():
     frame = iv_source_long_frame(
         result, expiry_datetimes=expiry_dates.reindex(result.expiries).tolist()
     )
-    captured_at = datetime.fromisoformat(
-        snapshot["captured_at_utc"].replace("Z", "+00:00")
-    )
-    st.caption(f"Deribit BTC · Frozen snapshot: {captured_at:%Y-%m-%d %H:%M:%S} UTC")
     st.write(
         f"Shared spot: **${result.spot_price:,.2f}** · "
         f"IV source: **{iv_source}**"
