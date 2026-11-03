@@ -10,6 +10,9 @@ The implied-volatility root-finding logic is implemented without `scipy.optimize
 
 This is an early local package in a personal quant-library ecosystem. It is useful for experiments and for feeding downstream projects, but it is not production trading infrastructure and is not financial advice.
 
+A planned Options Dashboard extension (OI/GEX) is described in the
+[spec](.scratch/options-dashboard/spec.md); everything below describes the current app.
+
 ## What It Does
 
 - Prices European calls and puts with Black-Scholes.

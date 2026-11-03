@@ -219,3 +219,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local-only research: raw reviews, logs and screenshots of other sites
+docs/reference-reviews/
+docs/history/
