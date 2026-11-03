@@ -1,6 +1,6 @@
 # Options Dashboard: OI, GEX and IV from one Deribit snapshot
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 Accepted 2026-11-03. Tickets go in `issues/` beside this file.
 

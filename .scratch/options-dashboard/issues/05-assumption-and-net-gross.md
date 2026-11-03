@@ -4,10 +4,14 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A new analysis starts at Call+ / Put− and Net.
-- [ ] Customer buys gives the dealer negative gamma (`s = −1`); customer sells gives positive gamma (`s = +1`); one choice per option type applies to every strike and expiry in the analysed set.
-- [ ] Gross is `sum(abs(contribution))` over the same contracts, units and computability rule as Net, and is at least the magnitude of Net per strike.
-- [ ] Flipping an assumption leaves OI, prices, IV, gamma magnitudes and Gross unchanged and does not fetch (spec check 3).
-- [ ] The chart states the active assumption as a scenario, not observed dealer inventory.
+- [x] A new analysis starts at Call+ / Put− and Net.
+- [x] Customer buys gives the dealer negative gamma (`s = −1`); customer sells gives positive gamma (`s = +1`); one choice per option type applies to every strike and expiry in the analysed set.
+- [x] Gross is `sum(abs(contribution))` over the same contracts, units and computability rule as Net, and is at least the magnitude of Net per strike.
+- [x] Flipping an assumption leaves OI, prices, IV, gamma magnitudes and Gross unchanged and does not fetch (spec check 3).
+- [x] The chart states the active assumption as a scenario, not observed dealer inventory.
+
+## Comments
+
+- 2026-11-03: Resolved on the `options-dashboard` integration branch at d3d61ba; code-review fixes landed at 0365271.

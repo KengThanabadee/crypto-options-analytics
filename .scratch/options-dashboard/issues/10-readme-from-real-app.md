@@ -4,9 +4,13 @@
 
 **Blocked by:** 09
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Images of the OI/GEX pair and the IV charts come from the running app, not the layout sketch.
-- [ ] The README explains OI in BTC, GEX in USD per 1% BTC move, the assumption, Net/Gross, the Incomplete/Insufficient states and the two IV sources.
-- [ ] The README describes the end-to-end flow and how to launch the dashboard.
-- [ ] Every spec check passes in the test suite.
+- [x] Images of the OI/GEX pair and the IV charts come from the running app, not the layout sketch.
+- [x] The README explains OI in BTC, GEX in USD per 1% BTC move, the assumption, Net/Gross, the Incomplete/Insufficient states and the two IV sources.
+- [x] The README describes the end-to-end flow and how to launch the dashboard.
+- [x] Every spec check passes in the test suite.
+
+## Comments
+
+- 2026-11-03: Resolved on the `options-dashboard` integration branch at 6f014e2; code-review fixes landed at 0365271.

@@ -4,11 +4,15 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The selector changes only the IV charts, never GEX, and does not fetch.
-- [ ] Both sources go through the Combined IV and ATM proxy rules in the README.
-- [ ] A contract whose selected-source IV is unusable shows as missing; sources are never mixed.
-- [ ] Repricing with Quote midpoint IV returns the midpoint within $0.01 per contract; unsolved midpoints count as missing (spec check 4).
-- [ ] The smile's bid–ask band comes from solving bid and ask separately, blended in the 0.98–1.02 zone with the line's weights, and is labelled a display band.
-- [ ] Hover shows the IV source with the value.
+- [x] The selector changes only the IV charts, never GEX, and does not fetch.
+- [x] Both sources go through the Combined IV and ATM proxy rules in the README.
+- [x] A contract whose selected-source IV is unusable shows as missing; sources are never mixed.
+- [x] Repricing with Quote midpoint IV returns the midpoint within $0.01 per contract; unsolved midpoints count as missing (spec check 4).
+- [x] The smile's bid–ask band comes from solving bid and ask separately, blended in the 0.98–1.02 zone with the line's weights, and is labelled a display band.
+- [x] Hover shows the IV source with the value.
+
+## Comments
+
+- 2026-11-03: Resolved on the `options-dashboard` integration branch at 65bf98a; code-review fixes landed at 0365271.

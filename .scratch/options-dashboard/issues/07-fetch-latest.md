@@ -4,10 +4,14 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A fetched snapshot has the same shape and validation as the frozen one: every API response with its capture times, the index from the index request.
-- [ ] The page shows the snapshot's capture time.
-- [ ] A simulated fetch failure keeps the previous snapshot and shows the error (spec check 9).
-- [ ] Interacting with any control does not fetch.
-- [ ] Tests stay offline.
+- [x] A fetched snapshot has the same shape and validation as the frozen one: every API response with its capture times, the index from the index request.
+- [x] The page shows the snapshot's capture time.
+- [x] A simulated fetch failure keeps the previous snapshot and shows the error (spec check 9).
+- [x] Interacting with any control does not fetch.
+- [x] Tests stay offline.
+
+## Comments
+
+- 2026-11-03: Resolved on the `options-dashboard` integration branch at 771c368; code-review fixes landed at 0365271.

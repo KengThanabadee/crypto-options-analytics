@@ -4,11 +4,15 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Time to expiry uses a 365-day year everywhere, including the maturity axes (spec check 5).
-- [ ] Each contract carries open interest in BTC and its reported forward; missing OI stays missing, never zero.
-- [ ] Contracts with time to expiry at or below zero at the capture end time are left out; every contract still before expiry is kept.
-- [ ] The book summary's `estimated_delivery_price` is kept as raw data only; the index from the index request stays the one spot for conversions and moneyness.
-- [ ] AGENTS.md and README state the IV source contract above.
-- [ ] Existing IV charts still render from the snapshot.
+- [x] Time to expiry uses a 365-day year everywhere, including the maturity axes (spec check 5).
+- [x] Each contract carries open interest in BTC and its reported forward; missing OI stays missing, never zero.
+- [x] Contracts with time to expiry at or below zero at the capture end time are left out; every contract still before expiry is kept.
+- [x] The book summary's `estimated_delivery_price` is kept as raw data only; the index from the index request stays the one spot for conversions and moneyness.
+- [x] AGENTS.md and README state the IV source contract above.
+- [x] Existing IV charts still render from the snapshot.
+
+## Comments
+
+- 2026-11-03: Resolved on the `options-dashboard` integration branch at 74ba0a6; code-review fixes landed at 0365271.
