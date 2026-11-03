@@ -19,8 +19,13 @@ API. Read it before changing analytics, inputs or the dashboard.
 - Public argument names: `option_price`, `option_price_grid`, `spot_price`,
   `iv_surface`. Surfaces are expiry rows by strike columns; arguments take
   `expiries` before `strikes` and `target_T` before `target_K`.
-- Market IV comes from usable bid/ask mids. Spot is the Deribit captured
-  BTC/USD index. Mark price and mark IV are comparison fields only.
+- IV sources: Exchange mark (Deribit `mark_iv`) is the default IV source and
+  the gamma input. Quote midpoint (our solver's IV from usable bid/ask mids)
+  is the comparison source.
+- Spot is the index from the snapshot's `get_index_price` request; it drives
+  USD conversion and moneyness. `estimated_delivery_price` is raw data only.
+- Time to expiry uses a 365-day year (`DAYS_PER_YEAR` in
+  `iv_surface/chain.py`). Contracts settled at the capture end are left out.
 - Missing quotes and failed solves stay `NaN`; Plotly traces use
   `connectgaps=False`; interpolation is a separate explicit operation.
 - Moneyness is spot-based `K / S`. Numerical `tau` drives calculations, expiry

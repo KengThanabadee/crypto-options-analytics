@@ -13,6 +13,16 @@ This is an early local package in a personal quant-library ecosystem. It is usef
 A planned Options Dashboard extension (OI/GEX) is described in the
 [spec](.scratch/options-dashboard/spec.md); everything below describes the current app.
 
+### IV sources
+
+- **Exchange mark** is the `mark_iv` Deribit reports. It is the default IV
+  source and the gamma input.
+- **Quote midpoint** is this repository's solver IV from usable bid/ask
+  midpoints. It is the comparison source.
+
+The IV charts currently show Quote midpoint IV; the IV source selector that
+opens on Exchange mark is part of the planned extension.
+
 ## What It Does
 
 - Prices European calls and puts with Black-Scholes.
@@ -130,7 +140,7 @@ uses every expiry and selects the nearest finite Combined IV within 2% of spot,
 averaging equally near strikes. Expiries without an eligible proxy remain gaps;
 selection details show their status. Numerical maturity (`tau`) controls spacing.
 All chart tooltips show source expiry dates in UTC, time to expiry in days
-(`tau × 365.25`), and `tau` in years, using the frozen snapshot time. The 3D
+(`tau × 365`), and `tau` in years, using the frozen snapshot time. The 3D
 view switches to a compact layout when its available width is below 700px.
 
 The default `0.80 <= K / S <= 1.20` surface fills missing
@@ -172,13 +182,18 @@ bid and ask; mark and exchange-provided mid values never fill absent quotes.
 The adapter multiplies bid/ask premiums by the captured BTC/USD index to obtain
 USD per BTC, retaining BTC fields as `bid_price_btc`, `ask_price_btc`,
 `mid_price_btc` and `mark_price_btc`. That same index is the shared spot.
-Source expiry timestamps and the frozen capture end determine `tau` on the
-365.25-day basis. `mark_iv` is normalized from percent to decimal.
+Source expiry timestamps and the frozen capture end determine `tau` on a
+365-day year, matching Deribit. Contracts whose `tau` is zero or below at the
+capture end have settled and are left out; every contract still before expiry
+is kept, however close. `mark_iv` is normalized from percent to decimal.
 
-Computed IV uses this repository's spot Black-Scholes solver at a zero rate.
-Deribit's expiry-specific `underlying_price` is retained as comparison metadata;
-it is not substituted for spot. Computed IV therefore need not equal exchange
-mark IV.
+Each contract also carries `open_interest` in BTC and its reported forward
+`underlying_price`; a missing value stays `NaN`, never zero. The book
+summary's `estimated_delivery_price` is kept as raw data only: the index from
+`get_index_price` stays the one spot for USD conversion and moneyness.
+
+Quote midpoint IV uses this repository's spot Black-Scholes solver at a zero
+rate, so it need not equal Exchange mark IV.
 
 ## Quick Example
 
@@ -230,8 +245,10 @@ Returns bilinearly interpolated IV at the target `(T, K)`. Raises `ValueError` i
 
 `load_deribit_snapshot` reads and validates a frozen Deribit snapshot offline.
 `parse_deribit_snapshot` returns a tidy pandas DataFrame with strike, flag, USD
-and BTC bid/ask prices, mid price, mark price, mark IV, index price, expiry and
-time to expiry.
+and BTC bid/ask prices, mid price, mark price, mark IV, index price, open
+interest (BTC), reported forward (`underlying_price`),
+`estimated_delivery_price`, expiry and time to expiry. Settled contracts are
+left out.
 
 `mid_price` is computed only from valid positive bid/ask quotes. If the bid/ask quote is not usable, `mid_price` is `NaN` and `quote_source` is `"none"`; the adapter does not fall back to `mark_price`.
 
@@ -266,11 +283,11 @@ solved Call and Put IVs at the same expiry and strike when both are available.
 ## Assumptions And Limitations
 
 - Uses Black-Scholes European option assumptions.
-- Time to expiry is measured in years.
+- Time to expiry is measured in years of 365 days.
 - No dividend yield parameter yet.
 - IV solving requires `T > 0`; implied volatility is undefined at expiry.
 - `build_surface` fills failed IV solves with `NaN`.
-- Market IV surfaces should be built from usable bid/ask mid prices; `mark_price` and `mark_iv` are kept for comparison.
+- Quote midpoint IV surfaces are built from usable bid/ask mid prices; Exchange mark IV (`mark_iv`) is the default IV source.
 - The ATM term-structure proxy accepts only the nearest finite IV within 2% of
   spot; equally near listed strikes are averaged.
 - Interpolation requires at least two strictly increasing expiries and strikes.

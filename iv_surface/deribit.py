@@ -78,8 +78,9 @@ def _by_name(items, label):
 def parse_deribit_snapshot(snapshot: dict) -> pd.DataFrame:
     """Return USD premiums and spot, retaining raw BTC quotes and frozen maturity.
 
-    The existing spot Black-Scholes model is used downstream. Deribit's
-    expiry-specific underlying_price and mark_iv remain comparison fields.
+    Contracts settled at the capture end are left out. Each row carries
+    open_interest (BTC), the reported forward underlying_price and the raw
+    estimated_delivery_price; the index stays the one spot.
     """
     captured, results = _snapshot_results(snapshot)
     instruments = _by_name(results["/api/v2/public/get_instruments"], "instruments")
