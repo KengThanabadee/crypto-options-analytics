@@ -10,8 +10,17 @@ The implied-volatility root-finding logic is implemented without `scipy.optimize
 
 This is an early local package in a personal quant-library ecosystem. It is useful for experiments and for feeding downstream projects, but it is not production trading infrastructure and is not financial advice.
 
-A planned Options Dashboard extension (OI/GEX) is described in the
-[spec](.scratch/options-dashboard/spec.md); everything below describes the current app.
+The repository also ships a BTC options dashboard (`app.py`) built on the
+library. It shows three sections for one Deribit snapshot, top to bottom:
+
+1. **Open interest** by strike, in BTC.
+2. **Gamma exposure (GEX)** by strike, in USD per 1% BTC move, under a stated
+   customer/dealer assumption.
+3. **Implied volatility**: heatmap, 3D surface, smiles and ATM term structure,
+   from either of two [IV sources](#iv-sources).
+
+See the [Dashboard preview](#dashboard-preview) for images and
+[Offline dashboard](#offline-dashboard) for every control.
 
 ### IV sources
 
@@ -49,19 +58,59 @@ sit outside it.
 
 ## Dashboard preview
 
-These charts come from the offline dashboard using the checked-in Deribit BTC
-snapshot captured on **2026-10-15 at 15:18:14 UTC**. The images predate the
-IV source selector and show Quote midpoint IV solved at a 0.00% rate. Open the [offline dashboard](#offline-dashboard) to explore the charts and
-their tooltips interactively.
+These images are screenshots of the running dashboard on the checked-in
+Deribit BTC snapshot captured on **2026-10-15 at 15:18:14 UTC** (index
+$82,227.73), at the page defaults: All expiries, Near spot strike range,
+Call+ / Put−, Net, Exchange mark IV and the Core moneyness range.
+`scripts/capture_readme_images.py` retakes them from a dashboard started on
+that snapshot. Open the [offline dashboard](#offline-dashboard) to explore the
+charts and their tooltips interactively.
+
+### Open interest and gamma exposure
+
+![Open interest by strike in BTC with Call and Put bars, above Net gamma exposure by strike in USD per 1% BTC move under the Call+ / Put− scenario, both with a dashed index line.](docs/images/oi-gex.jpg)
+
+**Open interest** is in BTC: each Deribit BTC option contract is one BTC, so
+the bars are contract counts summed over the selected expiries, Calls and Puts
+side by side. The dashed line marks the index.
+
+**GEX** is in **USD per 1% BTC move**: roughly how many USD of BTC a dealer
+would buy or sell to stay hedged if the index moved 1%, with every forward
+moving with it. Each contract adds `s × gamma × OI × index² × 1%`, with gamma
+from Exchange mark IV (see [`net_gex_by_strike`](#net_gex_by_strikechain-expiriesnone-signsnone)).
+
+Deribit does not publish who holds each side, so the sign `s` comes from an
+**assumption** you choose per option type. **Customer sells** means the dealer
+bought the option and is long gamma (`s = +1`, a positive bar); **Customer
+buys** means the dealer is short gamma (`s = −1`, a negative bar). The default
+Call+ / Put− reads: customers sell calls and buy puts. The chart title states
+the assumption as a scenario, not observed dealer inventory.
+
+- **Net** (default) adds the signed contributions, so Calls and Puts at a
+  strike can cancel. It depends on the assumption.
+- **Gross** adds their magnitudes. It shows how much gamma sits at a strike
+  and does not change with the assumption; it is always at least the size of
+  Net.
+
+A strike is drawn as a bar only when every contract in it has OI and mark IV.
+When only some do, the strike shows an **Incomplete data** marker with the
+partial subtotal, the usable/total contract count and what is missing; when
+none do, it shows **Insufficient data**. Neither is drawn as a zero bar. The
+title counts complete strikes; on this snapshot all 91 strikes are complete.
 
 ### Combined IV heatmap
+
+![Implied volatility section with the IV source selector on Exchange mark, above the Combined IV heatmap across moneyness and UTC expiry.](docs/images/heatmap.jpg)
+
+The **IV source** selector at the top of the section switches every IV chart
+between **Exchange mark** (Deribit's `mark_iv`, the default and the GEX input)
+and **Quote midpoint** (this repository's solver on bid/ask midpoints); see
+[IV sources](#iv-sources). It never changes OI or GEX.
 
 Color shows IV across spot moneyness (`K / S`) and expiry. This is Surface mode
 in the Core range (`0.8–1.2`): observed values are preserved, supported gaps are
 filled by 2D total-variance interpolation, and unsupported cells remain blank.
 Expiry rows have equal height and are ordered by maturity.
-
-![Combined IV heatmap across moneyness and UTC expiry, with an IV color scale.](docs/images/heatmap.jpg)
 
 ### 3D surface
 
@@ -69,15 +118,16 @@ The same interpolated values are shown in 3D, with numerical time to expiry
 controlling maturity spacing. Orange points show the original observed Combined
 IV; the surface is an interpolated display rather than an arbitrage-free fit.
 
-![3D Combined IV surface with observed quotes overlaid as orange points.](docs/images/surface.jpg)
+![3D Combined IV surface with observed values overlaid as orange points.](docs/images/surface.jpg)
 
 ### IV smiles
 
 Compare observed Combined IV across strikes for selected expiries. The example
 uses the first three usable expiries; each curve retains its missing-value gaps
-and does not use the surface interpolation.
+and does not use the surface interpolation. The shaded area is the bid–ask IV
+display band; it is wide where quotes are wide, as on the one-day expiry.
 
-![Observed IV smile curves for the first three usable Deribit expiries.](docs/images/iv-smiles.jpg)
+![Observed IV smile curves with bid–ask display bands for the first three usable Deribit expiries.](docs/images/iv-smiles.jpg)
 
 ### ATM term structure
 
@@ -145,6 +195,19 @@ From the repository root:
 pip install -e ".[dashboard]"
 python -m streamlit run app.py
 ```
+
+Streamlit prints a local URL (by default `http://localhost:8501`); open it in a
+browser. A typical session:
+
+1. **Fetch latest** to pull a fresh Deribit snapshot, or keep the checked-in
+   one to work offline.
+2. **Explore** the three sections: pick OI expiries and a strike range, set
+   the Calls/Puts assumption and Net/Gross for GEX, then switch the IV source
+   and IV views below.
+3. **Save analysis** in the sidebar to download one JSON file with the raw
+   snapshot and every setting.
+4. **Reopen analysis** with that file later: the page returns to the same
+   snapshot and settings and recomputes the same numbers.
 
 The dashboard opens on the checked-in Deribit BTC snapshot and runs offline;
 the header shows the capture time. **Fetch latest** pulls a new snapshot from
