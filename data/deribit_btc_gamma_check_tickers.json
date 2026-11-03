@@ -1,0 +1,1848 @@
+{
+ "schema_version": 1,
+ "exchange": "deribit",
+ "currency": "BTC",
+ "purpose": "One-time ticker greeks capture for the per-contract gamma check.",
+ "base_url": "https://www.deribit.com",
+ "paired_snapshot": "deribit_btc_gamma_check_snapshot.json",
+ "capture_started_at_utc": "2026-11-03T13:09:54.852712Z",
+ "captured_at_utc": "2026-11-03T13:10:11.348796Z",
+ "requests": [
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-13NOV26-70000-C"
+   },
+   "received_at_utc": "2026-11-03T13:09:55.364524Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711393265,
+     "state": "open",
+     "stats": {
+      "high": null,
+      "low": null,
+      "price_change": null,
+      "volume": 0.0,
+      "volume_usd": 0.0
+     },
+     "greeks": {
+      "delta": 0.89831,
+      "gamma": 3e-05,
+      "vega": 22.49429,
+      "theta": -56.79754,
+      "rho": 16.57326
+     },
+     "index_price": 77203.73,
+     "instrument_name": "BTC-13NOV26-70000-C",
+     "last_price": null,
+     "settlement_price": 0.09299878,
+     "min_price": 0.065,
+     "max_price": 0.134,
+     "open_interest": 0.0,
+     "mark_price": 0.0989,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77203.73,
+     "best_ask_price": 0.101,
+     "best_bid_price": 0.0975,
+     "mark_iv": 49.41,
+     "bid_iv": 44.25,
+     "ask_iv": 56.08,
+     "underlying_price": 77333.72,
+     "underlying_index": "BTC-13NOV26",
+     "best_ask_amount": 11.0,
+     "best_bid_amount": 9.6
+    },
+    "usIn": 1793711395164618,
+    "usOut": 1793711395164835,
+    "usDiff": 217,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-13NOV26-70000-P"
+   },
+   "received_at_utc": "2026-11-03T13:09:55.977766Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711394267,
+     "state": "open",
+     "stats": {
+      "high": 0.005,
+      "low": 0.0037,
+      "price_change": -18.3673,
+      "volume": 205.2,
+      "volume_usd": 74848.17
+     },
+     "greeks": {
+      "delta": -0.10168,
+      "gamma": 3e-05,
+      "vega": 22.49244,
+      "theta": -56.79252,
+      "rho": -2.19171
+     },
+     "index_price": 77204.48,
+     "instrument_name": "BTC-13NOV26-70000-P",
+     "last_price": 0.004,
+     "settlement_price": 0.00418329,
+     "min_price": 0.0001,
+     "max_price": 0.0235,
+     "open_interest": 637.4,
+     "mark_price": 0.004,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.48,
+     "best_ask_price": 0.0042,
+     "best_bid_price": 0.0038,
+     "mark_iv": 49.41,
+     "bid_iv": 48.56,
+     "ask_iv": 49.95,
+     "underlying_price": 77334.1,
+     "underlying_index": "BTC-13NOV26",
+     "best_ask_amount": 18.2,
+     "best_bid_amount": 96.7
+    },
+    "usIn": 1793711395673751,
+    "usOut": 1793711395674051,
+    "usDiff": 300,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-13NOV26-77000-C"
+   },
+   "received_at_utc": "2026-11-03T13:09:56.285961Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711395275,
+     "state": "open",
+     "stats": {
+      "high": 0.0325,
+      "low": 0.022,
+      "price_change": -17.1875,
+      "volume": 175.1,
+      "volume_usd": 353171.64
+     },
+     "greeks": {
+      "delta": 0.53969,
+      "gamma": 8e-05,
+      "vega": 50.26397,
+      "theta": -100.82089,
+      "rho": 10.61219
+     },
+     "index_price": 77205.28,
+     "instrument_name": "BTC-13NOV26-77000-C",
+     "last_price": 0.0265,
+     "settlement_price": 0.02362766,
+     "min_price": 0.006,
+     "max_price": 0.061,
+     "open_interest": 399.2,
+     "mark_price": 0.0278,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77205.28,
+     "best_ask_price": 0.0285,
+     "best_bid_price": 0.0275,
+     "mark_iv": 39.25,
+     "bid_iv": 38.79,
+     "ask_iv": 40.33,
+     "underlying_price": 77334.85,
+     "underlying_index": "BTC-13NOV26",
+     "best_ask_amount": 69.1,
+     "best_bid_amount": 19.6
+    },
+    "usIn": 1793711396241967,
+    "usOut": 1793711396242299,
+    "usDiff": 332,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-13NOV26-77000-P"
+   },
+   "received_at_utc": "2026-11-03T13:09:56.619891Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711395431,
+     "state": "open",
+     "stats": {
+      "high": 0.0285,
+      "low": 0.0195,
+      "price_change": 22.2222,
+      "volume": 23.3,
+      "volume_usd": 44110.68
+     },
+     "greeks": {
+      "delta": -0.46024,
+      "gamma": 8e-05,
+      "vega": 50.26364,
+      "theta": -100.82024,
+      "rho": -10.02805
+     },
+     "index_price": 77205.28,
+     "instrument_name": "BTC-13NOV26-77000-P",
+     "last_price": 0.0275,
+     "settlement_price": 0.02593062,
+     "min_price": 0.004,
+     "max_price": 0.058,
+     "open_interest": 293.5,
+     "mark_price": 0.0235,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77205.28,
+     "best_ask_price": 0.0235,
+     "best_bid_price": 0.023,
+     "mark_iv": 39.25,
+     "bid_iv": 38.53,
+     "ask_iv": 39.3,
+     "underlying_price": 77335.76,
+     "underlying_index": "BTC-13NOV26",
+     "best_ask_amount": 1.6,
+     "best_bid_amount": 29.2
+    },
+    "usIn": 1793711396642966,
+    "usOut": 1793711396643207,
+    "usDiff": 241,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-13NOV26-85000-C"
+   },
+   "received_at_utc": "2026-11-03T13:09:56.930661Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711395275,
+     "state": "open",
+     "stats": {
+      "high": 0.003,
+      "low": 0.0015,
+      "price_change": -3.7037,
+      "volume": 58.6,
+      "volume_usd": 9228.8
+     },
+     "greeks": {
+      "delta": 0.08253,
+      "gamma": 3e-05,
+      "vega": 19.27196,
+      "theta": -39.98392,
+      "rho": 1.66051
+     },
+     "index_price": 77205.28,
+     "instrument_name": "BTC-13NOV26-85000-C",
+     "last_price": 0.0026,
+     "settlement_price": 0.00157196,
+     "min_price": 0.0001,
+     "max_price": 0.0185,
+     "open_interest": 547.1,
+     "mark_price": 0.0024,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77205.28,
+     "best_ask_price": 0.0026,
+     "best_bid_price": 0.0023,
+     "mark_iv": 40.6,
+     "bid_iv": 40.05,
+     "ask_iv": 41.25,
+     "underlying_price": 77335.76,
+     "underlying_index": "BTC-13NOV26",
+     "best_ask_amount": 96.6,
+     "best_bid_amount": 2.0
+    },
+    "usIn": 1793711396951040,
+    "usOut": 1793711396951287,
+    "usDiff": 247,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-13NOV26-85000-P"
+   },
+   "received_at_utc": "2026-11-03T13:09:57.174351Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711395275,
+     "state": "open",
+     "stats": {
+      "high": 0.1053,
+      "low": 0.1053,
+      "price_change": 0.0,
+      "volume": 0.1,
+      "volume_usd": 809.66
+     },
+     "greeks": {
+      "delta": -0.9175,
+      "gamma": 3e-05,
+      "vega": 19.267,
+      "theta": -39.97362,
+      "rho": -21.12639
+     },
+     "index_price": 77205.28,
+     "instrument_name": "BTC-13NOV26-85000-P",
+     "last_price": 0.1053,
+     "settlement_price": 0.10801029,
+     "min_price": 0.064,
+     "max_price": 0.1445,
+     "open_interest": 0.3,
+     "mark_price": 0.1016,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77205.28,
+     "best_ask_price": 0.104,
+     "best_bid_price": 0.0995,
+     "mark_iv": 40.6,
+     "bid_iv": 28.45,
+     "ask_iv": 48.85,
+     "underlying_price": 77334.85,
+     "underlying_index": "BTC-13NOV26",
+     "best_ask_amount": 11.0,
+     "best_bid_amount": 7.7
+    },
+    "usIn": 1793711397199754,
+    "usOut": 1793711397199913,
+    "usDiff": 159,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-24SEP27-70000-C"
+   },
+   "received_at_utc": "2026-11-03T13:09:57.388789Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711396281,
+     "state": "open",
+     "stats": {
+      "high": 0.22,
+      "low": 0.22,
+      "price_change": 0.0,
+      "volume": 1.0,
+      "volume_usd": 16914.88
+     },
+     "greeks": {
+      "delta": 0.71599,
+      "gamma": 1e-05,
+      "vega": 259.12374,
+      "theta": -16.47076,
+      "rho": 356.28885
+     },
+     "index_price": 77203.93,
+     "instrument_name": "BTC-24SEP27-70000-C",
+     "last_price": 0.22,
+     "settlement_price": 0.21758816,
+     "min_price": 0.1795,
+     "max_price": 0.2765,
+     "open_interest": 21.8,
+     "mark_price": 0.222,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77203.93,
+     "best_ask_price": 0.2235,
+     "best_bid_price": 0.221,
+     "mark_iv": 41.29,
+     "bid_iv": 40.99,
+     "ask_iv": 41.77,
+     "underlying_price": 81046.82,
+     "underlying_index": "BTC-24SEP27",
+     "best_ask_amount": 4.3,
+     "best_bid_amount": 19.3
+    },
+    "usIn": 1793711397415881,
+    "usOut": 1793711397416118,
+    "usDiff": 237,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-24SEP27-70000-P"
+   },
+   "received_at_utc": "2026-11-03T13:09:57.644445Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711396281,
+     "state": "open",
+     "stats": {
+      "high": 0.086,
+      "low": 0.086,
+      "price_change": 0.0,
+      "volume": 4.1,
+      "volume_usd": 27187.27
+     },
+     "greeks": {
+      "delta": -0.28401,
+      "gamma": 1e-05,
+      "vega": 259.12374,
+      "theta": -16.47076,
+      "rho": -266.58596
+     },
+     "index_price": 77203.93,
+     "instrument_name": "BTC-24SEP27-70000-P",
+     "last_price": 0.086,
+     "settlement_price": 0.08669054,
+     "min_price": 0.0515,
+     "max_price": 0.14,
+     "open_interest": 121.6,
+     "mark_price": 0.0856,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77203.93,
+     "best_ask_price": 0.0865,
+     "best_bid_price": 0.0845,
+     "mark_iv": 41.29,
+     "bid_iv": 40.93,
+     "ask_iv": 41.56,
+     "underlying_price": 81046.82,
+     "underlying_index": "BTC-24SEP27",
+     "best_ask_amount": 18.1,
+     "best_bid_amount": 33.1
+    },
+    "usIn": 1793711397659549,
+    "usOut": 1793711397659746,
+    "usDiff": 197,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-24SEP27-78000-C"
+   },
+   "received_at_utc": "2026-11-03T13:09:57.884314Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711397652,
+     "state": "open",
+     "stats": {
+      "high": 0.163,
+      "low": 0.163,
+      "price_change": 0.0,
+      "volume": 0.1,
+      "volume_usd": 1248.83
+     },
+     "greeks": {
+      "delta": 0.61441,
+      "gamma": 1e-05,
+      "vega": 292.37362,
+      "theta": -18.12104,
+      "rho": 322.43509
+     },
+     "index_price": 77203.93,
+     "instrument_name": "BTC-24SEP27-78000-C",
+     "last_price": 0.163,
+     "settlement_price": 0.16340141,
+     "min_price": 0.1245,
+     "max_price": 0.224,
+     "open_interest": 15.4,
+     "mark_price": 0.1673,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77203.93,
+     "best_ask_price": 0.169,
+     "best_bid_price": 0.166,
+     "mark_iv": 40.26,
+     "bid_iv": 40.03,
+     "ask_iv": 40.73,
+     "underlying_price": 81048.17,
+     "underlying_index": "BTC-24SEP27",
+     "best_ask_amount": 11.7,
+     "best_bid_amount": 29.0
+    },
+    "usIn": 1793711397913581,
+    "usOut": 1793711397913824,
+    "usDiff": 243,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-24SEP27-78000-P"
+   },
+   "received_at_utc": "2026-11-03T13:09:58.111172Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711397288,
+     "state": "open",
+     "stats": {
+      "high": null,
+      "low": null,
+      "price_change": null,
+      "volume": 0.0,
+      "volume_usd": 0.0
+     },
+     "greeks": {
+      "delta": -0.38559,
+      "gamma": 1e-05,
+      "vega": 292.37377,
+      "theta": -18.121,
+      "rho": -371.62383
+     },
+     "index_price": 77205.24,
+     "instrument_name": "BTC-24SEP27-78000-P",
+     "last_price": 0.12,
+     "settlement_price": 0.13182977,
+     "min_price": 0.0875,
+     "max_price": 0.192,
+     "open_interest": 1.2,
+     "mark_price": 0.1297,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77205.24,
+     "best_ask_price": 0.1305,
+     "best_bid_price": 0.1285,
+     "mark_iv": 40.26,
+     "bid_iv": 39.93,
+     "ask_iv": 40.48,
+     "underlying_price": 81048.32,
+     "underlying_index": "BTC-24SEP27",
+     "best_ask_amount": 12.4,
+     "best_bid_amount": 23.4
+    },
+    "usIn": 1793711398128841,
+    "usOut": 1793711398129066,
+    "usDiff": 225,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-24SEP27-84000-C"
+   },
+   "received_at_utc": "2026-11-03T13:09:58.349333Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711397288,
+     "state": "open",
+     "stats": {
+      "high": null,
+      "low": null,
+      "price_change": null,
+      "volume": 0.0,
+      "volume_usd": 0.0
+     },
+     "greeks": {
+      "delta": 0.53669,
+      "gamma": 1e-05,
+      "vega": 303.7128,
+      "theta": -18.58738,
+      "rho": 290.48177
+     },
+     "index_price": 77205.24,
+     "instrument_name": "BTC-24SEP27-84000-C",
+     "last_price": 0.1365,
+     "settlement_price": 0.13060252,
+     "min_price": 0.093,
+     "max_price": 0.191,
+     "open_interest": 513.8,
+     "mark_price": 0.1339,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77205.24,
+     "best_ask_price": 0.1355,
+     "best_bid_price": 0.133,
+     "mark_iv": 39.75,
+     "bid_iv": 39.51,
+     "ask_iv": 40.18,
+     "underlying_price": 81048.32,
+     "underlying_index": "BTC-24SEP27",
+     "best_ask_amount": 9.6,
+     "best_bid_amount": 31.4
+    },
+    "usIn": 1793711398375709,
+    "usOut": 1793711398375952,
+    "usDiff": 243,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-24SEP27-84000-P"
+   },
+   "received_at_utc": "2026-11-03T13:09:58.595976Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711397288,
+     "state": "open",
+     "stats": {
+      "high": 0.1715,
+      "low": 0.171,
+      "price_change": -0.2915,
+      "volume": 0.6,
+      "volume_usd": 7900.96
+     },
+     "greeks": {
+      "delta": -0.46331,
+      "gamma": 1e-05,
+      "vega": 303.7128,
+      "theta": -18.58738,
+      "rho": -456.968
+     },
+     "index_price": 77205.24,
+     "instrument_name": "BTC-24SEP27-84000-P",
+     "last_price": 0.171,
+     "settlement_price": 0.17352538,
+     "min_price": 0.1225,
+     "max_price": 0.2375,
+     "open_interest": 526.8,
+     "mark_price": 0.1703,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77205.24,
+     "best_ask_price": 0.1715,
+     "best_bid_price": 0.169,
+     "mark_iv": 39.75,
+     "bid_iv": 39.4,
+     "ask_iv": 40.07,
+     "underlying_price": 81048.32,
+     "underlying_index": "BTC-24SEP27",
+     "best_ask_amount": 10.9,
+     "best_bid_amount": 16.0
+    },
+    "usIn": 1793711398618554,
+    "usOut": 1793711398618784,
+    "usDiff": 230,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-25DEC26-70000-C"
+   },
+   "received_at_utc": "2026-11-03T13:09:59.051645Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711398296,
+     "state": "open",
+     "stats": {
+      "high": null,
+      "low": null,
+      "price_change": null,
+      "volume": 0.0,
+      "volume_usd": 0.0
+     },
+     "greeks": {
+      "delta": 0.77367,
+      "gamma": 2e-05,
+      "vega": 88.24749,
+      "theta": -35.82303,
+      "rho": 71.83124
+     },
+     "index_price": 77205.1,
+     "instrument_name": "BTC-25DEC26-70000-C",
+     "last_price": 0.1345,
+     "settlement_price": 0.11840052,
+     "min_price": 0.089,
+     "max_price": 0.1625,
+     "open_interest": 1881.3,
+     "mark_price": 0.1234,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77205.1,
+     "best_ask_price": 0.125,
+     "best_bid_price": 0.122,
+     "mark_iv": 42.04,
+     "bid_iv": 40.82,
+     "ask_iv": 43.46,
+     "underlying_price": 77857.53,
+     "underlying_index": "BTC-25DEC26",
+     "best_ask_amount": 10.0,
+     "best_bid_amount": 11.5
+    },
+    "usIn": 1793711398870138,
+    "usOut": 1793711398870333,
+    "usDiff": 195,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-25DEC26-70000-P"
+   },
+   "received_at_utc": "2026-11-03T13:09:59.354426Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711398296,
+     "state": "open",
+     "stats": {
+      "high": 0.0245,
+      "low": 0.021,
+      "price_change": 7.1429,
+      "volume": 28.6,
+      "volume_usd": 48481.47
+     },
+     "greeks": {
+      "delta": -0.22633,
+      "gamma": 2e-05,
+      "vega": 88.24749,
+      "theta": -35.82303,
+      "rho": -27.48193
+     },
+     "index_price": 77205.1,
+     "instrument_name": "BTC-25DEC26-70000-P",
+     "last_price": 0.0225,
+     "settlement_price": 0.02360528,
+     "min_price": 0.007,
+     "max_price": 0.0535,
+     "open_interest": 2417.4,
+     "mark_price": 0.0225,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77205.1,
+     "best_ask_price": 0.023,
+     "best_bid_price": 0.022,
+     "mark_iv": 42.04,
+     "bid_iv": 41.64,
+     "ask_iv": 42.52,
+     "underlying_price": 77857.53,
+     "underlying_index": "BTC-25DEC26",
+     "best_ask_amount": 82.8,
+     "best_bid_amount": 99.1
+    },
+    "usIn": 1793711399338323,
+    "usOut": 1793711399338545,
+    "usDiff": 222,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-25DEC26-78000-C"
+   },
+   "received_at_utc": "2026-11-03T13:09:59.635479Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711399302,
+     "state": "open",
+     "stats": {
+      "high": 0.06,
+      "low": 0.0515,
+      "price_change": -12.5,
+      "volume": 244.4,
+      "volume_usd": 1021690.5
+     },
+     "greeks": {
+      "delta": 0.52385,
+      "gamma": 4e-05,
+      "vega": 116.78481,
+      "theta": -43.38506,
+      "rho": 51.57898
+     },
+     "index_price": 77204.8,
+     "instrument_name": "BTC-25DEC26-78000-C",
+     "last_price": 0.0525,
+     "settlement_price": 0.05316748,
+     "min_price": 0.029,
+     "max_price": 0.095,
+     "open_interest": 1903.1,
+     "mark_price": 0.0569,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.8,
+     "best_ask_price": 0.057,
+     "best_bid_price": 0.0565,
+     "mark_iv": 38.48,
+     "bid_iv": 38.2,
+     "ask_iv": 38.54,
+     "underlying_price": 77857.23,
+     "underlying_index": "BTC-25DEC26",
+     "best_ask_amount": 0.7,
+     "best_bid_amount": 4.1
+    },
+    "usIn": 1793711399657642,
+    "usOut": 1793711399657799,
+    "usDiff": 157,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-25DEC26-78000-P"
+   },
+   "received_at_utc": "2026-11-03T13:09:59.972905Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711399302,
+     "state": "open",
+     "stats": {
+      "high": 0.062,
+      "low": 0.0525,
+      "price_change": 4.5045,
+      "volume": 66.1,
+      "volume_usd": 300297.54
+     },
+     "greeks": {
+      "delta": -0.47614,
+      "gamma": 4e-05,
+      "vega": 116.78507,
+      "theta": -43.38516,
+      "rho": -59.08309
+     },
+     "index_price": 77204.8,
+     "instrument_name": "BTC-25DEC26-78000-P",
+     "last_price": 0.058,
+     "settlement_price": 0.06182421,
+     "min_price": 0.0295,
+     "max_price": 0.101,
+     "open_interest": 1520.1,
+     "mark_price": 0.0587,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.8,
+     "best_ask_price": 0.0595,
+     "best_bid_price": 0.058,
+     "mark_iv": 38.48,
+     "bid_iv": 37.98,
+     "ask_iv": 38.98,
+     "underlying_price": 77857.53,
+     "underlying_index": "BTC-25DEC26",
+     "best_ask_amount": 55.1,
+     "best_bid_amount": 42.0
+    },
+    "usIn": 1793711399919569,
+    "usOut": 1793711399919935,
+    "usDiff": 366,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-25DEC26-85000-C"
+   },
+   "received_at_utc": "2026-11-03T13:10:00.281323Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711399302,
+     "state": "open",
+     "stats": {
+      "high": 0.026,
+      "low": 0.021,
+      "price_change": 1.25,
+      "volume": 307.1,
+      "volume_usd": 574196.3
+     },
+     "greeks": {
+      "delta": 0.29305,
+      "gamma": 3e-05,
+      "vega": 100.87586,
+      "theta": -36.85853,
+      "rho": 29.67006
+     },
+     "index_price": 77204.8,
+     "instrument_name": "BTC-25DEC26-85000-C",
+     "last_price": 0.0243,
+     "settlement_price": 0.02188171,
+     "min_price": 0.008,
+     "max_price": 0.0555,
+     "open_interest": 3234.1,
+     "mark_price": 0.0244,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.8,
+     "best_ask_price": 0.025,
+     "best_bid_price": 0.024,
+     "mark_iv": 37.84,
+     "bid_iv": 37.49,
+     "ask_iv": 38.27,
+     "underlying_price": 77857.53,
+     "underlying_index": "BTC-25DEC26",
+     "best_ask_amount": 109.8,
+     "best_bid_amount": 53.9
+    },
+    "usIn": 1793711400308908,
+    "usOut": 1793711400309169,
+    "usDiff": 261,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-25DEC26-85000-P"
+   },
+   "received_at_utc": "2026-11-03T13:10:00.586959Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711400440,
+     "state": "open",
+     "stats": {
+      "high": 0.121,
+      "low": 0.105,
+      "price_change": 9.5238,
+      "volume": 1.6,
+      "volume_usd": 14570.65
+     },
+     "greeks": {
+      "delta": -0.70696,
+      "gamma": 3e-05,
+      "vega": 100.87256,
+      "theta": -36.8574,
+      "rho": -90.92631
+     },
+     "index_price": 77204.58,
+     "instrument_name": "BTC-25DEC26-85000-P",
+     "last_price": 0.115,
+     "settlement_price": 0.12105892,
+     "min_price": 0.0775,
+     "max_price": 0.1645,
+     "open_interest": 748.9,
+     "mark_price": 0.1162,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.58,
+     "best_ask_price": 0.118,
+     "best_bid_price": 0.115,
+     "mark_iv": 37.84,
+     "bid_iv": 36.92,
+     "ask_iv": 39.23,
+     "underlying_price": 77856.99,
+     "underlying_index": "BTC-25DEC26",
+     "best_ask_amount": 3.0,
+     "best_bid_amount": 9.7
+    },
+    "usIn": 1793711400550085,
+    "usOut": 1793711400550288,
+    "usDiff": 203,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-26MAR27-70000-C"
+   },
+   "received_at_utc": "2026-11-03T13:10:00.915863Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711400440,
+     "state": "open",
+     "stats": {
+      "high": 0.157,
+      "low": 0.157,
+      "price_change": 0.0,
+      "volume": 0.2,
+      "volume_usd": 2400.69
+     },
+     "greeks": {
+      "delta": 0.7242,
+      "gamma": 2e-05,
+      "vega": 164.89472,
+      "theta": -23.64172,
+      "rho": 173.28198
+     },
+     "index_price": 77204.58,
+     "instrument_name": "BTC-26MAR27-70000-C",
+     "last_price": 0.157,
+     "settlement_price": 0.15804379,
+     "min_price": 0.125,
+     "max_price": 0.209,
+     "open_interest": 763.2,
+     "mark_price": 0.1628,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.58,
+     "best_ask_price": 0.164,
+     "best_bid_price": 0.1615,
+     "mark_iv": 40.94,
+     "bid_iv": 40.33,
+     "ask_iv": 41.53,
+     "underlying_price": 78898.89,
+     "underlying_index": "BTC-26MAR27",
+     "best_ask_amount": 6.1,
+     "best_bid_amount": 28.5
+    },
+    "usIn": 1793711400855091,
+    "usOut": 1793711400855349,
+    "usDiff": 258,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-26MAR27-70000-P"
+   },
+   "received_at_utc": "2026-11-03T13:10:01.671951Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711400440,
+     "state": "open",
+     "stats": {
+      "high": null,
+      "low": null,
+      "price_change": null,
+      "volume": 0.0,
+      "volume_usd": 0.0
+     },
+     "greeks": {
+      "delta": -0.2758,
+      "gamma": 2e-05,
+      "vega": 164.89411,
+      "theta": -23.64163,
+      "rho": -100.55061
+     },
+     "index_price": 77204.58,
+     "instrument_name": "BTC-26MAR27-70000-P",
+     "last_price": 0.048,
+     "settlement_price": 0.05107362,
+     "min_price": 0.0245,
+     "max_price": 0.093,
+     "open_interest": 545.1,
+     "mark_price": 0.05,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.58,
+     "best_ask_price": 0.0505,
+     "best_bid_price": 0.0495,
+     "mark_iv": 40.94,
+     "bid_iv": 40.71,
+     "ask_iv": 41.19,
+     "underlying_price": 78899.11,
+     "underlying_index": "BTC-26MAR27",
+     "best_ask_amount": 42.9,
+     "best_bid_amount": 7.5
+    },
+    "usIn": 1793711401176490,
+    "usOut": 1793711401176670,
+    "usDiff": 180,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-26MAR27-78000-C"
+   },
+   "received_at_utc": "2026-11-03T13:10:02.855760Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711402323,
+     "state": "open",
+     "stats": {
+      "high": 0.1065,
+      "low": 0.0965,
+      "price_change": -6.25,
+      "volume": 77.2,
+      "volume_usd": 593631.92
+     },
+     "greeks": {
+      "delta": 0.56715,
+      "gamma": 2e-05,
+      "vega": 194.07271,
+      "theta": -26.56832,
+      "rho": 143.39436
+     },
+     "index_price": 77204.33,
+     "instrument_name": "BTC-26MAR27-78000-C",
+     "last_price": 0.0975,
+     "settlement_price": 0.09864466,
+     "min_price": 0.067,
+     "max_price": 0.1495,
+     "open_interest": 527.5,
+     "mark_price": 0.1026,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.33,
+     "best_ask_price": 0.103,
+     "best_bid_price": 0.102,
+     "mark_iv": 39.09,
+     "bid_iv": 38.87,
+     "ask_iv": 39.28,
+     "underlying_price": 78898.74,
+     "underlying_index": "BTC-26MAR27",
+     "best_ask_amount": 1.0,
+     "best_bid_amount": 32.8
+    },
+    "usIn": 1793711402863657,
+    "usOut": 1793711402863844,
+    "usDiff": 187,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-26MAR27-78000-P"
+   },
+   "received_at_utc": "2026-11-03T13:10:03.353687Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711402323,
+     "state": "open",
+     "stats": {
+      "high": 0.094,
+      "low": 0.085,
+      "price_change": 3.9773,
+      "volume": 8.4,
+      "volume_usd": 57755.58
+     },
+     "greeks": {
+      "delta": -0.43285,
+      "gamma": 2e-05,
+      "vega": 194.07271,
+      "theta": -26.56832,
+      "rho": -161.73464
+     },
+     "index_price": 77204.33,
+     "instrument_name": "BTC-26MAR27-78000-P",
+     "last_price": 0.0915,
+     "settlement_price": 0.09373504,
+     "min_price": 0.0555,
+     "max_price": 0.143,
+     "open_interest": 576.5,
+     "mark_price": 0.0912,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.33,
+     "best_ask_price": 0.0915,
+     "best_bid_price": 0.0905,
+     "mark_iv": 39.09,
+     "bid_iv": 38.83,
+     "ask_iv": 39.23,
+     "underlying_price": 78898.74,
+     "underlying_index": "BTC-26MAR27",
+     "best_ask_amount": 9.4,
+     "best_bid_amount": 1.4
+    },
+    "usIn": 1793711403181225,
+    "usOut": 1793711403181487,
+    "usDiff": 262,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-26MAR27-85000-C"
+   },
+   "received_at_utc": "2026-11-03T13:10:03.671333Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711403333,
+     "state": "open",
+     "stats": {
+      "high": 0.0635,
+      "low": 0.062,
+      "price_change": 0.8065,
+      "volume": 1.4,
+      "volume_usd": 6787.0
+     },
+     "greeks": {
+      "delta": 0.42544,
+      "gamma": 2e-05,
+      "vega": 193.42042,
+      "theta": -26.13229,
+      "rho": 111.00929
+     },
+     "index_price": 77204.65,
+     "instrument_name": "BTC-26MAR27-85000-C",
+     "last_price": 0.0625,
+     "settlement_price": 0.06249585,
+     "min_price": 0.036,
+     "max_price": 0.11,
+     "open_interest": 738.3,
+     "mark_price": 0.0658,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.65,
+     "best_ask_price": 0.0665,
+     "best_bid_price": 0.065,
+     "mark_iv": 38.58,
+     "bid_iv": 38.27,
+     "ask_iv": 38.88,
+     "underlying_price": 78899.11,
+     "underlying_index": "BTC-26MAR27",
+     "best_ask_amount": 34.4,
+     "best_bid_amount": 66.6
+    },
+    "usIn": 1793711403698076,
+    "usOut": 1793711403698249,
+    "usDiff": 173,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-26MAR27-85000-P"
+   },
+   "received_at_utc": "2026-11-03T13:10:03.981750Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711403333,
+     "state": "open",
+     "stats": {
+      "high": 0.1475,
+      "low": 0.147,
+      "price_change": 0.3401,
+      "volume": 2.8,
+      "volume_usd": 31589.26
+     },
+     "greeks": {
+      "delta": -0.57456,
+      "gamma": 2e-05,
+      "vega": 193.42042,
+      "theta": -26.13229,
+      "rho": -221.50308
+     },
+     "index_price": 77204.65,
+     "instrument_name": "BTC-26MAR27-85000-P",
+     "last_price": 0.1475,
+     "settlement_price": 0.14688921,
+     "min_price": 0.1005,
+     "max_price": 0.2005,
+     "open_interest": 68.5,
+     "mark_price": 0.1431,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.65,
+     "best_ask_price": 0.1435,
+     "best_bid_price": 0.142,
+     "mark_iv": 38.58,
+     "bid_iv": 38.13,
+     "ask_iv": 38.74,
+     "underlying_price": 78899.11,
+     "underlying_index": "BTC-26MAR27",
+     "best_ask_amount": 1.4,
+     "best_bid_amount": 1.4
+    },
+    "usIn": 1793711404005947,
+    "usOut": 1793711404006179,
+    "usDiff": 232,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-4NOV26-69000-C"
+   },
+   "received_at_utc": "2026-11-03T13:10:04.577219Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711403333,
+     "state": "open",
+     "stats": {
+      "high": null,
+      "low": null,
+      "price_change": null,
+      "volume": 0.0,
+      "volume_usd": 0.0
+     },
+     "greeks": {
+      "delta": 0.99328,
+      "gamma": 1e-05,
+      "vega": 0.67298,
+      "theta": -33.30928,
+      "rho": 1.47212
+     },
+     "index_price": 77204.65,
+     "instrument_name": "BTC-4NOV26-69000-C",
+     "last_price": null,
+     "settlement_price": 0.100569,
+     "min_price": 0.074,
+     "max_price": 0.1395,
+     "open_interest": 0.0,
+     "mark_price": 0.1064,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.65,
+     "best_ask_price": 0.1085,
+     "best_bid_price": 0.105,
+     "mark_iv": 98.99,
+     "bid_iv": 0.0,
+     "ask_iv": 163.52,
+     "underlying_price": 77208.46,
+     "underlying_index": "BTC-4NOV26",
+     "best_ask_amount": 9.0,
+     "best_bid_amount": 9.0
+    },
+    "usIn": 1793711404326479,
+    "usOut": 1793711404326688,
+    "usDiff": 209,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-4NOV26-69000-P"
+   },
+   "received_at_utc": "2026-11-03T13:10:04.861097Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711403333,
+     "state": "open",
+     "stats": {
+      "high": 0.0002,
+      "low": 0.0001,
+      "price_change": 0.0,
+      "volume": 37.8,
+      "volume_usd": 295.33
+     },
+     "greeks": {
+      "delta": -0.00672,
+      "gamma": 1e-05,
+      "vega": 0.67282,
+      "theta": -7.85763,
+      "rho": -0.01132
+     },
+     "index_price": 77204.65,
+     "instrument_name": "BTC-4NOV26-69000-P",
+     "last_price": 0.0001,
+     "settlement_price": 0.00014655,
+     "min_price": 0.0001,
+     "max_price": 0.015,
+     "open_interest": 35.1,
+     "mark_price": 0.0001,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.65,
+     "best_ask_price": 0.0002,
+     "best_bid_price": 0.0,
+     "mark_iv": 98.99,
+     "bid_iv": 0.0,
+     "ask_iv": 107.75,
+     "underlying_price": 77208.81,
+     "underlying_index": "BTC-4NOV26",
+     "best_ask_amount": 87.3,
+     "best_bid_amount": 0.0
+    },
+    "usIn": 1793711404856796,
+    "usOut": 1793711404857011,
+    "usDiff": 215,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-4NOV26-77000-C"
+   },
+   "received_at_utc": "2026-11-03T13:10:05.395897Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711404349,
+     "state": "open",
+     "stats": {
+      "high": 0.015,
+      "low": 0.007,
+      "price_change": -30.0,
+      "volume": 33.0,
+      "volume_usd": 23102.79
+     },
+     "greeks": {
+      "delta": 0.55005,
+      "gamma": 0.00022,
+      "vega": 14.16943,
+      "theta": -363.1853,
+      "rho": 0.89498
+     },
+     "index_price": 77204.69,
+     "instrument_name": "BTC-4NOV26-77000-C",
+     "last_price": 0.0105,
+     "settlement_price": 0.008299,
+     "min_price": 0.0001,
+     "max_price": 0.0435,
+     "open_interest": 34.4,
+     "mark_price": 0.0109,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.69,
+     "best_ask_price": 0.0115,
+     "best_bid_price": 0.0105,
+     "mark_iv": 51.26,
+     "bid_iv": 49.18,
+     "ask_iv": 54.63,
+     "underlying_price": 77208.75,
+     "underlying_index": "BTC-4NOV26",
+     "best_ask_amount": 49.3,
+     "best_bid_amount": 16.1
+    },
+    "usIn": 1793711405184752,
+    "usOut": 1793711405185766,
+    "usDiff": 1014,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-4NOV26-77000-P"
+   },
+   "received_at_utc": "2026-11-03T13:10:05.811046Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711404349,
+     "state": "open",
+     "stats": {
+      "high": 0.0135,
+      "low": 0.007,
+      "price_change": 20.0,
+      "volume": 74.4,
+      "volume_usd": 67038.84
+     },
+     "greeks": {
+      "delta": -0.44995,
+      "gamma": 0.00022,
+      "vega": 14.16943,
+      "theta": -363.1853,
+      "rho": -0.76046
+     },
+     "index_price": 77204.69,
+     "instrument_name": "BTC-4NOV26-77000-P",
+     "last_price": 0.009,
+     "settlement_price": 0.01217539,
+     "min_price": 0.0001,
+     "max_price": 0.0415,
+     "open_interest": 89.8,
+     "mark_price": 0.0082,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77204.69,
+     "best_ask_price": 0.0085,
+     "best_bid_price": 0.0075,
+     "mark_iv": 51.26,
+     "bid_iv": 47.56,
+     "ask_iv": 53.01,
+     "underlying_price": 77208.75,
+     "underlying_index": "BTC-4NOV26",
+     "best_ask_amount": 80.9,
+     "best_bid_amount": 116.8
+    },
+    "usIn": 1793711405642519,
+    "usOut": 1793711405642692,
+    "usDiff": 173,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-4NOV26-85000-C"
+   },
+   "received_at_utc": "2026-11-03T13:10:06.170307Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711405345,
+     "state": "open",
+     "stats": {
+      "high": 0.0001,
+      "low": 0.0001,
+      "price_change": 0.0,
+      "volume": 0.1,
+      "volume_usd": 0.77
+     },
+     "greeks": {
+      "delta": 0.00103,
+      "gamma": 0.0,
+      "vega": 0.12416,
+      "theta": -0.68165,
+      "rho": 0.0017
+     },
+     "index_price": 77202.49,
+     "instrument_name": "BTC-4NOV26-85000-C",
+     "last_price": 0.0001,
+     "settlement_price": 1.799e-05,
+     "min_price": 0.0001,
+     "max_price": 0.015,
+     "open_interest": 16.5,
+     "mark_price": 0.0,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77202.49,
+     "best_ask_price": 0.0001,
+     "best_bid_price": 0.0,
+     "mark_iv": 66.97,
+     "bid_iv": 0.0,
+     "ask_iv": 85.02,
+     "underlying_price": 77208.75,
+     "underlying_index": "BTC-4NOV26",
+     "best_ask_amount": 57.4,
+     "best_bid_amount": 0.0
+    },
+    "usIn": 1793711406194306,
+    "usOut": 1793711406197492,
+    "usDiff": 3186,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-4NOV26-85000-P"
+   },
+   "received_at_utc": "2026-11-03T13:10:06.727252Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711405345,
+     "state": "open",
+     "stats": {
+      "high": null,
+      "low": null,
+      "price_change": null,
+      "volume": 0.0,
+      "volume_usd": 0.0
+     },
+     "greeks": {
+      "delta": -0.99897,
+      "gamma": 0.0,
+      "vega": 0.12416,
+      "theta": -4.15745,
+      "rho": -1.82574
+     },
+     "index_price": 77202.49,
+     "instrument_name": "BTC-4NOV26-85000-P",
+     "last_price": null,
+     "settlement_price": 0.10819324,
+     "min_price": 0.064,
+     "max_price": 0.1415,
+     "open_interest": 0.0,
+     "mark_price": 0.1009,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77202.49,
+     "best_ask_price": 0.1035,
+     "best_bid_price": 0.0985,
+     "mark_iv": 66.97,
+     "bid_iv": 0.0,
+     "ask_iv": 147.38,
+     "underlying_price": 77208.75,
+     "underlying_index": "BTC-4NOV26",
+     "best_ask_amount": 60.4,
+     "best_bid_amount": 7.3
+    },
+    "usIn": 1793711406537371,
+    "usOut": 1793711406537618,
+    "usDiff": 247,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-6NOV26-70000-C"
+   },
+   "received_at_utc": "2026-11-03T13:10:09.495231Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711407359,
+     "state": "open",
+     "stats": {
+      "high": null,
+      "low": null,
+      "price_change": null,
+      "volume": 0.0,
+      "volume_usd": 0.0
+     },
+     "greeks": {
+      "delta": 0.95755,
+      "gamma": 2e-05,
+      "vega": 6.09993,
+      "theta": -72.76966,
+      "rho": 5.08441
+     },
+     "index_price": 77197.6,
+     "instrument_name": "BTC-6NOV26-70000-C",
+     "last_price": null,
+     "settlement_price": 0.08879358,
+     "min_price": 0.061,
+     "max_price": 0.129,
+     "open_interest": 0.0,
+     "mark_price": 0.0947,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77197.6,
+     "best_ask_price": 0.097,
+     "best_bid_price": 0.093,
+     "mark_iv": 66.44,
+     "bid_iv": 0.0,
+     "ask_iv": 87.24,
+     "underlying_price": 77231.04,
+     "underlying_index": "BTC-6NOV26",
+     "best_ask_amount": 20.1,
+     "best_bid_amount": 9.1
+    },
+    "usIn": 1793711408154907,
+    "usOut": 1793711408155118,
+    "usDiff": 211,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-6NOV26-70000-P"
+   },
+   "received_at_utc": "2026-11-03T13:10:09.803005Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711409374,
+     "state": "open",
+     "stats": {
+      "high": 0.0014,
+      "low": 0.0009,
+      "price_change": 10.0,
+      "volume": 304.7,
+      "volume_usd": 29996.11
+     },
+     "greeks": {
+      "delta": -0.04245,
+      "gamma": 2e-05,
+      "vega": 6.09962,
+      "theta": -72.76445,
+      "rho": -0.25614
+     },
+     "index_price": 77198.53,
+     "instrument_name": "BTC-6NOV26-70000-P",
+     "last_price": 0.0011,
+     "settlement_price": 0.00118105,
+     "min_price": 0.0001,
+     "max_price": 0.017,
+     "open_interest": 769.6,
+     "mark_price": 0.001,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77198.53,
+     "best_ask_price": 0.0011,
+     "best_bid_price": 0.0009,
+     "mark_iv": 66.44,
+     "bid_iv": 64.8,
+     "ask_iv": 67.37,
+     "underlying_price": 77231.01,
+     "underlying_index": "BTC-6NOV26",
+     "best_ask_amount": 2.5,
+     "best_bid_amount": 33.2
+    },
+    "usIn": 1793711409767039,
+    "usOut": 1793711409767245,
+    "usDiff": 206,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-6NOV26-77000-C"
+   },
+   "received_at_utc": "2026-11-03T13:10:10.415896Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711409996,
+     "state": "open",
+     "stats": {
+      "high": 0.019,
+      "low": 0.0115,
+      "price_change": -5.8824,
+      "volume": 44.8,
+      "volume_usd": 53824.07
+     },
+     "greeks": {
+      "delta": 0.53898,
+      "gamma": 0.00013,
+      "vega": 26.78386,
+      "theta": -210.44833,
+      "rho": 3.07698
+     },
+     "index_price": 77198.53,
+     "instrument_name": "BTC-6NOV26-77000-C",
+     "last_price": 0.016,
+     "settlement_price": 0.01295627,
+     "min_price": 0.0004,
+     "max_price": 0.049,
+     "open_interest": 128.5,
+     "mark_price": 0.0168,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77198.53,
+     "best_ask_price": 0.017,
+     "best_bid_price": 0.016,
+     "mark_iv": 43.76,
+     "bid_iv": 41.53,
+     "ask_iv": 44.41,
+     "underlying_price": 77232.11,
+     "underlying_index": "BTC-6NOV26",
+     "best_ask_amount": 0.3,
+     "best_bid_amount": 73.5
+    },
+    "usIn": 1793711410066582,
+    "usOut": 1793711410067443,
+    "usDiff": 861,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-6NOV26-77000-P"
+   },
+   "received_at_utc": "2026-11-03T13:10:10.726355Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711410619,
+     "state": "open",
+     "stats": {
+      "high": 0.019,
+      "low": 0.011,
+      "price_change": 38.4615,
+      "volume": 9.3,
+      "volume_usd": 9265.16
+     },
+     "greeks": {
+      "delta": -0.46102,
+      "gamma": 0.00013,
+      "vega": 26.78386,
+      "theta": -210.44833,
+      "rho": -2.79763
+     },
+     "index_price": 77198.53,
+     "instrument_name": "BTC-6NOV26-77000-P",
+     "last_price": 0.018,
+     "settlement_price": 0.01658249,
+     "min_price": 0.0001,
+     "max_price": 0.0475,
+     "open_interest": 489.3,
+     "mark_price": 0.0138,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77198.53,
+     "best_ask_price": 0.014,
+     "best_bid_price": 0.013,
+     "mark_iv": 43.76,
+     "bid_iv": 42.98,
+     "ask_iv": 44.43,
+     "underlying_price": 77232.11,
+     "underlying_index": "BTC-6NOV26",
+     "best_ask_amount": 47.8,
+     "best_bid_amount": 121.0
+    },
+    "usIn": 1793711410729073,
+    "usOut": 1793711410730117,
+    "usDiff": 1044,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-6NOV26-85000-C"
+   },
+   "received_at_utc": "2026-11-03T13:10:11.015050Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711410381,
+     "state": "open",
+     "stats": {
+      "high": 0.0008,
+      "low": 0.0002,
+      "price_change": -66.6667,
+      "volume": 24.8,
+      "volume_usd": 683.65
+     },
+     "greeks": {
+      "delta": 0.02153,
+      "gamma": 1e-05,
+      "vega": 3.47673,
+      "theta": -28.40786,
+      "rho": 0.1247
+     },
+     "index_price": 77198.61,
+     "instrument_name": "BTC-6NOV26-85000-C",
+     "last_price": 0.0002,
+     "settlement_price": 0.00023852,
+     "min_price": 0.0001,
+     "max_price": 0.015,
+     "open_interest": 5152.7,
+     "mark_price": 0.0004,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77198.61,
+     "best_ask_price": 0.0004,
+     "best_bid_price": 0.0003,
+     "mark_iv": 53.61,
+     "bid_iv": 52.01,
+     "ask_iv": 54.31,
+     "underlying_price": 77232.11,
+     "underlying_index": "BTC-6NOV26",
+     "best_ask_amount": 0.4,
+     "best_bid_amount": 21.0
+    },
+    "usIn": 1793711411030219,
+    "usOut": 1793711411030719,
+    "usDiff": 500,
+    "testnet": false
+   }
+  },
+  {
+   "endpoint": "/api/v2/public/ticker",
+   "params": {
+    "instrument_name": "BTC-6NOV26-85000-P"
+   },
+   "received_at_utc": "2026-11-03T13:10:11.348796Z",
+   "response": {
+    "jsonrpc": "2.0",
+    "result": {
+     "timestamp": 1793711410381,
+     "state": "open",
+     "stats": {
+      "high": 0.1055,
+      "low": 0.1055,
+      "price_change": 0.0,
+      "volume": 0.1,
+      "volume_usd": 811.2
+     },
+     "greeks": {
+      "delta": -0.97847,
+      "gamma": 1e-05,
+      "vega": 3.47673,
+      "theta": -33.4676,
+      "rho": -6.36027
+     },
+     "index_price": 77198.61,
+     "instrument_name": "BTC-6NOV26-85000-P",
+     "last_price": 0.1055,
+     "settlement_price": 0.10813759,
+     "min_price": 0.0635,
+     "max_price": 0.1425,
+     "open_interest": 7.4,
+     "mark_price": 0.1009,
+     "interest_rate": 0.0,
+     "estimated_delivery_price": 77198.61,
+     "best_ask_price": 0.1025,
+     "best_bid_price": 0.0985,
+     "mark_iv": 53.61,
+     "bid_iv": 0.0,
+     "ask_iv": 72.79,
+     "underlying_price": 77232.11,
+     "underlying_index": "BTC-6NOV26",
+     "best_ask_amount": 0.2,
+     "best_bid_amount": 7.4
+    },
+    "usIn": 1793711411361137,
+    "usOut": 1793711411361408,
+    "usDiff": 271,
+    "testnet": false
+   }
+  }
+ ]
+}

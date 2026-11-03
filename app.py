@@ -13,8 +13,11 @@ from iv_surface.deribit import (
     parse_deribit_snapshot,
 )
 from iv_surface.positioning import (
+    assumption_label,
+    computable_oi_share,
     expiry_scope_label,
     near_spot_range,
+    net_gex_by_strike,
     open_interest_by_strike,
     strikes_in_range,
 )
@@ -26,6 +29,7 @@ from iv_surface.surface_transforms import (
 )
 from iv_surface.visualization import (
     make_atm_term_structure_figure,
+    make_gex_figure,
     make_iv_heatmap,
     make_iv_surface_figure,
     make_open_interest_figure,
@@ -103,6 +107,25 @@ def open_interest_section(chain, snapshot_id):
             table, index_price=index_price, strike_range=strike_range, scope=scope,
         ),
         use_container_width=True,
+    )
+    gamma_exposure_section(chain, expiries, scope, index_price, strike_range)
+
+
+def gamma_exposure_section(chain, expiries, scope, index_price, strike_range):
+    """Net GEX by strike below OI, sharing its expiries, strike zoom and index line."""
+    st.plotly_chart(
+        make_gex_figure(
+            net_gex_by_strike(chain, expiries),
+            index_price=index_price, strike_range=strike_range, scope=scope,
+            assumption=assumption_label(),
+            oi_share=computable_oi_share(chain, expiries),
+        ),
+        use_container_width=True,
+    )
+    st.caption(
+        "GEX per contract = s × gamma × OI × index² × 1%, from Exchange mark IV "
+        "with the index and every forward moving 1% together. s = +1 where the "
+        "customer sells (dealer long gamma), −1 where the customer buys."
     )
 
 

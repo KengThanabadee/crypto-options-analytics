@@ -85,8 +85,8 @@ spaced by numerical maturity; expiries without an eligible proxy remain gaps.
   and interpolation.
 - `iv_surface.surface_transforms` reshapes IV surfaces and selects the bounded
   ATM proxy without requiring Plotly.
-- `iv_surface.positioning` sums open interest by strike and holds the Near
-  spot strike range, without requiring Plotly.
+- `iv_surface.positioning` sums open interest and net gamma exposure by
+  strike and holds the Near spot strike range, without requiring Plotly.
 - `iv_surface.visualization` constructs Plotly figures from prepared frames.
 
 ## Core Data Shape
@@ -146,6 +146,14 @@ both ends included, and **Near spot** resets it. The range is a display zoom
 only. A range with no listed strikes shows "No strikes in this range" with a
 button that zooms out to every strike. Hover shows the strike, Call and Put OI
 in BTC and the expiry scope.
+
+Directly below OI, a Net gamma exposure (GEX) bar chart uses the same expiry
+selection, strike range, strike axis and index line. Bars are in USD per 1%
+BTC move, computed from Exchange mark IV under the assumption Call+ / Put−
+(Calls customer sells, Puts customer buys). The title names the source, unit,
+assumption and the share of OI whose GEX is computable. Hover shows Net GEX,
+the Call and Put subtotals, Call and Put OI, the contract count, the
+assumption and the expiry scope.
 
 Below it, the dashboard shows a Combined IV heatmap, 3D surface, IV smiles, and ATM term
 structure. IV smiles use original observed
@@ -311,6 +319,26 @@ contract of one type has zero OI for that type; a contract with missing OI
 makes that strike's sum `NaN`, never zero. `near_spot_range(index_price)`
 returns the ±10% default range and `strikes_in_range(table, strike_range)`
 keeps rows inside it, both ends included.
+
+### `net_gex_by_strike(chain, expiries=None, signs=None)`
+
+Each contract contributes `s × gamma × OI × X² × 0.01` USD per 1% BTC move,
+where `X` is the index, OI is in BTC and `s` is `+1` where the customer sells
+(dealer long gamma) and `−1` where the customer buys. `signs` maps `call` and
+`put` to `s`; the default `DEFAULT_SIGNS` is Call+ / Put−. Returns `strike`,
+`net_gex`, `call_gex`, `put_gex`, `call_oi`, `put_oi` and `contracts`; a strike
+with any non-computable contract is `NaN`. `gex_contributions(chain, signs)`
+returns the per-contract rows and `computable_oi_share(chain, expiries)` the
+share of OI with a computable contribution.
+
+`contract_gamma(strike, tau, mark_iv, forward, index_price)` is the spot gamma
+of the contract's USD value per USD of index move, with the index and every
+forward moving together: `phi(d1) / (X × sigma × sqrt(T))`, with `d1` from
+undiscounted Black-76 on the contract's reported forward and its own `mark_iv`
+and `tau`. Deribit's ticker gamma is per USD of the forward; multiply ours by
+`X / F` to compare. `tests/test_gex.py` checks this against a one-time ticker
+capture in `data/deribit_btc_gamma_check_*.json`
+(`experiments/capture_deribit_ticker_gamma.py`).
 
 ## Assumptions And Limitations
 

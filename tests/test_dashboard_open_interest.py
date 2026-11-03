@@ -119,8 +119,8 @@ def test_empty_strike_range_shows_a_state_that_zooms_out(figures, chain):
     app.slider[0].set_value((81_100.0, 81_400.0)).run()
     assert not app.exception
     assert any("No strikes in this range" in info.value for info in app.info)
-    charts_with_oi = len(_app().get("plotly_chart"))
-    assert len(app.get("plotly_chart")) == charts_with_oi - 1
+    charts_with_oi_and_gex = len(_app().get("plotly_chart"))
+    assert len(app.get("plotly_chart")) == charts_with_oi_and_gex - 2
 
     next(b for b in app.button if b.label == "Zoom out to all strikes").click().run()
     assert not app.exception
