@@ -1,5 +1,5 @@
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
@@ -36,6 +36,8 @@ def test_real_snapshot_reconciles_and_keeps_frozen_metadata(monkeypatch):
     assert (chain.tau == chain.expiry_dt.map(lambda dt: compute_tau(dt, captured))).all()
     assert all(dt.tzinfo == timezone.utc for dt in chain.expiry_dt)
     assert (chain.index_price == 82227.73).all()
+    assert (chain.estimated_delivery_price == 82256.17).all()
+    assert chain.open_interest.notna().all() and chain.underlying_price.notna().all()
     np.testing.assert_allclose(chain.bid_price, chain.bid_price_btc * chain.index_price)
     np.testing.assert_allclose(chain.ask_price, chain.ask_price_btc * chain.index_price)
     np.testing.assert_allclose(chain.mid_price, chain.mid_price_btc * chain.index_price)
@@ -111,3 +113,65 @@ def test_rejects_invalid_snapshot_and_ambiguous_contracts(case):
     elif case == "flag": instrument["option_type"] = "other"
     elif case == "book_currency": book["quote_currency"] = "USD"
     with pytest.raises(ValueError): parse_deribit_snapshot(raw)
+
+
+def test_each_contract_carries_open_interest_and_reported_forward():
+    raw, _, book = _one_contract()
+    book.update(open_interest=12.5, underlying_price=83000.5)
+    contract = parse_deribit_snapshot(raw).iloc[0]
+    assert contract.open_interest == 12.5
+    assert contract.underlying_price == 83000.5
+
+
+@pytest.mark.parametrize("value", [None, "bad", "absent"])
+def test_missing_open_interest_stays_missing_not_zero(value):
+    raw, _, book = _one_contract()
+    if value == "absent":
+        raw["requests"][1]["response"]["result"] = []
+    else:
+        book["open_interest"] = value
+    assert np.isnan(parse_deribit_snapshot(raw).iloc[0].open_interest)
+
+
+def test_estimated_delivery_price_is_raw_data_and_index_stays_spot():
+    raw, _, book = _one_contract()
+    raw["requests"][2]["response"]["result"]["index_price"] = 80000
+    book.update(estimated_delivery_price=90000, bid_price=.01, ask_price=.03)
+    contract = parse_deribit_snapshot(raw).iloc[0]
+    assert contract.estimated_delivery_price == 90000
+    assert contract.index_price == 80000
+    assert contract.mid_price == pytest.approx(.02 * 80000)
+
+
+def _add_contract_expiring_at(raw, instrument, book, expiry, suffix):
+    other, other_book = deepcopy(instrument), deepcopy(book)
+    name = instrument["instrument_name"] + suffix
+    other["instrument_name"] = other_book["instrument_name"] = name
+    other["expiration_timestamp"] = expiry.timestamp() * 1000
+    raw["requests"][0]["response"]["result"].append(other)
+    raw["requests"][1]["response"]["result"].append(other_book)
+    return name
+
+
+def _captured(raw):
+    return datetime.fromisoformat(raw["captured_at_utc"].replace("Z", "+00:00"))
+
+
+def test_settled_contracts_are_left_out_and_unexpired_ones_kept():
+    raw, instrument, book = _one_contract()
+    captured = _captured(raw)
+    _add_contract_expiring_at(raw, instrument, book, captured, "-AT-END")
+    _add_contract_expiring_at(
+        raw, instrument, book, captured - timedelta(hours=1), "-SETTLED")
+    just_after = _add_contract_expiring_at(
+        raw, instrument, book, captured + timedelta(seconds=1), "-LAST-SECOND")
+    chain = parse_deribit_snapshot(raw)
+    assert set(chain.symbol) == {instrument["instrument_name"], just_after}
+    assert (chain.tau > 0).all()
+
+
+def test_snapshot_with_only_settled_contracts_is_rejected():
+    raw, instrument, _ = _one_contract()
+    instrument["expiration_timestamp"] = _captured(raw).timestamp() * 1000
+    with pytest.raises(ValueError, match="unexpired"):
+        parse_deribit_snapshot(raw)

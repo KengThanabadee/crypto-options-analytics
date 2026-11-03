@@ -116,6 +116,8 @@ def parse_deribit_snapshot(snapshot: dict) -> pd.DataFrame:
             expiry = datetime.fromtimestamp(expiry_ms / 1000, timezone.utc)
         except (OverflowError, OSError, ValueError) as exc:
             raise ValueError(f"Invalid Deribit expiration timestamp: {name}") from exc
+        if expiry <= captured:
+            continue  # Settled at the capture end: no time value, no hedging.
         book = books.get(name, {})
         if book and (book.get("base_currency") != "BTC" or book.get("quote_currency") != "BTC"):
             raise ValueError(f"Unexpected Deribit book currency: {name}")
@@ -135,7 +137,11 @@ def parse_deribit_snapshot(snapshot: dict) -> pd.DataFrame:
             "mark_iv": _to_float(book.get("mark_iv")) / 100,
             "index_price": spot,
             "underlying_price": _to_float(book.get("underlying_price")),
+            "open_interest": _to_float(book.get("open_interest")),
+            "estimated_delivery_price": _to_float(book.get("estimated_delivery_price")),
         })
+    if not rows:
+        raise ValueError("Deribit snapshot has no unexpired option contracts")
     frame = pd.DataFrame(rows)
     if frame.duplicated(["flag", "tau", "strike"]).any():
         raise ValueError("Duplicate Deribit flag/tau/strike identity")
