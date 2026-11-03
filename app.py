@@ -6,7 +6,12 @@ from pathlib import Path
 import numpy as np
 import streamlit as st
 
-from iv_surface.deribit import load_deribit_snapshot, parse_deribit_snapshot
+from iv_surface.deribit import (
+    DeribitFetchError,
+    fetch_deribit_snapshot,
+    load_deribit_snapshot,
+    parse_deribit_snapshot,
+)
 from iv_surface.positioning import (
     expiry_scope_label,
     near_spot_range,
@@ -38,11 +43,13 @@ MONEYNESS_RANGES = {
 }
 
 
-OI_RANGE_KEY = "oi_strike_range"
+def open_interest_section(chain, snapshot_id):
+    """OI by strike with its own expiry selection and strike zoom.
 
-
-def open_interest_section(chain):
-    """OI by strike with its own expiry selection and strike zoom."""
+    Widget keys carry the snapshot id so a new snapshot starts at All
+    expiries and its own Near spot range.
+    """
+    range_key = f"oi_strike_range_{snapshot_id}"
     st.subheader("Open interest")
     index_price = float(chain["index_price"].iloc[0])
     expiry_dates = chain.drop_duplicates("tau").set_index("tau")["expiry_dt"]
@@ -51,7 +58,7 @@ def open_interest_section(chain):
         sorted(expiry_dates.index),
         format_func=lambda tau: f"{expiry_dates[tau]:%Y-%m-%d}",
         placeholder="All expiries",
-        key="oi_expiries",
+        key=f"oi_expiries_{snapshot_id}",
         help="Leave empty for All expiries. The IV charts keep their own expiries.",
     )
     expiries = selected or None
@@ -63,11 +70,11 @@ def open_interest_section(chain):
         float(np.floor(min(chain["strike"].min(), near_spot[0]) / 1000) * 1000),
         float(np.ceil(max(chain["strike"].max(), near_spot[1]) / 1000) * 1000),
     )
-    if OI_RANGE_KEY not in st.session_state:
-        st.session_state[OI_RANGE_KEY] = near_spot
+    if range_key not in st.session_state:
+        st.session_state[range_key] = near_spot
 
     def set_range(strike_range):
-        st.session_state[OI_RANGE_KEY] = strike_range
+        st.session_state[range_key] = strike_range
 
     range_column, reset_column = st.columns([5, 1], vertical_alignment="bottom")
     with range_column:
@@ -77,7 +84,7 @@ def open_interest_section(chain):
             max_value=all_strikes[1],
             step=500.0,
             format="$%.0f",
-            key=OI_RANGE_KEY,
+            key=range_key,
             help="Display zoom only. OI sums use every strike in the selected expiries.",
         )
     with reset_column:
@@ -99,6 +106,21 @@ def open_interest_section(chain):
     )
 
 
+def fetch_latest_snapshot():
+    """Fetch only on the button; a failure keeps the current snapshot."""
+    if not st.button("Fetch latest", help="Pull a new snapshot from Deribit's public API."):
+        return
+    try:
+        with st.spinner("Fetching from Deribit…"):
+            fetched = fetch_deribit_snapshot()
+            parse_deribit_snapshot(fetched)
+    except (DeribitFetchError, ValueError, TypeError, AttributeError) as exc:
+        st.error(f"Fetch failed; still showing the previous snapshot. {exc}")
+        return
+    st.session_state["snapshot"] = fetched
+    st.session_state["snapshot_label"] = "Fetched snapshot"
+
+
 def main():
     st.set_page_config(page_title="BTC volatility", layout="wide")
     st.markdown(
@@ -114,9 +136,13 @@ def main():
         unsafe_allow_html=True,
     )
     st.title("BTC volatility")
+    fetch_latest_snapshot()
+    snapshot = st.session_state.get("snapshot")
+    snapshot_label = st.session_state.get("snapshot_label", "Frozen snapshot")
     # Catch input errors at the loading boundary, not errors in chart rendering.
     try:
-        snapshot = load_deribit_snapshot(DATA_PATH / SNAPSHOT_FILE)
+        if snapshot is None:
+            snapshot = load_deribit_snapshot(DATA_PATH / SNAPSHOT_FILE)
         chain = parse_deribit_snapshot(snapshot)
     except (OSError, ValueError, TypeError, RuntimeError, AttributeError):
         st.error("Cannot read the frozen Deribit snapshot. Check its file and schema.")
@@ -143,12 +169,12 @@ def main():
     captured_at = datetime.fromisoformat(
         snapshot["captured_at_utc"].replace("Z", "+00:00")
     )
-    st.caption(f"Deribit BTC · Frozen snapshot: {captured_at:%Y-%m-%d %H:%M:%S} UTC")
+    st.caption(f"Deribit BTC · {snapshot_label}: {captured_at:%Y-%m-%d %H:%M:%S} UTC")
     st.write(
         f"Shared spot: **${result.spot_price:,.2f}** · "
         "Risk-free rate: **0.00% p.a.**"
     )
-    open_interest_section(chain)
+    open_interest_section(chain, snapshot["captured_at_utc"])
     st.subheader("Implied volatility")
     source = frame["source"]
     counts = (

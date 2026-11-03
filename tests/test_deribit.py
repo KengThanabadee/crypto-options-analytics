@@ -1,4 +1,5 @@
 from copy import deepcopy
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -175,3 +176,74 @@ def test_snapshot_with_only_settled_contracts_is_rejected():
     instrument["expiration_timestamp"] = _captured(raw).timestamp() * 1000
     with pytest.raises(ValueError, match="unexpired"):
         parse_deribit_snapshot(raw)
+
+
+class _ReplaySession:
+    """Serve the frozen responses by endpoint, as Deribit's public API would."""
+
+    def __init__(self, raw, fail_on=None, error=None):
+        self.responses = {r["endpoint"]: r["response"] for r in raw["requests"]}
+        self.fail_on, self.error, self.calls = fail_on, error, []
+
+    def get(self, url, params=None, timeout=None):
+        import requests
+
+        endpoint = url.removeprefix("https://www.deribit.com")
+        self.calls.append((endpoint, params, timeout))
+        if endpoint == self.fail_on:
+            raise self.error
+        response = requests.Response()
+        response.status_code = 200
+        response._content = json.dumps(self.responses[endpoint]).encode()
+        return response
+
+
+def test_fetched_snapshot_has_the_frozen_shape_and_parses_like_it():
+    from iv_surface.deribit import fetch_deribit_snapshot
+
+    raw = snapshot()
+    session = _ReplaySession(raw)
+    before = datetime.now(timezone.utc)
+    fetched = fetch_deribit_snapshot(session=session)
+    after = datetime.now(timezone.utc)
+
+    assert {k: fetched[k] for k in ("schema_version", "exchange", "currency", "base_url")} == {
+        "schema_version": 1, "exchange": "deribit", "currency": "BTC",
+        "base_url": "https://www.deribit.com",
+    }
+    assert [(r["endpoint"], r["params"]) for r in fetched["requests"]] == [
+        (r["endpoint"], r["params"]) for r in raw["requests"]
+    ]
+    assert [r["response"] for r in fetched["requests"]] == [r["response"] for r in raw["requests"]]
+    times = [fetched["capture_started_at_utc"]]
+    times += [r["received_at_utc"] for r in fetched["requests"]]
+    parsed = [datetime.fromisoformat(t.replace("Z", "+00:00")) for t in times]
+    assert before <= parsed[0] <= parsed[1] <= parsed[2] <= parsed[3] <= after
+    assert fetched["captured_at_utc"] == fetched["requests"][-1]["received_at_utc"]
+    assert all(timeout for _, _, timeout in session.calls)
+    chain = parse_deribit_snapshot(fetched)
+    assert (chain.index_price == 82227.73).all()
+    assert json.loads(json.dumps(fetched)) == fetched  # saveable like the frozen file
+
+
+@pytest.mark.parametrize("case", ["network", "rpc_error", "invalid_index"])
+def test_fetch_failures_raise_one_error_type_with_the_reason(case):
+    import requests
+    from iv_surface.deribit import DeribitFetchError, fetch_deribit_snapshot
+
+    raw = snapshot()
+    index = "/api/v2/public/get_index_price"
+    session = _ReplaySession(raw)
+    if case == "network":
+        session = _ReplaySession(raw, fail_on=index, error=requests.ConnectionError("offline"))
+        reason = "offline"
+    elif case == "rpc_error":
+        session.responses[index] = {
+            "jsonrpc": "2.0", "error": {"code": 10028, "message": "too_many_requests"},
+        }
+        reason = "too_many_requests"
+    else:
+        session.responses[index] = {"jsonrpc": "2.0", "testnet": False}
+        reason = "JSON-RPC"
+    with pytest.raises(DeribitFetchError, match=reason):
+        fetch_deribit_snapshot(session=session)
