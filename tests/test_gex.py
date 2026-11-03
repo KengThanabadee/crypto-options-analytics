@@ -207,3 +207,133 @@ def test_gex_figure_shares_the_oi_strike_axis_and_labels_source_unit_and_assumpt
         bars.customdata[0],
         first[["call_gex", "put_gex", "call_oi", "put_oi", "contracts"]].to_numpy(dtype=float),
     )
+
+
+def _strike_chain(**overrides):
+    import pandas as pd
+
+    contract = dict(strike=80_000.0, tau=0.05, mark_iv=0.5, underlying_price=80_100.0,
+                    index_price=80_000.0, open_interest=10.0)
+    rows = [
+        dict(contract, symbol="C1", flag="call"),
+        dict(contract, symbol="P1", flag="put"),
+        dict(contract, symbol="C2", flag="call", tau=0.1, open_interest=30.0),
+    ]
+    for symbol, fields in overrides.items():
+        next(row for row in rows if row["symbol"] == symbol).update(fields)
+    return pd.DataFrame(rows)
+
+
+def test_known_zero_oi_contributes_zero_even_without_iv():
+    from iv_surface.positioning import gex_contributions, net_gex_by_strike
+
+    chain = _strike_chain(P1=dict(open_interest=0.0, mark_iv=np.nan))
+    rows = gex_contributions(chain).set_index("symbol")
+    assert rows.loc["P1", "contribution"] == 0.0
+    row = net_gex_by_strike(chain).iloc[0]
+    assert row["status"] == "complete"
+    assert row["net_gex"] == pytest.approx(rows["contribution"].sum())
+
+
+def test_removing_one_contracts_iv_gives_incomplete_data_with_details():
+    from iv_surface.positioning import gex_contributions, net_gex_by_strike
+
+    full = gex_contributions(_strike_chain()).set_index("symbol")["contribution"]
+    row = net_gex_by_strike(_strike_chain(P1=dict(mark_iv=np.nan))).iloc[0]
+    assert row["status"] == "incomplete"
+    assert np.isnan(row["net_gex"])
+    assert row["partial_gex"] == pytest.approx(full["C1"] + full["C2"])
+    assert (row["usable"], row["contracts"]) == (2, 3)
+    assert row["oi_share"] == pytest.approx(40 / 50)
+    assert row["reason"] == "1 Put: no mark IV"
+
+
+def test_missing_oi_is_not_zero_and_leaves_the_oi_share_unknown():
+    from iv_surface.positioning import net_gex_by_strike
+
+    row = net_gex_by_strike(_strike_chain(C2=dict(open_interest=np.nan))).iloc[0]
+    assert row["status"] == "incomplete"
+    assert np.isnan(row["net_gex"]) and np.isnan(row["oi_share"])
+    assert row["reason"] == "1 Call: no OI"
+
+
+def test_removing_every_contracts_input_gives_insufficient_data():
+    from iv_surface.positioning import net_gex_by_strike
+
+    chain = _strike_chain(C1=dict(mark_iv=np.nan), P1=dict(open_interest=np.nan),
+                          C2=dict(mark_iv=np.nan))
+    row = net_gex_by_strike(chain).iloc[0]
+    assert row["status"] == "insufficient"
+    assert np.isnan(row["net_gex"]) and np.isnan(row["partial_gex"])
+    assert row["usable"] == 0
+    assert row["reason"] == "1 Put: no OI; 2 Calls: no mark IV"
+
+
+def test_partial_subtotal_adds_magnitudes_for_gross():
+    from iv_surface.positioning import gex_contributions, strike_coverage
+
+    rows = gex_contributions(_strike_chain(C2=dict(mark_iv=np.nan)))
+    rows["mark_iv"] = [0.5, 0.5, np.nan]
+    coverage = strike_coverage(rows, rows["contribution"].abs())
+    call, put = rows["contribution"].iloc[0], rows["contribution"].iloc[1]
+    assert call > 0 > put
+    assert coverage["partial"] == pytest.approx(call - put)
+
+
+def test_real_snapshot_damage_marks_only_the_damaged_strike(chain):
+    from iv_surface.positioning import net_gex_by_strike
+
+    clean = net_gex_by_strike(chain).set_index("strike")
+    assert set(clean["status"]) == {"complete"}
+    damaged = chain.copy()
+    damaged.loc[damaged.symbol == "BTC-30OCT26-82000-C", "mark_iv"] = np.nan
+    table = net_gex_by_strike(damaged).set_index("strike")
+    assert table.loc[82_000.0, "status"] == "incomplete"
+    assert np.isnan(table.loc[82_000.0, "net_gex"])
+    assert (table.drop(82_000.0)["status"] == "complete").all()
+
+    damaged.loc[damaged.strike == 82_000.0, "mark_iv"] = np.nan
+    row = net_gex_by_strike(damaged).set_index("strike").loc[82_000.0]
+    assert row["status"] == "insufficient" and np.isnan(row["net_gex"])
+    assert row["usable"] == 0 and "no mark IV" in row["reason"]
+
+
+def test_gex_figure_marks_incomplete_and_insufficient_strikes_without_bars(chain):
+    from iv_surface.positioning import net_gex_by_strike
+    from iv_surface.visualization import make_gex_figure
+
+    damaged = chain.copy()
+    damaged.loc[damaged.symbol == "BTC-30OCT26-82000-C", "mark_iv"] = np.nan
+    damaged.loc[damaged.strike == 84_000.0, "open_interest"] = np.nan
+    table = net_gex_by_strike(damaged)
+    figure = make_gex_figure(
+        table, index_price=float(chain["index_price"].iloc[0]),
+        strike_range=(75_000.0, 90_000.0), scope="All expiries",
+        assumption="Call+ / Put−", oi_share=np.nan,
+    )
+    bars, incomplete, insufficient = figure.data
+    shown_bars = dict(zip(bars.x, bars.y))
+    assert np.isnan(shown_bars[82_000.0]) and np.isnan(shown_bars[84_000.0])
+    assert all(np.isfinite(y) for x, y in shown_bars.items() if x not in (82_000.0, 84_000.0))
+
+    assert incomplete.name == "Incomplete data" and list(incomplete.x) == [82_000.0]
+    assert insufficient.name == "Insufficient data" and list(insufficient.x) == [84_000.0]
+    # Markers sit in a strip on their own axis, away from the GEX zero line.
+    assert incomplete.yaxis == insufficient.yaxis == "y2"
+    assert figure.layout.yaxis2.overlaying == "y"
+
+    row = table.set_index("strike").loc[82_000.0]
+    (text,) = incomplete.hovertext
+    for detail in ("Incomplete data", "Partial Net GEX (computable contracts only)",
+                   f"{row['usable']} of {row['contracts']} contracts",
+                   f"{row['oi_share']:.1%} of strike OI computable",
+                   "Reason: 1 Call: no mark IV"):
+        assert detail in text
+    (text,) = insufficient.hovertext
+    assert "Insufficient data" in text and "Reason:" in text and "no OI" in text
+
+    complete = int((table.status == "complete").sum())
+    title = figure.layout.title.text
+    assert "unknown share of OI computable" in title
+    assert f"{complete} of {len(table)} strikes complete" in title
+    assert "every strike in All expiries" in title

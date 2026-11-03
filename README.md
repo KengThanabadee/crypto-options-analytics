@@ -165,9 +165,14 @@ Directly below OI, a Net gamma exposure (GEX) bar chart uses the same expiry
 selection, strike range, strike axis and index line. Bars are in USD per 1%
 BTC move, computed from Exchange mark IV under the assumption Call+ / Put−
 (Calls customer sells, Puts customer buys). The title names the source, unit,
-assumption and the share of OI whose GEX is computable. Hover shows Net GEX,
+assumption, the share of OI whose GEX is computable and how many strikes are
+complete, both over every strike in the selected expiries. Hover shows Net GEX,
 the Call and Put subtotals, Call and Put OI, the contract count, the
-assumption and the expiry scope.
+assumption and the expiry scope. A strike where only some contracts are
+computable shows an Incomplete data marker instead of a bar, with the labelled
+partial subtotal, usable/total contracts, the computable OI share (when all OI
+is known) and the reason; a strike with none shows Insufficient data and the
+reason. Markers sit in a strip near the top of the chart, away from zero.
 
 Below it, the dashboard shows a Combined IV heatmap, 3D surface, IV smiles, and ATM term
 structure. IV smiles use original observed
@@ -352,8 +357,17 @@ Each contract contributes `s × gamma × OI × X² × 0.01` USD per 1% BTC move,
 where `X` is the index, OI is in BTC and `s` is `+1` where the customer sells
 (dealer long gamma) and `−1` where the customer buys. `signs` maps `call` and
 `put` to `s`; the default `DEFAULT_SIGNS` is Call+ / Put−. Returns `strike`,
-`net_gex`, `call_gex`, `put_gex`, `call_oi`, `put_oi` and `contracts`; a strike
-with any non-computable contract is `NaN`. `gex_contributions(chain, signs)`
+`net_gex`, `call_gex`, `put_gex`, `call_oi`, `put_oi` and `contracts`, plus
+`status`, `partial_gex`, `usable`, `oi_share` and `reason` from
+`strike_coverage(rows, values)`. A contract with known zero OI contributes zero
+even without IV; missing OI or mark IV leaves it non-computable, with no
+midpoint or interpolated IV filled in. `status` is `complete` (every contract
+computable, `net_gex` is the sum, a true zero included), `incomplete` (some:
+`net_gex` is `NaN`, `partial_gex` sums the computable contracts) or
+`insufficient` (none: both `NaN`). `oi_share` is the strike's computable OI
+share, `NaN` unless every OI is known; `reason` counts the missing inputs by
+type, e.g. `1 Put: no mark IV`. `strike_coverage` takes the values to add, so
+Gross passes magnitudes. `gex_contributions(chain, signs)`
 returns the per-contract rows and `computable_oi_share(chain, expiries)` the
 share of OI with a computable contribution.
 

@@ -149,7 +149,10 @@ def gamma_exposure_section(chain, expiries, scope, index_price, strike_range):
     st.caption(
         "GEX per contract = s × gamma × OI × index² × 1%, from Exchange mark IV "
         "with the index and every forward moving 1% together. s = +1 where the "
-        "customer sells (dealer long gamma), −1 where the customer buys."
+        "customer sells (dealer long gamma), −1 where the customer buys. "
+        "Known zero OI adds zero. A strike where some contracts lack OI or mark IV "
+        "shows Incomplete data; one where none are computable shows Insufficient "
+        "data. Neither is drawn as a bar."
     )
 
 
