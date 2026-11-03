@@ -441,3 +441,22 @@ def test_failed_fetch_keeps_the_previous_snapshot_and_shows_the_error(monkeypatc
     assert any("Frozen snapshot: 2026-10-15 15:18:14 UTC" in c.value for c in app.caption)
     assert any("$82,227.73" in m.value for m in app.markdown)
     assert len(app.get("plotly_chart")) == 6
+
+
+def test_a_fetched_snapshot_is_parsed_once(monkeypatch):
+    fetched = _fetched_snapshot()
+    monkeypatch.setattr(deribit, "fetch_deribit_snapshot", lambda: fetched)
+    parsed = []
+    parse = deribit.parse_deribit_snapshot
+
+    def record(snapshot):
+        parsed.append(snapshot["captured_at_utc"])
+        return parse(snapshot)
+
+    monkeypatch.setattr(deribit, "parse_deribit_snapshot", record)
+    app = _app()
+    _fetch_button(app).click().run()
+    assert not app.exception and not app.error
+    app.main.radio[0].set_value("Observed").run()
+    assert not app.exception
+    assert parsed.count(fetched["captured_at_utc"]) == 1

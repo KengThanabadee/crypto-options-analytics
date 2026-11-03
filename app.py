@@ -259,7 +259,7 @@ def reopen_saved_analysis():
         st.error(f"Cannot open {uploaded.name}; still showing the current analysis. {exc}")
         return
     snapshot_id = saved.snapshot["captured_at_utc"]
-    taus = _expiry_taus(parse_deribit_snapshot(saved.snapshot))
+    taus = _expiry_taus(saved.chain)
     settings = saved.settings
     range_name = {value: name for name, value in MONEYNESS_RANGES.items()}
     widget_values = {
@@ -276,8 +276,7 @@ def reopen_saved_analysis():
     for expiry, tau in taus.items():
         widget_values[_smile_key(snapshot_id, tau)] = expiry in smiles
     st.session_state.update(widget_values)
-    st.session_state["snapshot"] = saved.snapshot
-    st.session_state["snapshot_label"] = "Reopened snapshot"
+    _use_snapshot(saved.snapshot, saved.chain, "Reopened snapshot")
     if saved.version_differs:
         st.session_state["reopen_notice"] = saved.version_notice()
     else:
@@ -291,13 +290,19 @@ def fetch_latest_snapshot():
     try:
         with st.spinner("Fetching from Deribit…"):
             fetched = fetch_deribit_snapshot()
-            parse_deribit_snapshot(fetched)
+            chain = parse_deribit_snapshot(fetched)
     except (DeribitFetchError, ValueError, TypeError, AttributeError) as exc:
         st.error(f"Fetch failed; still showing the previous snapshot. {exc}")
         return
-    st.session_state["snapshot"] = fetched
-    st.session_state["snapshot_label"] = "Fetched snapshot"
+    _use_snapshot(fetched, chain, "Fetched snapshot")
     st.session_state.pop("reopen_notice", None)
+
+
+def _use_snapshot(snapshot, chain, label):
+    """Switch the page to a snapshot, keeping its parsed chain for every rerun."""
+    st.session_state["snapshot"] = snapshot
+    st.session_state["chain"] = chain
+    st.session_state["snapshot_label"] = label
 
 
 def main():
@@ -321,12 +326,13 @@ def main():
         reopen_saved_analysis()
         save_slot = st.container()
     snapshot = st.session_state.get("snapshot")
+    chain = st.session_state.get("chain")
     snapshot_label = st.session_state.get("snapshot_label", "Frozen snapshot")
     # Catch input errors at the loading boundary, not errors in chart rendering.
     try:
         if snapshot is None:
             snapshot = load_deribit_snapshot(DATA_PATH / SNAPSHOT_FILE)
-        chain = parse_deribit_snapshot(snapshot)
+            chain = parse_deribit_snapshot(snapshot)
     except (OSError, ValueError, TypeError, RuntimeError, AttributeError):
         st.error("Cannot read the frozen Deribit snapshot. Check its file and schema.")
         return

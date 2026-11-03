@@ -34,6 +34,7 @@ class SavedAnalysis:
     snapshot: dict
     settings: dict
     calculation_version: int
+    chain: pd.DataFrame
 
     @property
     def version_differs(self) -> bool:
@@ -93,7 +94,9 @@ def open_analysis(raw) -> SavedAnalysis:
     except (ValueError, TypeError, AttributeError) as exc:
         raise ValueError(f"Saved snapshot is invalid: {exc}") from exc
     settings = _read_settings(saved.get("settings"), chain)
-    return SavedAnalysis(snapshot=snapshot, settings=settings, calculation_version=version)
+    return SavedAnalysis(
+        snapshot=snapshot, settings=settings, calculation_version=version, chain=chain,
+    )
 
 
 def _expiry_text(expiry) -> str:

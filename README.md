@@ -476,7 +476,7 @@ expiries), `strike_range` and `moneyness_range` as `(low, high)`, `signs`
 `heatmap_values` (`Surface`/`Observed`). `open_analysis` validates the file,
 the snapshot and every setting against that snapshot and raises `ValueError`
 on any problem. Its `SavedAnalysis` result has `snapshot`, `settings`,
-`calculation_version` and `version_differs`. `CALCULATION_VERSION` goes up
+`calculation_version`, `version_differs` and the parsed `chain`. `CALCULATION_VERSION` goes up
 whenever a change alters a number computed from the same snapshot and
 settings.
 
