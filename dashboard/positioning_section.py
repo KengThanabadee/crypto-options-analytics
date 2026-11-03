@@ -95,7 +95,7 @@ def positioning_section(chain, snapshot_id):
             scope=scope, assumption=assumption_label(signs),
             oi_share=computable_oi_share(gex_table), mode=mode,
         ),
-        use_container_width=True,
+        width="stretch",
         key=POSITIONING_CHART_KEY,
         on_select=zoom_to_dragged_strikes,
         selection_mode="box",

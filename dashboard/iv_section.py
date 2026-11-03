@@ -201,7 +201,7 @@ def _heatmap_tab(surface_frame, observed_frame, moneyness, iv_source):
         visualization.make_iv_heatmap(
             heatmap_frame, equal_expiry_spacing=True, iv_source=iv_source
         ),
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -218,7 +218,7 @@ def _surface_tab(surface_frame, moneyness, iv_source):
                         iv_source=iv_source,
                     ),
                     key=f"plot-{key}",
-                    use_container_width=True,
+                    width="stretch",
                     config={"modeBarButtonsToRemove": ["resetCameraDefault3d"]},
                 )
     st.markdown(
@@ -261,7 +261,7 @@ def _smile_tab(frame, snapshot_id, iv_source):
             visualization.make_smile_figure(
                 frame, selected_expiries=selected_expiries, iv_source=iv_source
             ),
-            use_container_width=True,
+            width="stretch",
         )
     else:
         st.info("Select an expiry to show its IV smile.")
@@ -275,7 +275,7 @@ def _atm_tab(frame, iv_source):
     )
     st.plotly_chart(
         visualization.make_atm_term_structure_figure(atm_frame, iv_source=iv_source),
-        use_container_width=True,
+        width="stretch",
     )
     rejected_count = int(atm_frame["iv"].isna().sum())
     if rejected_count:
@@ -291,5 +291,5 @@ def _atm_tab(frame, iv_source):
         st.dataframe(
             atm_frame.rename(columns={"expiry_datetime": "Expiry (UTC)"}),
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )

@@ -18,14 +18,14 @@ dependencies = [
 [project.optional-dependencies]
 dashboard = [
     "plotly",
-    "streamlit>=1.40",
+    "streamlit>=1.50",
 ]
 dev = [
     "pytest",
     "pytest-xdist",
     "ruff",
     "plotly",
-    "streamlit>=1.40",
+    "streamlit>=1.50",
 ]
 
 [tool.pytest.ini_options]
