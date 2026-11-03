@@ -68,7 +68,7 @@ charts and their tooltips interactively.
 
 ### Open interest and gamma exposure
 
-![Open interest by strike in BTC with Call and Put bars, above Net gamma exposure by strike in USD per 1% BTC move under the Call+ / Put− scenario, both with a dashed index line.](docs/images/oi-gex.jpg)
+![Open interest by strike in BTC with Call and Put bars, above Net gamma exposure by strike in USD per 1% BTC move under the Call+ / Put− scenario, in one chart with a shared strike axis and a dashed index line.](docs/images/oi-gex.jpg)
 
 **Open interest** is in BTC: each Deribit BTC option contract is one BTC, so
 the bars are contract counts summed over the selected expiries, Calls and Puts
@@ -224,17 +224,20 @@ header then reads "Reopened snapshot". A file saved with a different
 calculation version opens with a short recompute notice. An invalid file shows
 an error and keeps the current analysis.
 
-The top of the page shows Open Interest by strike: Call and Put bars in BTC,
-summed over the selected expiries, with a dashed line at the index. It starts
+The top of the page, **Open interest and gamma exposure**, is one chart with
+two panels that share a strike axis: a strike sits at the same x in both, and
+a drag-zoom in either panel zooms both. The controls sit above the chart. The
+top panel shows Open Interest by strike: Call and Put bars in BTC, summed over
+the selected expiries, with a dashed line at the index. It starts
 at All expiries; the OI expiry selection is separate from the IV charts'
 expiries. The strike range starts at Near spot, ±10% around the index with
 both ends included, and **Near spot** resets it. The range is a display zoom
 only. A range with no listed strikes shows "No strikes in this range" with a
-button that zooms out to every strike. Hover shows the strike, Call and Put OI
-in BTC and the expiry scope.
+button that zooms out to every strike; the GEX controls keep their values.
+Hover shows the strike, Call and Put OI in BTC and the expiry scope.
 
-Directly below OI, a gamma exposure (GEX) bar chart uses the same expiry
-selection, strike range, strike axis and index line. Bars are in USD per 1%
+The bottom panel shows gamma exposure (GEX) by strike, with the same expiry
+selection, strike range and index line. Bars are in USD per 1%
 BTC move, computed from Exchange mark IV. Two controls, **Calls** and
 **Puts**, each set Customer sells or Customer buys, with the dealer as
 counterparty: customer sells gives the dealer positive gamma, customer buys
@@ -244,7 +247,7 @@ snapshot starts at Call+ / Put− (Calls customer sells, Puts customer buys).
 so Calls and Puts can cancel) and **Gross** (the sum of contribution
 magnitudes, unaffected by the assumption). Flipping a control recomputes the
 signs from the loaded snapshot without fetching; OI, IV and gamma
-magnitudes stay the same. The title names the source, unit, the share of OI
+magnitudes stay the same. The panel title names the source, unit, the share of OI
 whose GEX is computable and how many strikes are complete, both over every
 strike in the selected expiries, and the active assumption as a scenario, not
 observed dealer inventory. Hover shows Net or Gross GEX, the Call and Put
@@ -254,7 +257,7 @@ computable shows an Incomplete data marker instead of a bar, with the labelled
 partial subtotal in the selected Net/Gross view, usable/total contracts, the
 computable OI share (when all OI is known) and the reason; a strike with none
 shows Insufficient data and the reason. Markers sit in a strip near the top of
-the chart, away from zero.
+the GEX panel, away from zero.
 
 Below it, the dashboard shows a Combined IV heatmap, 3D surface, IV smiles, and ATM term
 structure. IV smiles use original observed

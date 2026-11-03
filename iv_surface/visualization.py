@@ -759,11 +759,13 @@ def make_positioning_figure(
     figure.add_trace(_gex_bar(gex_shown, scope, scenario, mode), row=2, col=1)
     markers = _gex_status_markers(gex_shown, scope, mode)
     figure.add_traces(markers)
+    # One index line per panel; only the top one is labelled, clear of the GEX title.
+    index_line = dict(x=index_price, col=1, line_dash="dash", line_color="gray", line_width=1)
     figure.add_vline(
-        x=index_price, row="all", col=1,
-        line_dash="dash", line_color="gray", line_width=1,
-        annotation_text=f"Index ${index_price:,.0f}", annotation_position="top",
+        row=1, annotation_text=f"Index ${index_price:,.0f}", annotation_position="top",
+        **index_line,
     )
+    figure.add_vline(row=2, **index_line)
 
     share = "unknown share" if not np.isfinite(oi_share) else f"{oi_share:.0%}"
     complete = int((gex_table["status"] == "complete").sum())
