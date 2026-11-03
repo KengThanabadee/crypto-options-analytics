@@ -17,6 +17,7 @@ from iv_surface.iv_source import (
     IV_SOURCES,
     build_iv_source_surface,
     iv_source_long_frame,
+    solve_bid_ask_iv,
 )
 from iv_surface.positioning import (
     DEFAULT_SIGNS,
@@ -50,9 +51,14 @@ DATA_PATH = Path(__file__).resolve().parent / "data"
 SNAPSHOT_FILE = "deribit_btc_options_snapshot.json"
 
 
+@st.cache_data(show_spinner="Solving bid/ask IV…", max_entries=4)
+def _bid_ask_iv(chain):
+    return solve_bid_ask_iv(chain)
+
+
 @st.cache_data(show_spinner="Building IV…", max_entries=8)
 def _iv_source_surface(chain, iv_source):
-    return build_iv_source_surface(chain, iv_source)
+    return build_iv_source_surface(chain, iv_source, bid_ask_iv=_bid_ask_iv(chain))
 
 
 def iv_source_control():

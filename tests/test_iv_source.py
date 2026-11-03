@@ -230,3 +230,14 @@ def test_atm_hover_names_the_iv_source(midpoint_frame):
         atm_term_structure_frame(frame), iv_source="Quote midpoint"
     )
     assert "Quote midpoint IV: %{y:.2%}" in figure.data[0].hovertemplate
+
+
+@pytest.mark.parametrize("source", ["Exchange mark", "Quote midpoint"])
+def test_a_shared_bid_ask_solve_gives_the_same_surface(chain, source):
+    from iv_surface.iv_source import solve_bid_ask_iv
+
+    shared = build_iv_source_surface(chain, source, bid_ask_iv=solve_bid_ask_iv(chain))
+    own = build_iv_source_surface(chain, source)
+    np.testing.assert_array_equal(shared.band_low, own.band_low)
+    np.testing.assert_array_equal(shared.band_high, own.band_high)
+    np.testing.assert_array_equal(shared.iv_surface, own.iv_surface)

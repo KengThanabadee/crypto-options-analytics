@@ -97,9 +97,9 @@ def _patch_iv_build(monkeypatch, adjust=lambda result: result):
     calls = []
     build = iv_source.build_iv_source_surface
 
-    def patched(chain, source):
+    def patched(chain, source, **kwargs):
         calls.append(source)
-        return adjust(build(chain, source))
+        return adjust(build(chain, source, **kwargs))
 
     monkeypatch.setattr(iv_source, "build_iv_source_surface", patched)
     return calls
@@ -460,3 +460,19 @@ def test_a_fetched_snapshot_is_parsed_once(monkeypatch):
     app.main.radio[0].set_value("Observed").run()
     assert not app.exception
     assert parsed.count(fetched["captured_at_utc"]) == 1
+
+
+def test_bid_ask_band_iv_is_solved_once_per_snapshot_across_iv_sources(monkeypatch):
+    solved = []
+    solve = iv_source.solve_contract_iv
+
+    def record(chain, price_column):
+        solved.append(price_column)
+        return solve(chain, price_column)
+
+    monkeypatch.setattr(iv_source, "solve_contract_iv", record)
+    app = _app()
+    app.segmented_control(key="iv_source").set_value("Quote midpoint").run()
+    app.segmented_control(key="iv_source").set_value("Exchange mark").run()
+    assert not app.exception and not app.error
+    assert sorted(solved) == ["ask_price", "bid_price", "mid_price"]

@@ -397,13 +397,15 @@ Convenience wrapper for `prepare_surface_inputs()` followed by
 
 Returns the IV surface together with the option price grid, spot price, expiries, and strikes. Missing usable quotes remain `NaN` in the price grid and IV surface.
 
-### `build_iv_source_surface(chain, iv_source)`
+### `build_iv_source_surface(chain, iv_source, bid_ask_iv=None)`
 
 In `iv_surface/iv_source.py`. `iv_source` is `"Exchange mark"` or
 `"Quote midpoint"`. Returns the Combined IV surface (`iv_surface`,
 `source_grid`, the side surfaces `call_iv_surface` and `put_iv_surface`) for
 that source only, plus the bid–ask display band as `band_low` and `band_high`,
-with `spot_price`, `expiries` and `strikes`. `contract_iv(chain, iv_source)`
+with `spot_price`, `expiries` and `strikes`. The band does not depend on the
+source: pass `bid_ask_iv=solve_bid_ask_iv(chain)` to solve each contract's
+bid and ask IV once and reuse them for both sources. `contract_iv(chain, iv_source)`
 returns the per-contract IV, and `iv_source_long_frame(result,
 expiry_datetimes=None)` returns the chart frame with `band_low`, `band_high`
 and `iv_source` columns. The figure builders take an optional `iv_source` to

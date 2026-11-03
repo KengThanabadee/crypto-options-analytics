@@ -156,17 +156,37 @@ def _chain_axes(chain):
     )
 
 
-def build_iv_source_surface(chain: pd.DataFrame, iv_source: str) -> IVSourceResult:
-    """Build the Combined IV surface from one IV source, never mixing sources."""
+def solve_bid_ask_iv(chain: pd.DataFrame) -> pd.DataFrame:
+    """Solve every contract's bid and ask IV once, as ``bid``/``ask`` columns.
+
+    The bid-ask display band does not depend on the IV source, so one solve
+    serves both sources' surfaces.
+    """
+    return pd.DataFrame(
+        {side: solve_contract_iv(chain, f"{side}_price") for side in ("bid", "ask")},
+        index=chain.index,
+    )
+
+
+def build_iv_source_surface(
+    chain: pd.DataFrame, iv_source: str, bid_ask_iv: pd.DataFrame | None = None,
+) -> IVSourceResult:
+    """Build the Combined IV surface from one IV source, never mixing sources.
+
+    ``bid_ask_iv`` is ``solve_bid_ask_iv(chain)`` for the same chain; pass it
+    to reuse one bid/ask solve across sources, or leave it out to solve here.
+    """
     data, expiries, strikes, spot_price = _chain_axes(chain)
     iv = contract_iv(data, iv_source)
     call_iv = _contract_grid(data, iv, "call", expiries, strikes)
     put_iv = _contract_grid(data, iv, "put", expiries, strikes)
     combined, source_grid = combine_call_put_iv(call_iv, put_iv, strikes, spot_price)
     # The bid-ask band is a display band from our solver in both modes.
+    if bid_ask_iv is None:
+        bid_ask_iv = solve_bid_ask_iv(data)
     band = {}
     for side in ("bid", "ask"):
-        side_iv = solve_contract_iv(data, f"{side}_price")
+        side_iv = bid_ask_iv[side].reindex(data.index)
         band[side] = _blend_with_line_weights(
             source_grid,
             _contract_grid(data, side_iv, "call", expiries, strikes),
