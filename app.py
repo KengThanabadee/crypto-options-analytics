@@ -7,11 +7,15 @@ import numpy as np
 import streamlit as st
 
 from iv_surface.deribit import load_deribit_snapshot, parse_deribit_snapshot
-from iv_surface.surface_builder import build_combined_surface_from_chain
+from iv_surface.iv_source import (
+    DEFAULT_IV_SOURCE,
+    IV_SOURCES,
+    build_iv_source_surface,
+    iv_source_long_frame,
+)
 from iv_surface.surface_transforms import (
     atm_term_structure_frame,
     interpolate_surface_2d,
-    surface_to_long_frame,
 )
 from iv_surface.visualization import (
     make_atm_term_structure_figure,
@@ -23,12 +27,32 @@ from iv_surface.visualization import (
 
 DATA_PATH = Path(__file__).resolve().parent / "data"
 SNAPSHOT_FILE = "deribit_btc_options_snapshot.json"
-# Quote midpoint IV is solved at a zero rate until the forward-implied rate lands.
-RATE = 0.0
 MONEYNESS_RANGES = {
     "Core (0.8–1.2)": (0.8, 1.2),
     "Extended (0.7–1.3)": (0.7, 1.3),
 }
+
+
+@st.cache_data(show_spinner="Building IV…", max_entries=8)
+def _iv_source_surface(chain, iv_source):
+    return build_iv_source_surface(chain, iv_source)
+
+
+def iv_source_control():
+    """IV source for the IV charts only; switching reuses the loaded snapshot."""
+    return st.segmented_control(
+        "IV source",
+        IV_SOURCES,
+        default=DEFAULT_IV_SOURCE,
+        required=True,
+        key="iv_source",
+        help=(
+            "Exchange mark is the mark IV Deribit reports. Quote midpoint is "
+            "our solver's IV from each contract's bid/ask midpoint, priced "
+            "with the contract's reported forward (R = ln(F / X) / T). "
+            "Changes the IV charts only."
+        ),
+    ) or DEFAULT_IV_SOURCE
 
 
 def main():
@@ -54,8 +78,9 @@ def main():
         st.error("Cannot read the frozen Deribit snapshot. Check its file and schema.")
         return
 
+    iv_source = iv_source_control()
     try:
-        result = build_combined_surface_from_chain(chain, r=RATE)
+        result = _iv_source_surface(chain, iv_source)
     except ValueError:
         st.error(
             "Cannot build IV: the snapshot needs valid, unique contracts and "
@@ -64,13 +89,8 @@ def main():
         return
 
     expiry_dates = chain.drop_duplicates("tau").set_index("tau")["expiry_dt"]
-    frame = surface_to_long_frame(
-        result.iv_surface,
-        result.expiries,
-        result.strikes,
-        result.spot_price,
-        expiry_datetimes=expiry_dates.reindex(result.expiries).tolist(),
-        source_grid=result.source_grid,
+    frame = iv_source_long_frame(
+        result, expiry_datetimes=expiry_dates.reindex(result.expiries).tolist()
     )
     captured_at = datetime.fromisoformat(
         snapshot["captured_at_utc"].replace("Z", "+00:00")
@@ -78,7 +98,7 @@ def main():
     st.caption(f"Deribit BTC · Frozen snapshot: {captured_at:%Y-%m-%d %H:%M:%S} UTC")
     st.write(
         f"Shared spot: **${result.spot_price:,.2f}** · "
-        "Risk-free rate: **0.00% p.a.**"
+        f"IV source: **{iv_source}**"
     )
     source = frame["source"]
     counts = (
@@ -109,8 +129,10 @@ def main():
     with st.sidebar.expander("Deribit pricing"):
         st.caption(
             "BTC bid/ask premiums are converted to USD using the snapshot's "
-            "BTC/USD index. IV uses our spot Black-Scholes model at a zero "
-            "rate; Deribit mark IV uses its own pricing inputs."
+            "BTC/USD index X. Quote midpoint IV and the bid–ask band use our "
+            "Black-Scholes solver with each contract's reported forward F, so "
+            "R = ln(F / X) / T and no rate is chosen. A solve must reprice "
+            "within $0.01 or it is missing. Exchange mark IV is Deribit's own."
         )
     if not np.isfinite(frame["iv"]).any():
         st.warning("No IV solves succeeded for this snapshot.")
@@ -186,7 +208,9 @@ def main():
             f"K / S: {min_moneyness:.1f}–{max_moneyness:.1f}."
         )
         st.plotly_chart(
-            make_iv_heatmap(heatmap_frame, equal_expiry_spacing=True),
+            make_iv_heatmap(
+                heatmap_frame, equal_expiry_spacing=True, iv_source=iv_source
+            ),
             use_container_width=True,
         )
     with surface_tab:
@@ -196,7 +220,11 @@ def main():
             for compact, key in [(False, "surface-wide"), (True, "surface-narrow")]:
                 with st.container(key=key):
                     st.plotly_chart(
-                        make_iv_surface_figure(surface_frame, compact_layout=compact),
+                        make_iv_surface_figure(
+                            surface_frame,
+                            compact_layout=compact,
+                            iv_source=iv_source,
+                        ),
                         key=f"plot-{key}",
                         use_container_width=True,
                         config={"modeBarButtonsToRemove": ["resetCameraDefault3d"]},
@@ -227,19 +255,29 @@ def main():
                     key=f"smile_expiry_{snapshot['captured_at_utc']}_{tau}",
                 )
             ]
-        st.caption("Observed Combined IV · all strikes · gaps preserved")
+        st.caption(
+            f"Observed Combined {iv_source} IV · all strikes · gaps preserved. "
+            "Shading is a bid–ask IV display band from our solver, blended "
+            "with the line's Call/Put weights; it is not a tradable quote, "
+            "and mark IV may sit outside it."
+        )
         if selected_expiries:
             st.plotly_chart(
-                make_smile_figure(frame, selected_expiries=selected_expiries),
+                make_smile_figure(
+                    frame, selected_expiries=selected_expiries, iv_source=iv_source
+                ),
                 use_container_width=True,
             )
         else:
             st.info("Select an expiry to show its IV smile.")
     with atm_tab:
         atm_frame = atm_term_structure_frame(frame)
-        st.caption("Observed Combined IV nearest to spot within 2% · all expiries")
+        st.caption(
+            f"Observed Combined {iv_source} IV nearest to spot within 2% · "
+            "all expiries"
+        )
         st.plotly_chart(
-            make_atm_term_structure_figure(atm_frame),
+            make_atm_term_structure_figure(atm_frame, iv_source=iv_source),
             use_container_width=True,
         )
         rejected_count = int(atm_frame["iv"].isna().sum())

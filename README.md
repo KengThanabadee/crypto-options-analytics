@@ -20,8 +20,22 @@ A planned Options Dashboard extension (OI/GEX) is described in the
 - **Quote midpoint** is this repository's solver IV from usable bid/ask
   midpoints. It is the comparison source.
 
-The IV charts currently show Quote midpoint IV; the IV source selector that
-opens on Exchange mark is part of the planned extension.
+The IV charts open on Exchange mark and an **IV source** selector switches
+them to Quote midpoint. The selector changes only the IV charts and reuses the
+loaded snapshot. Both sources follow the same Combined IV and ATM proxy rules;
+a contract whose selected-source IV is unusable is missing, never filled from
+the other source. Hover names the IV source beside each IV value.
+
+Quote midpoint IV uses Deribit's inverse-option convention: the index `X` is
+spot and each contract's reported forward `F` sets `R = ln(F / X) / T`, so no
+rate is chosen. A solved IV must reprice the USD midpoint within $0.01, or it
+counts as missing.
+
+The smile shades a **bid–ask IV display band** in both modes: our solver
+inverts bid and ask separately with the same forward rate, and the band blends
+them with the line's Call/Put weights (bid with bid and ask with ask in the
+`0.98–1.02` zone). It is a display band, not a tradable quote, and mark IV may
+sit outside it.
 
 ## What It Does
 
@@ -36,8 +50,8 @@ opens on Exchange mark is part of the planned extension.
 ## Dashboard preview
 
 These charts come from the offline dashboard using the checked-in Deribit BTC
-snapshot captured on **2026-10-15 at 15:18:14 UTC**, with a **0.00%** risk-free
-rate. Open the [offline dashboard](#offline-dashboard) to explore the charts and
+snapshot captured on **2026-10-15 at 15:18:14 UTC**. The images predate the
+IV source selector and show Quote midpoint IV solved at a 0.00% rate. Open the [offline dashboard](#offline-dashboard) to explore the charts and
 their tooltips interactively.
 
 ### Combined IV heatmap
@@ -158,7 +172,6 @@ independently of the UI and retains original IV in `observed_iv`, quote
 provenance in `source`, and the display method in `interpolation_method`.
 Fewer than three non-collinear observations leave missing cells unfilled.
 This fills the existing grid rather than adding dense display points.
-Quote midpoint IV is solved at a zero risk-free rate.
 
 ### Deribit input
 
@@ -192,8 +205,9 @@ Each contract also carries `open_interest` in BTC and its reported forward
 summary's `estimated_delivery_price` is kept as raw data only: the index from
 `get_index_price` stays the one spot for USD conversion and moneyness.
 
-Quote midpoint IV uses this repository's spot Black-Scholes solver at a zero
-rate, so it need not equal Exchange mark IV.
+Quote midpoint IV uses this repository's Black-Scholes solver at each
+contract's forward-implied rate (see [IV sources](#iv-sources)), so it need
+not equal Exchange mark IV.
 
 ## Quick Example
 
@@ -264,6 +278,18 @@ Convenience wrapper for `prepare_surface_inputs()` followed by
 `build_surface()`. The chain comes from a parsed snapshot.
 
 Returns the IV surface together with the option price grid, spot price, expiries, and strikes. Missing usable quotes remain `NaN` in the price grid and IV surface.
+
+### `build_iv_source_surface(chain, iv_source)`
+
+In `iv_surface/iv_source.py`. `iv_source` is `"Exchange mark"` or
+`"Quote midpoint"`. Returns the Combined IV surface (`iv_surface`,
+`source_grid`, the side surfaces `call_iv_surface` and `put_iv_surface`) for
+that source only, plus the bid–ask display band as `band_low` and `band_high`,
+with `spot_price`, `expiries` and `strikes`. `contract_iv(chain, iv_source)`
+returns the per-contract IV, and `iv_source_long_frame(result,
+expiry_datetimes=None)` returns the chart frame with `band_low`, `band_high`
+and `iv_source` columns. The figure builders take an optional `iv_source` to
+name it in hover.
 
 ### `build_combined_surface_from_chain(chain, r=0)`
 
