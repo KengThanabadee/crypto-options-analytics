@@ -59,7 +59,8 @@ One page built on one Deribit BTC snapshot. **Fetch latest** pulls a new snapsho
 ### Conventions
 
 - Deribit uses each contract's reported forward `F` and computes `R = ln(F/X) / T`, so the user does not choose a rate. Coin premiums convert to USD with `X`. Moneyness stays spot-based `K / S`.
-- The whole app uses a 365-day year, matching Deribit: the IV charts, GEX and the existing Bybit charts, which move from 365.25. Beyond that day count, Bybit is unchanged.
+- The whole app uses a 365-day year, matching Deribit: the IV charts and GEX move from 365.25.
+- The dashboard is Deribit only. Bybit leaves the app, the package, the tests and the README (decided 2026-11-03); earlier Bybit research stays in `experiments/` as a record.
 - Contract identity stays separate by Call/Put, expiry and strike. IV source, the inverted price (mid or mark) and the input basis (index, reported underlying, assumed forward) stay separate fields.
 
 ### IV source
@@ -114,7 +115,7 @@ Each strike is assessed from all Call/Put contracts in the selected expiries:
   2. **One contract by hand.** A real contract's GEX contribution, computed step by step in the test, equals the app's value.
   3. **Bars add up.** Each strike's bar equals the sum of its contracts; Gross is at least the magnitude of Net; flipping an assumption changes only signs and leaves Gross unchanged.
   4. **Midpoint IV prices back.** Repricing with Quote midpoint IV returns the midpoint within $0.01 per contract; unsolved midpoints count as missing.
-  5. **One day count.** Time to expiry uses 365 days for Deribit and Bybit.
+  5. **One day count.** Time to expiry uses 365 days.
   6. **Near spot boundary.** A strike exactly at ±10% of the index is included.
   7. **Incomplete data states.** Removing one contract's input gives Incomplete data; removing all gives Insufficient data; neither shows as a zero bar.
   8. **Save and reopen round trip.** Reopening restores every setting and reproduces the same numbers.
@@ -122,7 +123,6 @@ Each strike is assessed from all Call/Put contracts in the selected expiries:
 
 ## Out of Scope
 
-- Bybit beyond the 365-day year.
 - Historical comparison, a volume dashboard, an option-chain table, order-book depth and a broad terminal.
 - Expiry summary or comparison, a skew metric, IV-implied range, candles, liquidation, flow and spot book.
 - A Call/Put split IV view: set aside on 2026-11-03, since the Combined rule already uses the out-of-the-money side and the band shows quote quality.
