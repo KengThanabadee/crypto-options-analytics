@@ -148,6 +148,51 @@ def _option_price_grid_from_rows(
     return grid
 
 
+def combine_call_put_iv(call_iv, put_iv, strikes, spot_price):
+    """Apply the spot-based Combined IV rule to aligned Call and Put IV grids.
+
+    Returns the Combined IV grid and a same-shaped grid of source labels.
+    """
+    call_iv = np.asarray(call_iv, dtype=float)
+    put_iv = np.asarray(put_iv, dtype=float)
+    combined_iv = np.full(call_iv.shape, np.nan)
+    source_grid = np.full(call_iv.shape, "missing", dtype=object)
+    for i in range(call_iv.shape[0]):
+        for j, strike in enumerate(strikes):
+            call_value = call_iv[i, j]
+            put_value = put_iv[i, j]
+            call_finite = np.isfinite(call_value)
+            put_finite = np.isfinite(put_value)
+            moneyness = strike / spot_price
+
+            if 0.98 <= moneyness <= 1.02:
+                if call_finite and put_finite:
+                    combined_iv[i, j] = (call_value + put_value) / 2
+                    source_grid[i, j] = "near_atm_average"
+                elif call_finite:
+                    combined_iv[i, j] = call_value
+                    source_grid[i, j] = "near_atm_call_only"
+                elif put_finite:
+                    combined_iv[i, j] = put_value
+                    source_grid[i, j] = "near_atm_put_only"
+            elif moneyness < 0.98:
+                if put_finite:
+                    combined_iv[i, j] = put_value
+                    source_grid[i, j] = "put"
+                elif call_finite:
+                    combined_iv[i, j] = call_value
+                    source_grid[i, j] = "call_fallback"
+            else:
+                if call_finite:
+                    combined_iv[i, j] = call_value
+                    source_grid[i, j] = "call"
+                elif put_finite:
+                    combined_iv[i, j] = put_value
+                    source_grid[i, j] = "put_fallback"
+
+    return combined_iv, source_grid
+
+
 def build_combined_surface_from_chain(
     chain: pd.DataFrame, r: float = 0
 ) -> CombinedSurfaceResult:
@@ -194,40 +239,9 @@ def build_combined_surface_from_chain(
     call_iv = build_surface(call_prices, spot_price, expiries, strikes, r, "call")
     put_iv = build_surface(put_prices, spot_price, expiries, strikes, r, "put")
 
-    combined_iv = np.full(call_iv.shape, np.nan)
-    source_grid = np.full(call_iv.shape, "missing", dtype=object)
-    for i in range(len(expiries)):
-        for j, strike in enumerate(strikes):
-            call_value = call_iv[i, j]
-            put_value = put_iv[i, j]
-            call_finite = np.isfinite(call_value)
-            put_finite = np.isfinite(put_value)
-            moneyness = strike / spot_price
-
-            if 0.98 <= moneyness <= 1.02:
-                if call_finite and put_finite:
-                    combined_iv[i, j] = (call_value + put_value) / 2
-                    source_grid[i, j] = "near_atm_average"
-                elif call_finite:
-                    combined_iv[i, j] = call_value
-                    source_grid[i, j] = "near_atm_call_only"
-                elif put_finite:
-                    combined_iv[i, j] = put_value
-                    source_grid[i, j] = "near_atm_put_only"
-            elif moneyness < 0.98:
-                if put_finite:
-                    combined_iv[i, j] = put_value
-                    source_grid[i, j] = "put"
-                elif call_finite:
-                    combined_iv[i, j] = call_value
-                    source_grid[i, j] = "call_fallback"
-            else:
-                if call_finite:
-                    combined_iv[i, j] = call_value
-                    source_grid[i, j] = "call"
-                elif put_finite:
-                    combined_iv[i, j] = put_value
-                    source_grid[i, j] = "put_fallback"
+    combined_iv, source_grid = combine_call_put_iv(
+        call_iv, put_iv, strikes, spot_price
+    )
 
     return CombinedSurfaceResult(
         iv_surface=combined_iv,

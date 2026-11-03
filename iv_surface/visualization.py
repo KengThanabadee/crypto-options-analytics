@@ -85,16 +85,21 @@ def _format_strike(strike):
     return np.format_float_positional(float(strike), trim="-")
 
 
+def _iv_label(iv_source=None):
+    """Name the IV source in hover, e.g. 'Exchange mark IV'."""
+    return "IV" if iv_source is None else f"{escape(str(iv_source))} IV"
+
+
 def _surface_hover_text(
     maturity, moneyness, strike, iv, *,
-    source_label=None, source=None, value_type=None,
+    source_label=None, source=None, value_type=None, iv_label="IV",
 ):
     parts = [maturity, f"K / S: {moneyness:.4f}", f"strike: {_format_strike(strike)}"]
     if source_label is not None:
         parts.append(f"{source_label}: {escape(str(source))}")
     if value_type is not None:
         parts.append(f"Surface value: {escape(str(value_type))}")
-    parts.append(f"IV: {iv:.2%}")
+    parts.append(f"{iv_label}: {iv:.2%}")
     return "<br>".join(parts)
 
 
@@ -154,7 +159,8 @@ def _heatmap_customdata(long_frame, iv_grid, strike_grid):
 
 
 def make_iv_heatmap(
-    long_frame: pd.DataFrame, *, equal_expiry_spacing: bool = False
+    long_frame: pd.DataFrame, *, equal_expiry_spacing: bool = False,
+    iv_source=None,
 ) -> go.Figure:
     """Create a moneyness-by-expiry heatmap without filling IV itself."""
     _require_columns(long_frame, _LONG_FRAME_COLUMNS, "long_frame")
@@ -206,7 +212,7 @@ def make_iv_heatmap(
             + strike_hover
             + source_hover
             + value_type_hover
-            + "IV: %{z:.2%}<extra></extra>"
+            + f"{_iv_label(iv_source)}: %{{z:.2%}}<extra></extra>"
         ),
         colorscale="Viridis",
     )
@@ -234,7 +240,7 @@ def make_iv_heatmap(
 
 
 def make_iv_surface_figure(
-    long_frame: pd.DataFrame, *, compact_layout: bool = False
+    long_frame: pd.DataFrame, *, compact_layout: bool = False, iv_source=None,
 ) -> go.Figure:
     """Create a 3D IV surface from the same rectangular frame as the heatmap."""
     _require_columns(long_frame, _LONG_FRAME_COLUMNS, "long_frame")
@@ -274,6 +280,7 @@ def make_iv_surface_figure(
                 values[0], iv_grid.iloc[row_index, column_index],
                 source_label=source_label, source=source,
                 value_type=values[field] if value_type_hover else None,
+                iv_label=_iv_label(iv_source),
             ))
         hover_text.append(text_row)
     trace = go.Surface(
@@ -337,6 +344,7 @@ def make_iv_surface_figure(
                 ) if source_hover else None,
                 source=getattr(row, "source", "Observed IV"),
                 value_type="Observed" if value_type_hover else None,
+                iv_label=_iv_label(iv_source),
             )
             for maturity, row, iv in zip(
                 _maturity_hover(observed, observed["tau"]),
@@ -430,10 +438,32 @@ def make_iv_surface_figure(
     return figure
 
 
+def _add_band_traces(figure, smile, expiry_label, color):
+    """Shade the bid-ask IV display band; gaps stay open (no connectgaps)."""
+    x = smile["moneyness"].to_numpy(dtype=float)
+    fill = f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, 0.18)"
+    common = dict(
+        x=x, mode="lines", line=dict(width=0, color=color), connectgaps=False,
+        hoverinfo="skip", legendgroup=expiry_label, showlegend=False,
+    )
+    figure.add_trace(go.Scatter(
+        y=smile["band_high"].to_numpy(dtype=float),
+        name=f"{expiry_label} bid–ask IV (display band)", **common,
+    ))
+    figure.add_trace(go.Scatter(
+        y=smile["band_low"].to_numpy(dtype=float), fill="tonexty", fillcolor=fill,
+        name=f"{expiry_label} bid–ask IV (display band)", **common,
+    ))
+
+
 def make_smile_figure(
-    long_frame: pd.DataFrame, selected_expiries=None
+    long_frame: pd.DataFrame, selected_expiries=None, iv_source=None,
 ) -> go.Figure:
-    """Create one IV smile trace per selected expiry."""
+    """Create one IV smile trace per selected expiry.
+
+    When the frame has band_low/band_high columns, each smile also gets a
+    shaded bid-ask IV display band, drawn beneath its line.
+    """
     _require_columns(long_frame, _LONG_FRAME_COLUMNS, "long_frame")
 
     selected = None if selected_expiries is None else set(selected_expiries)
@@ -451,12 +481,26 @@ def make_smile_figure(
             smile.loc[np.isfinite(smile["iv"]), "moneyness"].to_numpy(dtype=float)
         )
         expiry_label = _expiry_labels(long_frame, [tau])[0]
+        color = colors[expiry_index % len(colors)]
         customdata = smile["strike"].to_numpy(dtype=float)
         strike_hover = "strike: %{hovertext}<br>"
         source_hover = ""
+        band_hover = ""
         if "source" in smile.columns:
             customdata = smile[["strike", "source"]].to_numpy(dtype=object)
             source_hover = "source: %{customdata[1]}<br>"
+        if {"band_low", "band_high"} <= set(smile.columns):
+            customdata = np.column_stack([
+                customdata.reshape(len(smile), -1).astype(object),
+                smile["band_low"].to_numpy(dtype=float),
+                smile["band_high"].to_numpy(dtype=float),
+            ])
+            low_index = customdata.shape[1] - 2
+            band_hover = (
+                f"<br>bid–ask display band: %{{customdata[{low_index}]:.2%}}"
+                f" – %{{customdata[{low_index + 1}]:.2%}}"
+            )
+            _add_band_traces(figure, smile, expiry_label, color)
         figure.add_trace(
             go.Scatter(
                 x=smile["moneyness"].to_numpy(dtype=float),
@@ -465,7 +509,7 @@ def make_smile_figure(
                 text=[_maturity_hover(smile, [tau])[0]] * len(smile),
                 hovertext=[_format_strike(strike) for strike in smile["strike"]],
                 mode="lines+markers",
-                line=dict(width=2, color=colors[expiry_index % len(colors)]),
+                line=dict(width=2, color=color),
                 marker=dict(size=5),
                 name=expiry_label,
                 meta=tau,
@@ -475,7 +519,9 @@ def make_smile_figure(
                     "K / S: %{x:.4f}<br>"
                     + strike_hover
                     + source_hover
-                    + "IV: %{y:.2%}<extra>%{fullData.name}</extra>"
+                    + f"{_iv_label(iv_source)}: %{{y:.2%}}"
+                    + band_hover
+                    + "<extra>%{fullData.name}</extra>"
                 ),
             )
         )
@@ -500,7 +546,9 @@ def make_smile_figure(
     return figure
 
 
-def make_atm_term_structure_figure(atm_frame: pd.DataFrame) -> go.Figure:
+def make_atm_term_structure_figure(
+    atm_frame: pd.DataFrame, iv_source=None
+) -> go.Figure:
     """Create an ATM-proxy term structure while preserving rejected expiries."""
     _require_columns(atm_frame, _ATM_FRAME_COLUMNS, "atm_frame")
 
@@ -518,7 +566,7 @@ def make_atm_term_structure_figure(atm_frame: pd.DataFrame) -> go.Figure:
         connectgaps=False,
         hovertemplate=(
             "%{text}<br>"
-            "IV: %{y:.2%}<br>"
+            f"{_iv_label(iv_source)}: %{{y:.2%}}<br>"
             "strike: %{hovertext}<br>"
             "K / S: %{customdata[1]:.4f}<br>"
             "ATM distance: %{customdata[2]:.2%}<br>"
