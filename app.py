@@ -20,20 +20,24 @@ from iv_surface.iv_source import (
 )
 from iv_surface.positioning import (
     DEFAULT_SIGNS,
+    GEX_MODES,
     assumption_label,
     computable_oi_share,
     expiry_scope_label,
     near_spot_range,
     net_gex_by_strike,
     open_interest_by_strike,
+    strike_zoom_bounds,
     strikes_in_range,
 )
+from iv_surface.saved_analysis import open_analysis, save_analysis
 from iv_surface.surface_transforms import (
+    HEATMAP_VALUES,
+    MONEYNESS_RANGES,
     atm_term_structure_frame,
     interpolate_surface_2d,
 )
 from iv_surface.visualization import (
-    GEX_MODES,
     make_atm_term_structure_figure,
     make_gex_figure,
     make_iv_heatmap,
@@ -45,10 +49,6 @@ from iv_surface.visualization import (
 
 DATA_PATH = Path(__file__).resolve().parent / "data"
 SNAPSHOT_FILE = "deribit_btc_options_snapshot.json"
-MONEYNESS_RANGES = {
-    "Core (0.8–1.2)": (0.8, 1.2),
-    "Extended (0.7–1.3)": (0.7, 1.3),
-}
 
 
 @st.cache_data(show_spinner="Building IV…", max_entries=8)
@@ -61,7 +61,7 @@ def iv_source_control():
     return st.segmented_control(
         "IV source",
         IV_SOURCES,
-        default=DEFAULT_IV_SOURCE,
+        default=_default_unless_set("iv_source", DEFAULT_IV_SOURCE),
         required=True,
         key="iv_source",
         help=(
@@ -96,10 +96,7 @@ def open_interest_section(chain, snapshot_id):
     table = open_interest_by_strike(chain, expiries)
 
     near_spot = near_spot_range(index_price)
-    all_strikes = (
-        float(np.floor(min(chain["strike"].min(), near_spot[0]) / 1000) * 1000),
-        float(np.ceil(max(chain["strike"].max(), near_spot[1]) / 1000) * 1000),
-    )
+    all_strikes = strike_zoom_bounds(chain)
     if range_key not in st.session_state:
         st.session_state[range_key] = near_spot
 
@@ -151,7 +148,7 @@ def gex_scenario_controls(snapshot_id):
             side = st.segmented_control(
                 f"{flag.capitalize()}s",
                 list(CUSTOMER_SIDES),
-                default=defaults[flag],
+                default=_default_unless_set(f"gex_{flag}_side_{snapshot_id}", defaults[flag]),
                 required=True,
                 key=f"gex_{flag}_side_{snapshot_id}",
                 help=(
@@ -165,7 +162,7 @@ def gex_scenario_controls(snapshot_id):
         mode = st.segmented_control(
             "GEX view",
             GEX_MODES,
-            default="Net",
+            default=_default_unless_set(f"gex_mode_{snapshot_id}", "Net"),
             required=True,
             key=f"gex_mode_{snapshot_id}",
             help="Net lets Calls and Puts cancel. Gross adds magnitudes and ignores the scenario.",
@@ -196,6 +193,111 @@ def gamma_exposure_section(chain, expiries, scope, index_price, strike_range, sn
     )
 
 
+def _default_unless_set(key, default):
+    """A widget default, or None once its value is set in session state.
+
+    Reopening sets widget values through session state; passing a default too
+    would make Streamlit warn about the conflict.
+    """
+    return None if key in st.session_state else default
+
+
+def _smile_key(snapshot_id, tau):
+    return f"smile_expiry_{snapshot_id}_{tau}"
+
+
+def _expiry_taus(chain):
+    return chain.drop_duplicates("expiry_dt").set_index("expiry_dt")["tau"]
+
+
+def current_settings(chain, snapshot_id):
+    """The analysis settings as the widgets hold them, with defaults for unshown ones."""
+    state = st.session_state
+    taus = _expiry_taus(chain)
+    expiry_of = {tau: expiry for expiry, tau in taus.items()}
+    side_of = {sign: side for side, sign in CUSTOMER_SIDES.items()}
+    signs = {
+        flag: CUSTOMER_SIDES[
+            state.get(f"gex_{flag}_side_{snapshot_id}") or side_of[DEFAULT_SIGNS[flag]]
+        ]
+        for flag in ("call", "put")
+    }
+    return {
+        "oi_expiries": [expiry_of[tau] for tau in state.get(f"oi_expiries_{snapshot_id}") or []],
+        "strike_range": state.get(
+            f"oi_strike_range_{snapshot_id}",
+            near_spot_range(float(chain["index_price"].iloc[0])),
+        ),
+        "signs": signs,
+        "gex_view": state.get(f"gex_mode_{snapshot_id}") or "Net",
+        "iv_source": state.get("iv_source") or DEFAULT_IV_SOURCE,
+        "moneyness_range": MONEYNESS_RANGES[
+            state.get("moneyness_range", next(iter(MONEYNESS_RANGES)))
+        ],
+        "heatmap_values": state.get("heatmap_view", HEATMAP_VALUES[0]),
+        "smile_expiries": [
+            expiry for expiry, tau in taus.items()
+            if state.get(_smile_key(snapshot_id, tau), False)
+        ],
+    }
+
+
+def save_analysis_control(slot, snapshot, chain):
+    """Download the raw snapshot with the current settings as one file."""
+    captured_at = snapshot["captured_at_utc"]
+    stamp = captured_at[:19].replace(":", "").replace("-", "")
+    with slot:
+        st.download_button(
+            "Save analysis",
+            data=save_analysis(snapshot, current_settings(chain, captured_at)),
+            file_name=f"deribit-btc-analysis-{stamp}Z.json",
+            mime="application/json",
+            on_click="ignore",
+            help="One file with the raw snapshot and every setting; no computed numbers.",
+        )
+
+
+def reopen_saved_analysis():
+    """Reopen a saved file once per upload; an invalid file keeps the current analysis."""
+    uploaded = st.file_uploader(
+        "Reopen analysis", type=["json"], key="saved_analysis_file",
+        help="Recomputes every number from the saved raw snapshot.",
+    )
+    if uploaded is None or st.session_state.get("reopened_file_id") == uploaded.file_id:
+        return
+    st.session_state["reopened_file_id"] = uploaded.file_id
+    try:
+        saved = open_analysis(uploaded.getvalue())
+    except ValueError as exc:
+        st.error(f"Cannot open {uploaded.name}; still showing the current analysis. {exc}")
+        return
+    snapshot_id = saved.snapshot["captured_at_utc"]
+    taus = _expiry_taus(parse_deribit_snapshot(saved.snapshot))
+    settings = saved.settings
+    side_of = {sign: side for side, sign in CUSTOMER_SIDES.items()}
+    range_name = {value: name for name, value in MONEYNESS_RANGES.items()}
+    widget_values = {
+        f"oi_expiries_{snapshot_id}": [float(taus[e]) for e in settings["oi_expiries"]],
+        f"oi_strike_range_{snapshot_id}": settings["strike_range"],
+        f"gex_call_side_{snapshot_id}": side_of[settings["signs"]["call"]],
+        f"gex_put_side_{snapshot_id}": side_of[settings["signs"]["put"]],
+        f"gex_mode_{snapshot_id}": settings["gex_view"],
+        "iv_source": settings["iv_source"],
+        "moneyness_range": range_name[settings["moneyness_range"]],
+        "heatmap_view": settings["heatmap_values"],
+    }
+    smiles = set(settings["smile_expiries"])
+    for expiry, tau in taus.items():
+        widget_values[_smile_key(snapshot_id, tau)] = expiry in smiles
+    st.session_state.update(widget_values)
+    st.session_state["snapshot"] = saved.snapshot
+    st.session_state["snapshot_label"] = "Reopened snapshot"
+    if saved.version_differs:
+        st.session_state["reopen_notice"] = saved.version_notice()
+    else:
+        st.session_state.pop("reopen_notice", None)
+
+
 def fetch_latest_snapshot():
     """Fetch only on the button; a failure keeps the current snapshot."""
     if not st.button("Fetch latest", help="Pull a new snapshot from Deribit's public API."):
@@ -209,6 +311,7 @@ def fetch_latest_snapshot():
         return
     st.session_state["snapshot"] = fetched
     st.session_state["snapshot_label"] = "Fetched snapshot"
+    st.session_state.pop("reopen_notice", None)
 
 
 def main():
@@ -227,6 +330,10 @@ def main():
     )
     st.title("BTC volatility")
     fetch_latest_snapshot()
+    with st.sidebar:
+        st.subheader("Saved analysis")
+        reopen_saved_analysis()
+        save_slot = st.container()
     snapshot = st.session_state.get("snapshot")
     snapshot_label = st.session_state.get("snapshot_label", "Frozen snapshot")
     # Catch input errors at the loading boundary, not errors in chart rendering.
@@ -242,6 +349,8 @@ def main():
         snapshot["captured_at_utc"].replace("Z", "+00:00")
     )
     st.caption(f"Deribit BTC · {snapshot_label}: {captured_at:%Y-%m-%d %H:%M:%S} UTC")
+    if "reopen_notice" in st.session_state:
+        st.info(st.session_state["reopen_notice"])
     open_interest_section(chain, snapshot["captured_at_utc"])
     st.subheader("Implied volatility")
     iv_source = iv_source_control()
@@ -252,6 +361,7 @@ def main():
             "Cannot build IV: the snapshot needs valid, unique contracts and "
             "usable bid/ask quotes."
         )
+        save_analysis_control(save_slot, snapshot, chain)
         return
 
     expiry_dates = chain.drop_duplicates("tau").set_index("tau")["expiry_dt"]
@@ -304,6 +414,7 @@ def main():
         "Moneyness range",
         list(MONEYNESS_RANGES),
         horizontal=True,
+        key="moneyness_range",
         help=(
             "Applies to Heatmap and 3D surface. IV smiles show all observed strikes."
         ),
@@ -351,8 +462,9 @@ def main():
     with heatmap_tab:
         heatmap_view = st.radio(
             "Heatmap values",
-            ["Surface", "Observed"],
+            HEATMAP_VALUES,
             horizontal=True,
+            key="heatmap_view",
             help=(
                 "Surface uses 2D total-variance interpolation. Observed "
                 "shows solved market IV without interpolation."
@@ -413,8 +525,11 @@ def main():
                 tau for tau in available_expiries
                 if st.checkbox(
                     expiry_labels.get(tau, f"tau={tau:g}"),
-                    value=tau in finite_expiries[:3],
-                    key=f"smile_expiry_{snapshot['captured_at_utc']}_{tau}",
+                    value=_default_unless_set(
+                        _smile_key(snapshot["captured_at_utc"], tau),
+                        tau in finite_expiries[:3],
+                    ) or False,
+                    key=_smile_key(snapshot["captured_at_utc"], tau),
                 )
             ]
         st.caption(
@@ -458,6 +573,7 @@ def main():
                 hide_index=True,
                 use_container_width=True,
             )
+    save_analysis_control(save_slot, snapshot, chain)
 
 
 if __name__ == "__main__":

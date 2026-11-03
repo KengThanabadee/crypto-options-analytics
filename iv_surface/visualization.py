@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from iv_surface.chain import DAYS_PER_YEAR
-from iv_surface.positioning import strikes_in_range
+from iv_surface.positioning import GEX_MODES, strikes_in_range
 
 
 _LONG_FRAME_COLUMNS = {"tau", "strike", "iv", "moneyness"}
@@ -649,9 +649,6 @@ def _strike_axis_range(shown: pd.DataFrame, strike_range) -> list[float]:
     strikes = shown["strike"].to_numpy(dtype=float)
     step = np.diff(strikes).min() if len(strikes) > 1 else (high - low) * 0.05
     return [low - step / 2, high + step / 2]
-
-
-GEX_MODES = ("Net", "Gross")
 
 
 # Incomplete/Insufficient markers sit in a strip near the top of the plot on

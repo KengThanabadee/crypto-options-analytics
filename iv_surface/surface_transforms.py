@@ -4,6 +4,13 @@ from scipy.interpolate import LinearNDInterpolator
 from scipy.spatial import QhullError
 
 
+# IV chart view choices; the dashboard and saved analyses share them.
+MONEYNESS_RANGES = {
+    "Core (0.8–1.2)": (0.8, 1.2),
+    "Extended (0.7–1.3)": (0.7, 1.3),
+}
+HEATMAP_VALUES = ("Surface", "Observed")
+
 _LONG_FRAME_COLUMNS = {"tau", "strike", "iv", "moneyness"}
 _ATM_TOLERANCE = 1e-12
 _SURFACE_VALUE_TYPES = {

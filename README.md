@@ -152,6 +152,15 @@ Deribit's public API and the whole page switches to it, with its capture time.
 A failed fetch keeps the current snapshot and shows the error. Only that button
 fetches; every other control reuses the current snapshot.
 
+**Save analysis** in the sidebar downloads one JSON file with the raw snapshot
+(every API response with its capture times) and the settings: OI/GEX expiries,
+strike range, Call/Put customer sides, Net/Gross, IV source, moneyness range,
+heatmap values and smile expiries. **Reopen analysis** loads such a file,
+restores every setting and recomputes every number from the raw snapshot; the
+header then reads "Reopened snapshot". A file saved with a different
+calculation version opens with a short recompute notice. An invalid file shows
+an error and keeps the current analysis.
+
 The top of the page shows Open Interest by strike: Call and Put bars in BTC,
 summed over the selected expiries, with a dashed line at the index. It starts
 at All expiries; the OI expiry selection is separate from the IV charts'
@@ -391,6 +400,22 @@ and `tau`. Deribit's ticker gamma is per USD of the forward; multiply ours by
 `X / F` to compare. `tests/test_gex.py` checks this against a one-time ticker
 capture in `data/deribit_btc_gamma_check_*.json`
 (`experiments/capture_deribit_ticker_gamma.py`).
+
+### `save_analysis(snapshot, settings)` and `open_analysis(raw)`
+
+`save_analysis` returns the saved-analysis JSON text:
+`{"format": "btc-options-analysis", "format_version": 1,
+"calculation_version": N, "snapshot": {...}, "settings": {...}}`. It stores
+no computed numbers. Settings are `oi_expiries` and `smile_expiries` (expiry
+datetimes, saved as UTC `YYYY-MM-DDTHH:MM:SSZ`; empty OI expiries means All
+expiries), `strike_range` and `moneyness_range` as `(low, high)`, `signs`
+(`call`/`put` → ±1), `gex_view` (`Net`/`Gross`), `iv_source` and
+`heatmap_values` (`Surface`/`Observed`). `open_analysis` validates the file,
+the snapshot and every setting against that snapshot and raises `ValueError`
+on any problem. Its `SavedAnalysis` result has `snapshot`, `settings`,
+`calculation_version` and `version_differs`. `CALCULATION_VERSION` goes up
+whenever a change alters a number computed from the same snapshot and
+settings.
 
 ## Assumptions And Limitations
 

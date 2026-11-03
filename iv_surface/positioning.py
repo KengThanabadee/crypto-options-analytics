@@ -39,6 +39,20 @@ def near_spot_range(index_price: float) -> tuple[float, float]:
     )
 
 
+STRIKE_ZOOM_STEP = 1000.0
+
+
+def strike_zoom_bounds(chain: pd.DataFrame) -> tuple[float, float]:
+    """Widest strike zoom: every listed strike and the Near spot range, in whole $1,000s."""
+    near_spot = near_spot_range(float(chain["index_price"].iloc[0]))
+    return (
+        float(np.floor(min(chain["strike"].min(), near_spot[0]) / STRIKE_ZOOM_STEP)
+              * STRIKE_ZOOM_STEP),
+        float(np.ceil(max(chain["strike"].max(), near_spot[1]) / STRIKE_ZOOM_STEP)
+              * STRIKE_ZOOM_STEP),
+    )
+
+
 def strikes_in_range(table: pd.DataFrame, strike_range) -> pd.DataFrame:
     """Return the rows whose strike lies in ``strike_range``, both ends included.
 
@@ -90,6 +104,7 @@ def contract_gamma(strike, tau, mark_iv, forward, index_price):
 # Dealer sign per option type: customer sells -> dealer long gamma (+1),
 # customer buys -> dealer short gamma (-1). Default: Call+ / Put-.
 DEFAULT_SIGNS = {"call": 1, "put": -1}
+GEX_MODES = ("Net", "Gross")
 GEX_MOVE = 0.01
 
 
