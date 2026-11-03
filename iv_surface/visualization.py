@@ -75,15 +75,35 @@ def _maturity_hover(frame, taus):
     """Format source expiry and frozen maturity consistently across charts."""
     return [
         f"Expiry (UTC): {label if not label.startswith('tau=') else 'Unavailable'}<br>"
-        f"Time to expiry: {float(tau) * DAYS_PER_YEAR:.2f} days<br>"
-        f"tau: {float(tau):.4f} years"
+        f"Time to expiry: {float(tau) * DAYS_PER_YEAR:.2f} days"
         for tau, label in zip(taus, _expiry_labels(frame, taus))
     ]
 
 
 def _format_strike(strike):
-    """Keep fractional strikes while omitting unnecessary trailing zeros."""
-    return np.format_float_positional(float(strike), trim="-")
+    """USD with thousands separators, keeping fractional strikes: '$83,500.5'."""
+    if not np.isfinite(float(strike)):
+        return "Unavailable"
+    whole, _, fraction = np.format_float_positional(float(strike), trim="-").partition(".")
+    return f"${int(whole):,}" + (f".{fraction}" if fraction else "")
+
+
+# Combined IV source codes in reader words; other values (interpolation
+# methods) already read as text and pass through.
+SOURCE_LABELS = {
+    "call": "Call",
+    "put": "Put",
+    "near_atm_average": "Average of Call and Put",
+    "near_atm_call_only": "Call only (no Put IV)",
+    "near_atm_put_only": "Put only (no Call IV)",
+    "call_fallback": "Call (no Put IV)",
+    "put_fallback": "Put (no Call IV)",
+    "missing": "No IV",
+}
+
+
+def _source_label(source):
+    return SOURCE_LABELS.get(source, source)
 
 
 def _iv_label(iv_source=None):
@@ -95,9 +115,9 @@ def _surface_hover_text(
     maturity, moneyness, strike, iv, *,
     source_label=None, source=None, value_type=None, iv_label="IV",
 ):
-    parts = [maturity, f"K / S: {moneyness:.4f}", f"strike: {_format_strike(strike)}"]
+    parts = [maturity, f"K / S: {moneyness:.4f}", f"Strike: {_format_strike(strike)}"]
     if source_label is not None:
-        parts.append(f"{source_label}: {escape(str(source))}")
+        parts.append(f"{source_label}: {escape(str(_source_label(source)))}")
     if value_type is not None:
         parts.append(f"Surface value: {escape(str(value_type))}")
     parts.append(f"{iv_label}: {iv:.2%}")
@@ -106,7 +126,7 @@ def _surface_hover_text(
 
 def _heatmap_customdata(long_frame, iv_grid, strike_grid):
     customdata = strike_grid.to_numpy(dtype=float)
-    strike_hover = "strike: %{hovertext}<br>"
+    strike_hover = "Strike: %{hovertext}<br>"
     source_hover = ""
     value_type_hover = ""
 
@@ -133,7 +153,7 @@ def _heatmap_customdata(long_frame, iv_grid, strike_grid):
                 if "interpolation_method" in long_frame.columns
                 else "1D interpolation within expiry",
             )
-        source_grid = long_frame.assign(source=display_source).pivot(
+        source_grid = long_frame.assign(source=display_source.map(_source_label)).pivot(
             index="tau", columns="moneyness", values="source"
         ).reindex(index=iv_grid.index, columns=iv_grid.columns)
         fields.append(source_grid.to_numpy())
@@ -148,10 +168,9 @@ def _heatmap_customdata(long_frame, iv_grid, strike_grid):
         combined[:, :, index] = values
 
     customdata = combined
-    strike_hover = "strike: %{hovertext}<br>"
     next_index = 1
     if has_source:
-        source_label = "Value source" if has_value_type else "Combined source"
+        source_label = "Value source" if has_value_type else "IV from"
         source_hover = f"{source_label}: %{{customdata[{next_index}]}}<br>"
         next_index += 1
     if has_value_type:
@@ -273,7 +292,7 @@ def make_iv_surface_figure(
             source_label = None
             source = None
             if source_hover:
-                source_label = "Value source" if value_type_hover else "Combined source"
+                source_label = "Value source" if value_type_hover else "IV from"
                 source = values[field]
                 field += 1
             text_row.append(_surface_hover_text(
@@ -341,7 +360,7 @@ def make_iv_surface_figure(
             _surface_hover_text(
                 maturity, row.moneyness, row.strike, iv,
                 source_label=(
-                    "Value source" if value_type_hover else "Combined source"
+                    "Value source" if value_type_hover else "IV from"
                 ) if source_hover else None,
                 source=getattr(row, "source", "Observed IV"),
                 value_type="Observed" if value_type_hover else None,
@@ -439,21 +458,40 @@ def make_iv_surface_figure(
     return figure
 
 
+def _band_polygons(x, low, high):
+    """One closed shape per run of strikes where both band edges exist.
+
+    Shapes are separated by None, so a strike missing either edge is a gap.
+    """
+    both = np.isfinite(low) & np.isfinite(high)
+    xs, ys = [], []
+    start = None
+    for index in range(len(x) + 1):
+        if index < len(x) and both[index]:
+            if start is None:
+                start = index
+            continue
+        if start is not None:
+            run = slice(start, index)
+            xs.extend([*x[run], *x[run][::-1], None])
+            ys.extend([*high[run], *low[run][::-1], None])
+            start = None
+    return xs[:-1], ys[:-1]
+
+
 def _add_band_traces(figure, smile, expiry_label, color):
-    """Shade the bid-ask IV display band; gaps stay open (no connectgaps)."""
-    x = smile["moneyness"].to_numpy(dtype=float)
-    fill = f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, 0.18)"
-    common = dict(
-        x=x, mode="lines", line=dict(width=0, color=color), connectgaps=False,
-        hoverinfo="skip", legendgroup=expiry_label, showlegend=False,
+    """Shade the bid-ask IV display band only where both edges exist."""
+    x, y = _band_polygons(
+        smile["moneyness"].to_numpy(dtype=float),
+        smile["band_low"].to_numpy(dtype=float),
+        smile["band_high"].to_numpy(dtype=float),
     )
+    fill = f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, 0.18)"
     figure.add_trace(go.Scatter(
-        y=smile["band_high"].to_numpy(dtype=float),
-        name=f"{expiry_label} bid–ask IV (display band)", **common,
-    ))
-    figure.add_trace(go.Scatter(
-        y=smile["band_low"].to_numpy(dtype=float), fill="tonexty", fillcolor=fill,
-        name=f"{expiry_label} bid–ask IV (display band)", **common,
+        x=x, y=y, mode="lines", fill="toself", fillcolor=fill,
+        line=dict(width=0, color=color), connectgaps=False,
+        hoverinfo="skip", legendgroup=expiry_label, showlegend=False,
+        name=f"{expiry_label} bid–ask IV (display band)",
     ))
 
 
@@ -484,12 +522,15 @@ def make_smile_figure(
         expiry_label = _expiry_labels(long_frame, [tau])[0]
         color = colors[expiry_index % len(colors)]
         customdata = smile["strike"].to_numpy(dtype=float)
-        strike_hover = "strike: %{hovertext}<br>"
+        strike_hover = "Strike: %{hovertext}<br>"
         source_hover = ""
         band_hover = ""
         if "source" in smile.columns:
-            customdata = smile[["strike", "source"]].to_numpy(dtype=object)
-            source_hover = "source: %{customdata[1]}<br>"
+            customdata = np.column_stack([
+                smile["strike"].to_numpy(dtype=object),
+                smile["source"].map(_source_label).to_numpy(dtype=object),
+            ])
+            source_hover = "IV from: %{customdata[1]}<br>"
         if {"band_low", "band_high"} <= set(smile.columns):
             customdata = np.column_stack([
                 customdata.reshape(len(smile), -1).astype(object),
@@ -568,7 +609,7 @@ def make_atm_term_structure_figure(
         hovertemplate=(
             "%{text}<br>"
             f"{_iv_label(iv_source)}: %{{y:.2%}}<br>"
-            "strike: %{hovertext}<br>"
+            "Strike: %{hovertext}<br>"
             "K / S: %{customdata[1]:.4f}<br>"
             "ATM distance: %{customdata[2]:.2%}<br>"
             "selection: %{customdata[3]}<extra></extra>"
@@ -629,15 +670,25 @@ def _open_interest_bars(shown: pd.DataFrame, scope: str) -> list[go.Bar]:
 _GEX_DETAIL_COLUMNS = ["call_gex", "put_gex", "call_oi", "put_oi", "contracts"]
 
 
+def index_label(index_price: float) -> str:
+    """The BTC index as every chart and caption shows it, e.g. 'Index $82,227.73'."""
+    return f"Index ${index_price:,.2f}"
+
+
+GROSS_GEX_COLOR = "#A78BFA"
+
+
 def _gex_bar(shown: pd.DataFrame, scope: str, scenario: str, mode: str) -> go.Bar:
     values = shown[f"{mode.lower()}_gex"].to_numpy(dtype=float)
     details = shown[_GEX_DETAIL_COLUMNS].to_numpy(dtype=float)
     if mode == "Gross":
         # Each type has one sign, so its Gross share is the magnitude of its subtotal.
         details[:, :2] = np.abs(details[:, :2])
-        colors = "#60A5FA"
+        colors = GROSS_GEX_COLOR
+        scenario_line = ""
     else:
         colors = np.where(values >= 0, "#34D399", "#F87171")
+        scenario_line = f"{scenario}<br>"
     hovertemplate = (
         "Strike: $%{x:,.0f}<br>"
         f"{mode} GEX: %{{y:$,.0f}} per 1% BTC move<br>"
@@ -646,7 +697,7 @@ def _gex_bar(shown: pd.DataFrame, scope: str, scenario: str, mode: str) -> go.Ba
         "Call OI: %{customdata[2]:,.1f} BTC<br>"
         "Put OI: %{customdata[3]:,.1f} BTC<br>"
         "Contracts: %{customdata[4]:,.0f}<br>"
-        f"{scenario}<br>"
+        f"{scenario_line}"
         f"Expiries: {escape(scope)}<extra></extra>"
     )
     return go.Bar(
@@ -729,13 +780,15 @@ def make_positioning_figure(
     """Open interest (top) and gamma exposure (bottom) by strike in one figure.
 
     Both panels share one strike axis (``xaxis`` matches ``xaxis2``), so a
-    strike sits at the same x in both and a drag-zoom in either zooms both.
+    strike sits at the same x in both and one zoom covers both.
     ``oi_table`` comes from ``open_interest_by_strike`` and ``gex_table`` from
     ``net_gex_by_strike``; ``strike_range`` only zooms the display. OI bars
     are Call and Put BTC. GEX bars are USD per 1% BTC move: ``mode`` picks
     ``net_gex`` (signed) or ``gross_gex`` (magnitudes), and the GEX title
     states ``assumption`` as a scenario, not observed dealer inventory. The
     panel titles are annotations named ``oi_title`` and ``gex_title``.
+    Dragging selects a band of strikes (``dragmode="select"``, horizontal),
+    which the dashboard turns into the strike range.
     """
     if mode not in GEX_MODES:
         raise ValueError(f"mode must be one of {GEX_MODES}, got {mode!r}")
@@ -759,11 +812,12 @@ def make_positioning_figure(
     figure.add_trace(_gex_bar(gex_shown, scope, scenario, mode), row=2, col=1)
     markers = _gex_status_markers(gex_shown, scope, mode)
     figure.add_traces(markers)
-    # One index line per panel; only the top one is labelled, clear of the GEX title.
+    # One index line per panel; only the top one is labelled, inside the OI
+    # panel so it stays clear of the panel titles.
     index_line = dict(x=index_price, col=1, line_dash="dash", line_color="gray", line_width=1)
     figure.add_vline(
-        row=1, annotation_text=f"Index ${index_price:,.0f}", annotation_position="top",
-        **index_line,
+        row=1, annotation_text=index_label(index_price), annotation_position="top right",
+        annotation_yanchor="top", annotation_font_size=12, **index_line,
     )
     figure.add_vline(row=2, **index_line)
 
@@ -778,12 +832,15 @@ def make_positioning_figure(
         f"{mode} gamma exposure · {escape(scope)}<br><sup>"
         f"USD per 1% BTC move · Exchange mark IV · "
         f"{share} of OI computable · {complete} of {len(gex_table)} strikes "
-        f"complete (every strike in {escape(scope)})<br>"
-        f"{scenario}, not observed dealer inventory</sup>",
+        f"complete (every strike in {escape(scope)})"
+        + (f"<br>{scenario}, not observed dealer inventory" if mode == "Net" else "")
+        + "</sup>",
         layout.yaxis2,
     ))
     figure.update_layout(
         barmode="group",
+        dragmode="select",
+        selectdirection="h",
         height=900,
         margin=dict(l=12, r=12, t=45, b=12),
         legend=dict(orientation="h", x=1, y=1, xanchor="right", yanchor="bottom"),

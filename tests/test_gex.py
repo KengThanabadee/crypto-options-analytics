@@ -206,7 +206,7 @@ def test_gex_panel_labels_source_unit_and_assumption(chain):
     )
 
 
-def test_gross_figure_plots_gross_and_states_the_assumption_as_a_scenario(chain):
+def test_net_states_the_assumption_as_a_scenario_and_gross_leaves_it_out(chain):
     from iv_surface.positioning import assumption_label, net_gex_by_strike
 
     table = net_gex_by_strike(chain)
@@ -221,11 +221,35 @@ def test_gross_figure_plots_gross_and_states_the_assumption_as_a_scenario(chain)
     assert _title(gross, "gex_title").startswith("Gross gamma exposure")
     assert "Gross GEX" in gross.layout.yaxis2.title.text
     assert "Gross GEX: %{y:$,.0f} per 1% BTC move" in gross.data[2].hovertemplate
-    for figure in figures.values():
-        title = _title(figure, "gex_title")
-        assert "Scenario: Call− / Put− (Calls customer buys, Puts customer buys)" in title
-        assert "not observed dealer inventory" in title
-        assert "Scenario: Call− / Put−" in figure.data[2].hovertemplate
+    net = figures["Net"]
+    title = _title(net, "gex_title")
+    assert "Scenario: Call− / Put− (Calls customer buys, Puts customer buys)" in title
+    assert "not observed dealer inventory" in title
+    assert "Scenario: Call− / Put−" in net.data[2].hovertemplate
+    assert "Scenario" not in _title(gross, "gex_title")
+    assert "Scenario" not in gross.data[2].hovertemplate
+
+
+def test_gross_bars_have_their_own_colour(chain):
+    from iv_surface.positioning import net_gex_by_strike
+
+    figure = _positioning_figure(chain, net_gex_by_strike(chain), mode="Gross")
+    oi_colours = {figure.data[0].marker.color, figure.data[1].marker.color}
+    net_colours = set(_positioning_figure(chain, net_gex_by_strike(chain)).data[2].marker.color)
+    gross_colour = figure.data[2].marker.color
+    assert isinstance(gross_colour, str)
+    assert gross_colour not in oi_colours | net_colours
+
+
+def test_index_label_sits_inside_the_oi_panel_below_its_title(chain):
+    from iv_surface.positioning import net_gex_by_strike
+
+    figure = _positioning_figure(chain, net_gex_by_strike(chain))
+    (label,) = [a for a in figure.layout.annotations if a.text.startswith("Index")]
+    assert label.text == f"Index ${chain['index_price'].iloc[0]:,.2f}"
+    # The OI title sits above the panel; the label hangs from the panel's top edge.
+    assert label.yanchor == "top"
+    assert label.yref == "y domain" and label.y <= 1
 
 
 ALL_SIGNS = [

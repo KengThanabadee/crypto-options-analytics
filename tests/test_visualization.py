@@ -205,8 +205,8 @@ def test_chart_sources_follow_sorted_cells_and_selected_expiry():
     ).sample(frac=1, random_state=7)
     heatmap = make_iv_heatmap(frame).data[0]
     assert heatmap.customdata.tolist() == [
-        [[90.0, "put"], [100.0, "near_atm_average"], [110.0, "put_fallback"]],
-        [[90.0, "missing"], [100.0, "near_atm_call_only"], [110.0, "call"]],
+        [[90.0, "Put"], [100.0, "Average of Call and Put"], [110.0, "Put (no Call IV)"]],
+        [[90.0, "No IV"], [100.0, "Call only (no Put IV)"], [110.0, "Call"]],
     ]
     assert np.isnan(heatmap.z[1, 0])
     assert heatmap.z[0].tolist() == [0.4, 0.35, 0.3]
@@ -215,11 +215,11 @@ def test_chart_sources_follow_sorted_cells_and_selected_expiry():
     assert np.isnan(smile.y[0])
     assert smile.y[1:].tolist() == [0.22, 0.2]
     for trace in [heatmap, smile]:
-        assert "source: %{customdata[1]}" in trace.hovertemplate
-        assert "strike: %{hovertext}" in trace.hovertemplate
+        assert "IV from: %{customdata[1]}" in trace.hovertemplate
+        assert "Strike: %{hovertext}" in trace.hovertemplate
         assert trace.connectgaps is False
     for figure in [make_iv_heatmap(_long_frame()), make_smile_figure(_long_frame())]:
-        assert all("source:" not in trace.hovertemplate for trace in figure.data)
+        assert all("IV from:" not in trace.hovertemplate for trace in figure.data)
 
 
 def test_surface_to_long_frame_aligns_and_normalizes_expiry_datetimes():
@@ -441,7 +441,7 @@ def test_make_iv_heatmap_sorts_grid_keeps_nan_and_strike_hover():
     assert np.asarray(trace.z)[1, 1] == 0.20
     assert np.asarray(trace.customdata).tolist() == [[90.0, 110.0], [90.0, 110.0]]
     assert trace.connectgaps is False
-    assert "strike" in trace.hovertemplate
+    assert "Strike" in trace.hovertemplate
     assert figure.layout.xaxis.title.text == "K / S"
     assert figure.layout.yaxis.title.text == "tau (years)"
 
@@ -484,7 +484,7 @@ def test_surface_heatmap_uses_equal_expiry_rows_and_value_type_hover():
     assert frame.loc[frame["surface_value_type"].eq("Interpolated"), "source"].tolist() == [
         "missing"
     ]
-    assert trace.customdata[0][0].tolist() == [90.0, "put", "Observed"]
+    assert trace.customdata[0][0].tolist() == [90.0, "Put", "Observed"]
 
     observed_frame = frame.copy()
     observed_frame["iv"] = observed_frame["observed_iv"]
@@ -493,7 +493,7 @@ def test_surface_heatmap_uses_equal_expiry_rows_and_value_type_hover():
     )
     observed_heatmap = make_iv_heatmap(observed_frame).data[0]
     assert observed_heatmap.customdata[0][1].tolist() == [
-        100.0, "missing", "Missing"
+        100.0, "No IV", "Missing"
     ]
 
 
@@ -559,17 +559,17 @@ def test_surface_hover_text_is_aligned_on_a_nonsquare_grid():
     ).sample(frac=1, random_state=4)
     trace = make_iv_surface_figure(frame).data[0]
     assert np.asarray(trace.text).shape == (2, 4)
-    assert "strike: 90<br>Combined source: put" in trace.text[0][0]
-    assert "strike: 120<br>Combined source: call" in trace.text[0][3]
-    assert "strike: 120<br>Combined source: call_fallback" in trace.text[1][3]
-    assert "tau: 0.2500 years" in trace.text[0][3]
+    assert "Strike: $90<br>IV from: Put" in trace.text[0][0]
+    assert "Strike: $120<br>IV from: Call" in trace.text[0][3]
+    assert "Strike: $120<br>IV from: Call (no Put IV)" in trace.text[1][3]
+    assert "Time to expiry: 91.25 days" in trace.text[0][3]
     assert "IV: 34.00%" in trace.text[0][3]
     assert trace.hovertemplate is None
     assert trace.hoverinfo == "text"
     serialized = json.loads(trace.to_json())
     assert len(serialized["text"]) == 2
     assert len(serialized["text"][0]) == 4
-    assert "strike: 120" in serialized["text"][1][3]
+    assert "Strike: $120" in serialized["text"][1][3]
 
 
 def test_make_smile_figure_filters_and_sorts_without_changing_iv_values():
@@ -642,8 +642,8 @@ def test_make_atm_term_structure_figure_keeps_gap_and_hover_fields():
     assert np.isnan(trace.y).all()
     assert trace.connectgaps is False
     assert np.asarray(trace.customdata).shape == (2, 4)
-    assert "tau: 0.2500 years" in trace.text[0]
-    for label in ["IV", "strike", "K / S", "ATM distance", "selection"]:
+    assert "Time to expiry: 91.25 days" in trace.text[0]
+    for label in ["IV", "Strike", "K / S", "ATM distance", "selection"]:
         assert label in trace.hovertemplate
     assert figure.layout.yaxis.tickformat == ".0%"
 
@@ -671,7 +671,7 @@ def test_figures_use_date_labels_and_tau_fallback_without_moving_coordinates():
         "2026-07-01",
     ]
     assert [trace.meta for trace in smiles.data] == [0.25, 0.5]
-    assert all("tau:" in trace.text[0] for trace in smiles.data)
+    assert all("Time to expiry" in trace.text[0] for trace in smiles.data)
     assert all(trace.connectgaps is False for trace in smiles.data)
 
     selected = make_smile_figure(long_frame, selected_expiries=[0.5])
@@ -697,8 +697,8 @@ def test_all_views_share_source_expiry_and_frozen_maturity_hover():
         expiry_datetimes=['2027-03-26T01:00:00-07:00', None],
     ).sample(frac=1, random_state=7)
     expected = [
-        'Expiry (UTC): Unavailable<br>Time to expiry: 91.25 days<br>tau: 0.2500 years',
-        'Expiry (UTC): 2027-03-26<br>Time to expiry: 182.50 days<br>tau: 0.5000 years',
+        'Expiry (UTC): Unavailable<br>Time to expiry: 91.25 days',
+        'Expiry (UTC): 2027-03-26<br>Time to expiry: 182.50 days',
     ]
     for categorical in [False, True]:
         trace = make_iv_heatmap(frame, equal_expiry_spacing=categorical).data[0]
@@ -749,7 +749,7 @@ def test_all_chart_strike_labels_preserve_fractions_and_numeric_data(with_source
         ),
     ).sample(frac=1, random_state=9)
     original = frame.copy(deep=True)
-    labels = ["82000", "82000.25"]
+    labels = ["$82,000", "$82,000.25"]
     heatmap = make_iv_heatmap(frame).data[0]
     assert np.asarray(heatmap.hovertext).tolist() == [labels, labels]
     assert json.loads(heatmap.to_json())["hovertext"] == [labels, labels]
@@ -757,10 +757,10 @@ def test_all_chart_strike_labels_preserve_fractions_and_numeric_data(with_source
     if with_source:
         strikes = strikes[:, :, 0]
     np.testing.assert_array_equal(strikes.astype(float), [[82000, 82000.25]] * 2)
-    assert "strike: %{hovertext}" in heatmap.hovertemplate
+    assert "Strike: %{hovertext}" in heatmap.hovertemplate
     for trace in make_smile_figure(frame).data:
         assert list(trace.hovertext) == labels
-        assert "strike: %{hovertext}" in trace.hovertemplate
+        assert "Strike: %{hovertext}" in trace.hovertemplate
         numeric = np.asarray(trace.customdata)
         if with_source:
             numeric = numeric[:, 0]
@@ -768,15 +768,75 @@ def test_all_chart_strike_labels_preserve_fractions_and_numeric_data(with_source
     surface, markers = make_iv_surface_figure(frame).data
     for row in surface.text:
         for label, text in zip(labels, row):
-            assert f"strike: {label}<br>" in text
+            assert f"Strike: {label}<br>" in text
     for custom, text in zip(markers.customdata, markers.text):
         label = labels[int(float(custom[0]) == 82000.25)]
-        assert f"strike: {label}<br>" in text
+        assert f"Strike: {label}<br>" in text
     atm_frame = atm_term_structure_frame(frame)
     atm = make_atm_term_structure_figure(atm_frame).data[0]
     assert list(atm.hovertext) == labels
-    assert "strike: %{hovertext}" in atm.hovertemplate
+    assert "Strike: %{hovertext}" in atm.hovertemplate
     np.testing.assert_array_equal(np.asarray(atm.customdata)[:, 0].astype(float),
                                   [82000, 82000.25])
     assert np.isnan(heatmap.z[1, 0])
     pd.testing.assert_frame_equal(frame, original)
+
+
+def test_iv_hovers_use_reader_words():
+    frame = surface_to_long_frame(
+        [[.21, .22, .23], [.31, .32, .33]],
+        [.5, .25], [81_000, 82_000, 83_500.5], 82_000,
+        source_grid=[["put", "near_atm_average", "call_fallback"],
+                     ["put_fallback", "near_atm_call_only", "missing"]],
+        expiry_datetimes=["2027-03-26T08:00:00Z", "2026-12-25T08:00:00Z"],
+    )
+    smile = make_smile_figure(frame, selected_expiries=[.25]).data[0]
+    assert list(smile.hovertext) == ["$81,000", "$82,000", "$83,500.5"]
+    assert "Strike: %{hovertext}" in smile.hovertemplate
+    assert smile.customdata[:, 1].tolist() == [
+        "Put (no Call IV)", "Call only (no Put IV)", "No IV",
+    ]
+    assert smile.text[0] == "Expiry (UTC): 2026-12-25<br>Time to expiry: 91.25 days"
+    heatmap = make_iv_heatmap(frame).data[0]
+    assert heatmap.customdata[1, :, 1].tolist() == [
+        "Put", "Average of Call and Put", "Call (no Put IV)",
+    ]
+    surface = make_iv_surface_figure(frame).data[0]
+    texts = " ".join(np.asarray(surface.text).reshape(-1))
+    for code in ["near_atm", "fallback", "tau"]:
+        assert code not in texts
+    assert "Strike: $83,500.5" in texts
+    atm = make_atm_term_structure_figure(atm_term_structure_frame(frame)).data[0]
+    assert "tau" not in " ".join(atm.text)
+
+
+def _band_segments(trace):
+    """Split a band polygon trace into its closed shapes at the gaps."""
+    segments, current = [], []
+    for x, y in zip(trace.x, trace.y):
+        if x is None or y is None or not np.isfinite(x) or not np.isfinite(y):
+            if current:
+                segments.append(current)
+            current = []
+        else:
+            current.append((x, y))
+    if current:
+        segments.append(current)
+    return segments
+
+
+def test_smile_band_shades_only_strikes_with_both_edges():
+    # Ask edges at every strike; bid edges missing at 1.0 and 1.3 (the 2026-10-16 case).
+    frame = surface_to_long_frame(
+        [[.50, .45, .40, .42, .44]], [.25], [90, 100, 110, 120, 130], 100,
+    ).assign(
+        band_low=[.48, np.nan, .38, .40, np.nan],
+        band_high=[.52, .47, .42, .44, .46],
+    )
+    figure = make_smile_figure(frame)
+    (band,) = [trace for trace in figure.data if trace.mode != "lines+markers"]
+    assert band.fill == "toself"
+    shapes = [sorted({x for x, _ in segment}) for segment in _band_segments(band)]
+    assert shapes == [[pytest.approx(0.9)], [pytest.approx(1.1), pytest.approx(1.2)]]
+    upper_and_lower = sorted(y for _, y in _band_segments(band)[1])
+    assert upper_and_lower == pytest.approx([.38, .40, .42, .44])

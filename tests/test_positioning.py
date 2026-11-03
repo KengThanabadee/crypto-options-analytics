@@ -8,6 +8,7 @@ from iv_surface.positioning import (
     expiry_scope_label,
     near_spot_range,
     open_interest_by_strike,
+    strike_range_from_selection,
     strikes_in_range,
 )
 
@@ -109,3 +110,17 @@ def test_open_interest_panel_shows_calls_and_puts_in_range_with_index_line(chain
         np.testing.assert_array_equal(
             np.asarray(trace.customdata, dtype=float), [[11.5, 4.0], [2.5, 0.0]]
         )
+
+
+@pytest.mark.parametrize("boxes, expected", [
+    ([{"x": [80_400.5, 77_100.0], "y": [0, 1]}], (77_000.0, 80_500.0)),
+    ([{"x": [60_000.0, 81_000.0]}], (70_000.0, 81_000.0)),
+    ([{"x": [70_000.0, 74_000.0]}, {"x": [79_000.0, 83_000.0]}], (79_000.0, 83_000.0)),
+    ([], None),
+    ([{"x": [78_000.0, 78_000.0]}], None),
+    ([{"x": [50_000.0, 60_000.0]}], None),
+])
+def test_a_dragged_strike_band_becomes_the_strike_range(boxes, expected):
+    # The latest box wins, widened to whole $500 steps and clipped to the zoom
+    # bounds; empty or outside bands are ignored.
+    assert strike_range_from_selection(boxes, bounds=(70_000.0, 120_000.0)) == expected

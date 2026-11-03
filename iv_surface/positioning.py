@@ -53,6 +53,26 @@ def strike_zoom_bounds(chain: pd.DataFrame) -> tuple[float, float]:
     )
 
 
+STRIKE_RANGE_STEP = 500.0
+
+
+def strike_range_from_selection(boxes, bounds) -> tuple[float, float] | None:
+    """The strike range a band dragged across the OI/GEX chart asks for.
+
+    ``boxes`` are Plotly box selections (dicts with an ``x`` pair of strikes);
+    the latest one wins. The range widens to whole ``STRIKE_RANGE_STEP``s, the
+    strike slider's step, and is clipped to ``bounds``. Returns None when
+    there is no box or it covers no width inside the bounds.
+    """
+    if not boxes:
+        return None
+    low, high = sorted(float(x) for x in boxes[-1]["x"])
+    low = float(np.floor(low / STRIKE_RANGE_STEP) * STRIKE_RANGE_STEP)
+    high = float(np.ceil(high / STRIKE_RANGE_STEP) * STRIKE_RANGE_STEP)
+    low, high = max(low, bounds[0]), min(high, bounds[1])
+    return (low, high) if high > low else None
+
+
 def strikes_in_range(table: pd.DataFrame, strike_range) -> pd.DataFrame:
     """Return the rows whose strike lies in ``strike_range``, both ends included.
 

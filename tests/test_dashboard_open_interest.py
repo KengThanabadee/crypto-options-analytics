@@ -50,6 +50,11 @@ def _bars(figure):
     return dict(zip(call.x, call.y)), dict(zip(put.x, put.y))
 
 
+def _oi_title(figure):
+    (title,) = [a.text for a in figure.layout.annotations if a.name == "oi_title"]
+    return title
+
+
 def test_open_interest_opens_on_all_expiries_near_spot(figures, chain):
     app = _app()
     assert not app.exception and not app.error
@@ -58,9 +63,9 @@ def test_open_interest_opens_on_all_expiries_near_spot(figures, chain):
     assert app.multiselect[0].label == "OI expiries"
     assert app.multiselect[0].value == []
     assert app.slider[0].value == pytest.approx((low, high))
-    assert any("All expiries" in caption.value for caption in app.caption)
 
     figure = figures["make_positioning_figure"]
+    assert _oi_title(figure) == "Open interest · All expiries"
     calls, puts = _bars(figure)
     expected = open_interest_by_strike(chain)
     expected = expected[(expected.strike >= low) & (expected.strike <= high)]
@@ -83,8 +88,8 @@ def test_oi_expiry_selection_sums_only_those_expiries_and_leaves_iv_alone(figure
     dates = [chain.loc[chain.tau == tau, "expiry_dt"].iloc[0].strftime("%Y-%m-%d")
              for tau in chosen]
     scope = ", ".join(dates)
-    assert any(scope in caption.value for caption in app.caption)
     figure = figures["make_positioning_figure"]
+    assert _oi_title(figure) == f"Open interest · {scope}"
     assert scope in figure.data[0].hovertemplate
     calls, puts = _bars(figure)
     subset = chain[chain.tau.isin(chosen)]

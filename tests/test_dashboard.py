@@ -198,9 +198,10 @@ def test_smile_selection_preserves_observations_and_other_views(monkeypatch):
     assert all(item.connectgaps is False for item in smile.data)
     assert trace.name == dates[selected].strftime("%Y-%m-%d")
     np.testing.assert_array_equal(
-        np.asarray(trace.customdata)[:, 1], result.source_grid[row, order]
+        np.asarray(trace.customdata)[:, 1],
+        [visualization.SOURCE_LABELS[code] for code in result.source_grid[row, order]],
     )
-    for field in ["strike", "K / S", "IV", "source", "fullData.name"]:
+    for field in ["Strike", "K / S", "IV", "IV from", "fullData.name"]:
         assert field in trace.hovertemplate
     for name, before in other_views.items():
         assert figures[name].to_json() == before
@@ -476,3 +477,27 @@ def test_bid_ask_band_iv_is_solved_once_per_snapshot_across_iv_sources(monkeypat
     app.segmented_control(key="iv_source").set_value("Exchange mark").run()
     assert not app.exception and not app.error
     assert sorted(solved) == ["ask_price", "bid_price", "mid_price"]
+
+
+def test_page_labels_the_index_one_way_and_names_the_counted_iv_source():
+    app = _app()
+    assert not any(c.value.startswith("Open interest ·") for c in app.caption)
+    assert any("Index $82,227.73" in m.value for m in app.markdown)
+    assert not any("spot:" in m.value.lower() for m in app.markdown)
+    assert any(e.label == "Combined IV coverage · Exchange mark" for e in app.sidebar.expander)
+    app.segmented_control(key="iv_source").set_value("Quote midpoint").run()
+    assert any(e.label == "Combined IV coverage · Quote midpoint" for e in app.sidebar.expander)
+
+
+def test_smile_checkboxes_show_what_the_chart_draws_on_every_run(monkeypatch):
+    # The popover mounts its checkboxes lazily, so the browser shows each
+    # checkbox's sent default; it must match the value the chart uses.
+    figures = _record_figures(monkeypatch, ["make_smile_figure"])
+    app = _app()
+    for _ in range(2):
+        assert not app.exception
+        drawn = {trace.meta for trace in _line_traces(figures["make_smile_figure"])}
+        assert len(drawn) == 3
+        assert sum(box.value for box in app.checkbox) == 3
+        assert [box.proto.default for box in app.checkbox] == [box.value for box in app.checkbox]
+        app.main.radio[0].set_value("Observed").run()

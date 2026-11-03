@@ -28,6 +28,8 @@ from iv_surface.positioning import (
     near_spot_range,
     net_gex_by_strike,
     open_interest_by_strike,
+    STRIKE_RANGE_STEP,
+    strike_range_from_selection,
     strike_zoom_bounds,
     strikes_in_range,
 )
@@ -39,6 +41,7 @@ from iv_surface.surface_transforms import (
     interpolate_surface_2d,
 )
 from iv_surface.visualization import (
+    index_label,
     make_atm_term_structure_figure,
     make_iv_heatmap,
     make_iv_surface_figure,
@@ -66,7 +69,7 @@ def iv_source_control():
     return st.segmented_control(
         "IV source",
         IV_SOURCES,
-        default=_default_unless_set("iv_source", DEFAULT_IV_SOURCE),
+        default=_widget_default("iv_source", DEFAULT_IV_SOURCE),
         required=True,
         key="iv_source",
         help=(
@@ -78,12 +81,16 @@ def iv_source_control():
     ) or DEFAULT_IV_SOURCE
 
 
+POSITIONING_CHART_KEY = "positioning_chart"
+
+
 def positioning_section(chain, snapshot_id):
     """OI and GEX by strike in one figure, sharing expiries, strike zoom and axis.
 
-    Widget keys carry the snapshot id so a new snapshot starts at All
-    expiries, its own Near spot range and the default GEX scenario. Every
-    control renders before the chart, so an empty range keeps their values.
+    The expiry and strike range keys carry the snapshot id, so a new snapshot
+    starts at All expiries and its own Near spot range; the GEX scenario and
+    view carry over. Every control renders before the chart, so an empty
+    range keeps their values.
     """
     range_key = f"oi_strike_range_{snapshot_id}"
     st.subheader("Open interest and gamma exposure")
@@ -109,25 +116,32 @@ def positioning_section(chain, snapshot_id):
     def set_range(strike_range):
         st.session_state[range_key] = strike_range
 
+    def zoom_to_dragged_strikes():
+        # Streamlit redraws a changed figure from scratch, so a drag on the
+        # chart sets the strike range, which every rerun keeps.
+        selection = st.session_state[POSITIONING_CHART_KEY].selection
+        dragged = strike_range_from_selection(selection.box, all_strikes)
+        if dragged is not None:
+            set_range(dragged)
+
     range_column, reset_column = st.columns([5, 1], vertical_alignment="bottom")
     with range_column:
         strike_range = st.slider(
             "Strike range (USD)",
             min_value=all_strikes[0],
             max_value=all_strikes[1],
-            step=500.0,
+            step=STRIKE_RANGE_STEP,
             format="$%,.0f",
             key=range_key,
-            help="Display zoom only. OI and GEX use every strike in the selected expiries.",
+            help=(
+                "Display zoom only; drag across the chart to zoom too. OI and GEX "
+                "use every strike in the selected expiries."
+            ),
         )
     with reset_column:
         st.button("Near spot", on_click=set_range, args=(near_spot,),
                   help="Reset to ±10% around the index.")
-    signs, mode = gex_scenario_controls(snapshot_id)
-    st.caption(
-        f"Open interest · {scope} · Call and Put in BTC · "
-        f"index ${index_price:,.2f}"
-    )
+    signs, mode = gex_scenario_controls()
     if strikes_in_range(oi_table, strike_range).empty:
         st.info("No strikes in this range.")
         st.button("Zoom out to all strikes", on_click=set_range, args=(all_strikes,))
@@ -140,6 +154,12 @@ def positioning_section(chain, snapshot_id):
             oi_share=computable_oi_share(gex_table), mode=mode,
         ),
         use_container_width=True,
+        key=POSITIONING_CHART_KEY,
+        on_select=zoom_to_dragged_strikes,
+        selection_mode="box",
+        config={"modeBarButtonsToRemove": [
+            "zoom2d", "pan2d", "zoomIn2d", "zoomOut2d", "autoScale2d", "resetScale2d",
+        ]},
     )
     st.caption(
         "GEX per contract = s × gamma × OI × index² × 1%, from Exchange mark IV "
@@ -155,8 +175,8 @@ CUSTOMER_SIDES = {"Customer sells": 1, "Customer buys": -1}
 SIDE_OF_SIGN = {sign: side for side, sign in CUSTOMER_SIDES.items()}
 
 
-def gex_scenario_controls(snapshot_id):
-    """Customer side per option type and Net/Gross; a new snapshot starts at the defaults."""
+def gex_scenario_controls():
+    """Customer side per option type and Net/Gross; a new snapshot keeps them."""
     defaults = {flag: SIDE_OF_SIGN[sign] for flag, sign in DEFAULT_SIGNS.items()}
     columns = st.columns(3)
     signs = {}
@@ -165,9 +185,9 @@ def gex_scenario_controls(snapshot_id):
             side = st.segmented_control(
                 f"{flag.capitalize()}s",
                 list(CUSTOMER_SIDES),
-                default=_default_unless_set(f"gex_{flag}_side_{snapshot_id}", defaults[flag]),
+                default=_widget_default(f"gex_{flag}_side", defaults[flag]),
                 required=True,
-                key=f"gex_{flag}_side_{snapshot_id}",
+                key=f"gex_{flag}_side",
                 help=(
                     f"Scenario for every {flag} in the analysed set, with the dealer "
                     "as counterparty: customer sells → dealer long gamma (+); "
@@ -179,21 +199,35 @@ def gex_scenario_controls(snapshot_id):
         mode = st.segmented_control(
             "GEX view",
             GEX_MODES,
-            default=_default_unless_set(f"gex_mode_{snapshot_id}", "Net"),
+            default=_widget_default("gex_mode", "Net"),
             required=True,
-            key=f"gex_mode_{snapshot_id}",
+            key="gex_mode",
             help="Net lets Calls and Puts cancel. Gross adds magnitudes and ignores the scenario.",
         ) or "Net"
     return signs, mode
 
 
-def _default_unless_set(key, default):
-    """A widget default, or None once its value is set in session state.
+_WRITTEN_KEYS = "_widget_keys_written_this_run"
 
-    Reopening sets widget values through session state; passing a default too
-    would make Streamlit warn about the conflict.
+
+def _set_widget_values(values):
+    """Set widget values through session state, e.g. on reopen or fetch."""
+    st.session_state.update(values)
+    st.session_state.setdefault(_WRITTEN_KEYS, set()).update(values)
+
+
+def _widget_default(key, default):
+    """The default to send with a widget: the value it holds, else ``default``.
+
+    The browser shows a widget's sent default whenever it mounts without its
+    own state (a checkbox inside a closed popover), so the default must be the
+    value the page uses. A value just set through session state already
+    reaches the browser; passing it again as a default makes Streamlit warn,
+    so those widgets get None.
     """
-    return None if key in st.session_state else default
+    if key in st.session_state.get(_WRITTEN_KEYS, ()):
+        return None
+    return st.session_state.get(key, default)
 
 
 def _smile_key(snapshot_id, tau):
@@ -211,7 +245,7 @@ def current_settings(chain, snapshot_id):
     expiry_of = {tau: expiry for expiry, tau in taus.items()}
     signs = {
         flag: CUSTOMER_SIDES[
-            state.get(f"gex_{flag}_side_{snapshot_id}") or SIDE_OF_SIGN[DEFAULT_SIGNS[flag]]
+            state.get(f"gex_{flag}_side") or SIDE_OF_SIGN[DEFAULT_SIGNS[flag]]
         ]
         for flag in ("call", "put")
     }
@@ -222,7 +256,7 @@ def current_settings(chain, snapshot_id):
             near_spot_range(float(chain["index_price"].iloc[0])),
         ),
         "signs": signs,
-        "gex_view": state.get(f"gex_mode_{snapshot_id}") or "Net",
+        "gex_view": state.get("gex_mode") or "Net",
         "iv_source": state.get("iv_source") or DEFAULT_IV_SOURCE,
         "moneyness_range": MONEYNESS_RANGES[
             state.get("moneyness_range", next(iter(MONEYNESS_RANGES)))
@@ -285,9 +319,9 @@ def reopen_saved_analysis():
     widget_values = {
         f"oi_expiries_{snapshot_id}": [float(taus[e]) for e in settings["oi_expiries"]],
         f"oi_strike_range_{snapshot_id}": settings["strike_range"],
-        f"gex_call_side_{snapshot_id}": SIDE_OF_SIGN[settings["signs"]["call"]],
-        f"gex_put_side_{snapshot_id}": SIDE_OF_SIGN[settings["signs"]["put"]],
-        f"gex_mode_{snapshot_id}": settings["gex_view"],
+        "gex_call_side": SIDE_OF_SIGN[settings["signs"]["call"]],
+        "gex_put_side": SIDE_OF_SIGN[settings["signs"]["put"]],
+        "gex_mode": settings["gex_view"],
         "iv_source": settings["iv_source"],
         "moneyness_range": range_name[settings["moneyness_range"]],
         "heatmap_view": settings["heatmap_values"],
@@ -295,7 +329,7 @@ def reopen_saved_analysis():
     smiles = set(settings["smile_expiries"])
     for expiry, tau in taus.items():
         widget_values[_smile_key(snapshot_id, tau)] = expiry in smiles
-    st.session_state.update(widget_values)
+    _set_widget_values(widget_values)
     _use_snapshot(saved.snapshot, saved.chain, "Reopened snapshot")
     if saved.version_differs:
         st.session_state["reopen_notice"] = saved.version_notice()
@@ -340,6 +374,7 @@ def main():
         unsafe_allow_html=True,
     )
     st.title("BTC volatility")
+    st.session_state.pop(_WRITTEN_KEYS, None)
     fetch_latest_snapshot()
     with st.sidebar:
         st.subheader("Saved analysis")
@@ -381,10 +416,7 @@ def main():
     frame = iv_source_long_frame(
         result, expiry_datetimes=expiry_dates.reindex(result.expiries).tolist()
     )
-    st.write(
-        f"Shared spot: **${result.spot_price:,.2f}** · "
-        f"IV source: **{iv_source}**"
-    )
+    st.write(f"{index_label(result.spot_price)} · IV source: **{iv_source}**")
     source = frame["source"]
     counts = (
         int(source.isin(["call", "put", "near_atm_average"]).sum()),
@@ -400,7 +432,7 @@ def main():
         ),
         int(source.eq("missing").sum()),
     )
-    with st.sidebar.expander("Combined IV coverage"):
+    with st.sidebar.expander(f"Combined IV coverage · {iv_source}"):
         for label, count in zip(
             ["Preferred / averaged", "Fallback / one-sided", "Missing"], counts
         ):
@@ -538,7 +570,7 @@ def main():
                 tau for tau in available_expiries
                 if st.checkbox(
                     expiry_labels.get(tau, f"tau={tau:g}"),
-                    value=_default_unless_set(
+                    value=_widget_default(
                         _smile_key(snapshot["captured_at_utc"], tau),
                         tau in finite_expiries[:3],
                     ) or False,

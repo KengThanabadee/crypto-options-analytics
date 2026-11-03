@@ -140,7 +140,66 @@ def test_gross_view_ignores_the_assumption(figures, chain):
     _control(app, "Puts").set_value("Customer sells").run()
     figure = figures["make_positioning_figure"]
     assert list(_gex_bars(figure).y) == gross
-    assert "Scenario: Call+ / Put+" in _gex_title(figure)
+    assert "Scenario" not in _gex_title(figure)
+
+
+def _fetched_snapshot():
+    """The frozen responses, captured one hour later with a different index."""
+    raw = json.loads(SNAPSHOT_PATH.read_text())
+    raw["capture_started_at_utc"] = "2026-10-15T16:18:12.000000Z"
+    raw["captured_at_utc"] = "2026-10-15T16:18:14.000000Z"
+    for request in raw["requests"]:
+        request["received_at_utc"] = "2026-10-15T16:18:13.000000Z"
+    raw["requests"][2]["response"]["result"]["index_price"] = 90000.0
+    return raw
+
+
+def test_fetch_latest_keeps_every_setting_that_still_applies(figures, monkeypatch):
+    monkeypatch.setattr(deribit, "fetch_deribit_snapshot", _fetched_snapshot)
+    app = _app()
+    _control(app, "Calls").set_value("Customer buys").run()
+    _control(app, "GEX view").set_value("Gross").run()
+    _control(app, "IV source").set_value("Quote midpoint").run()
+    app.sidebar.radio[0].set_value("Extended (0.7–1.3)").run()
+    app.main.radio[0].set_value("Observed").run()
+
+    next(b for b in app.button if b.label == "Fetch latest").click().run()
+    assert not app.exception and not app.error
+    assert any("Fetched snapshot" in c.value for c in app.caption)
+    assert _control(app, "Calls").value == "Customer buys"
+    assert _control(app, "Puts").value == "Customer buys"
+    assert _control(app, "GEX view").value == "Gross"
+    assert _control(app, "IV source").value == "Quote midpoint"
+    assert app.sidebar.radio[0].value == "Extended (0.7–1.3)"
+    assert app.main.radio[0].value == "Observed"
+    assert _gex_title(figures["make_positioning_figure"]).startswith("Gross gamma exposure")
+    # The strike range belongs to the old snapshot; the new one starts at its own Near spot.
+    assert app.slider[0].value == near_spot_range(90000.0)
+
+
+def _positioning_chart(app):
+    (chart,) = [c for c in app.get("plotly_chart") if "gex_title" in c.proto.spec]
+    return chart
+
+
+def test_dragging_across_the_chart_sets_the_strike_range_that_reruns_keep(chain):
+    # Streamlit redraws a changed figure from scratch, so the zoom lives in the
+    # strike range: a horizontal drag box-selects strikes and reruns the page.
+    app = _app()
+    chart = _positioning_chart(app)
+    layout = json.loads(chart.proto.spec)["layout"]
+    assert layout["dragmode"] == "select" and layout["selectdirection"] == "h"
+    assert list(chart.proto.selection_mode) == [1]  # BOX
+    assert "zoom2d" in json.loads(chart.proto.config)["modeBarButtonsToRemove"]
+
+    low, high = app.slider[0].value
+    app.slider[0].set_value((low + 2_000, high - 2_000)).run()
+    _control(app, "Calls").set_value("Customer buys").run()
+    _control(app, "GEX view").set_value("Gross").run()
+    assert not app.exception
+    assert app.slider[0].value == (low + 2_000, high - 2_000)
+    next(b for b in app.button if b.label == "Near spot").click().run()
+    assert app.slider[0].value == pytest.approx((low, high))
 
 
 def test_switching_iv_source_never_changes_gex(figures):

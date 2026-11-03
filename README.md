@@ -83,13 +83,14 @@ Deribit does not publish who holds each side, so the sign `s` comes from an
 **assumption** you choose per option type. **Customer sells** means the dealer
 bought the option and is long gamma (`s = +1`, a positive bar); **Customer
 buys** means the dealer is short gamma (`s = −1`, a negative bar). The default
-Call+ / Put− reads: customers sell calls and buy puts. The chart title states
-the assumption as a scenario, not observed dealer inventory.
+Call+ / Put− reads: customers sell calls and buy puts. In Net view the chart
+title states the assumption as a scenario, not observed dealer inventory.
 
 - **Net** (default) adds the signed contributions, so Calls and Puts at a
   strike can cancel. It depends on the assumption.
-- **Gross** adds their magnitudes. It shows how much gamma sits at a strike
-  and does not change with the assumption; it is always at least the size of
+- **Gross** adds their magnitudes, drawn in their own colour. It shows how
+  much gamma sits at a strike and does not change with the assumption, so its
+  title and hover leave the scenario out; it is always at least the size of
   Net.
 
 A strike is drawn as a bar only when every contract in it has OI and mark IV.
@@ -125,7 +126,8 @@ IV; the surface is an interpolated display rather than an arbitrage-free fit.
 Compare observed Combined IV across strikes for selected expiries. The example
 uses the first three usable expiries; each curve retains its missing-value gaps
 and does not use the surface interpolation. The shaded area is the bid–ask IV
-display band; it is wide where quotes are wide, as on the one-day expiry.
+display band, drawn only at strikes where both edges exist; it is wide where
+quotes are wide, as on the one-day expiry.
 
 ![Observed IV smile curves with bid–ask display bands for the first three usable Deribit expiries.](docs/images/iv-smiles.jpg)
 
@@ -212,6 +214,8 @@ browser. A typical session:
 The dashboard opens on the checked-in Deribit BTC snapshot and runs offline;
 the header shows the capture time. **Fetch latest** pulls a new snapshot from
 Deribit's public API and the whole page switches to it, with its capture time.
+Every setting carries over except the OI expiries, strike range and smile
+expiries, which belong to the old snapshot and start at the new one's defaults.
 A failed fetch keeps the current snapshot and shows the error. Only that button
 fetches; every other control reuses the current snapshot.
 
@@ -226,13 +230,15 @@ an error and keeps the current analysis.
 
 The top of the page, **Open interest and gamma exposure**, is one chart with
 two panels that share a strike axis: a strike sits at the same x in both, and
-a drag-zoom in either panel zooms both. The controls sit above the chart. The
+one zoom covers both. The controls sit above the chart. The
 top panel shows Open Interest by strike: Call and Put bars in BTC, summed over
-the selected expiries, with a dashed line at the index. It starts
+the selected expiries, with a dashed line labelled with the index. It starts
 at All expiries; the OI expiry selection is separate from the IV charts'
 expiries. The strike range starts at Near spot, ±10% around the index with
-both ends included, and **Near spot** resets it. The range is a display zoom
-only. A range with no listed strikes shows "No strikes in this range" with a
+both ends included, and **Near spot** resets it. Dragging across either panel
+sets the strike range to the dragged band, widened to whole $500 steps, so the
+zoom stays through every rerun and each panel's value axis fits the visible
+bars. The range is a display zoom only. A range with no listed strikes shows "No strikes in this range" with a
 button that zooms out to every strike; the GEX controls keep their values.
 Hover shows the strike, Call and Put OI in BTC and the expiry scope.
 
@@ -242,7 +248,8 @@ BTC move, computed from Exchange mark IV. Two controls, **Calls** and
 **Puts**, each set Customer sells or Customer buys, with the dealer as
 counterparty: customer sells gives the dealer positive gamma, customer buys
 negative. One choice per option type covers every strike and expiry. A new
-snapshot starts at Call+ / Put− (Calls customer sells, Puts customer buys).
+analysis starts at Call+ / Put− (Calls customer sells, Puts customer buys),
+and Fetch latest keeps the current choice.
 **GEX view** switches between **Net** (the default; signed contributions,
 so Calls and Puts can cancel) and **Gross** (the sum of contribution
 magnitudes, unaffected by the assumption). Flipping a control recomputes the
@@ -250,9 +257,9 @@ signs from the loaded snapshot without fetching; OI, IV and gamma
 magnitudes stay the same. The panel title names the source, unit, the share of OI
 whose GEX is computable and how many strikes are complete, both over every
 strike in the selected expiries, and the active assumption as a scenario, not
-observed dealer inventory. Hover shows Net or Gross GEX, the Call and Put
-subtotals (magnitudes in Gross), Call and Put OI, the contract count, the
-scenario and the expiry scope. A strike where only some contracts are
+observed dealer inventory (Net only). Hover shows Net or Gross GEX, the Call
+and Put subtotals (magnitudes in Gross), Call and Put OI, the contract count,
+the scenario (Net only) and the expiry scope. A strike where only some contracts are
 computable shows an Incomplete data marker instead of a bar, with the labelled
 partial subtotal in the selected Net/Gross view, usable/total contracts, the
 computable OI share (when all OI is known) and the reason; a strike with none
@@ -265,8 +272,11 @@ values across all strikes, with an independent expiry checklist. The ATM view
 uses every expiry and selects the nearest finite Combined IV within 2% of spot,
 averaging equally near strikes. Expiries without an eligible proxy remain gaps;
 selection details show their status. Numerical maturity (`tau`) controls spacing.
-All chart tooltips show source expiry dates in UTC, time to expiry in days
-(`tau × 365`), and `tau` in years, using the frozen snapshot time. The 3D
+All IV tooltips show the source expiry date in UTC and time to expiry in days
+(`tau × 365`) at the snapshot time, the strike in USD with thousands
+separators, and which side the Combined IV came from in plain words (for
+example "Average of Call and Put" or "Call (no Put IV)"). The sidebar's
+Combined IV coverage counts cells for the selected IV source. The 3D
 view switches to a compact layout when its available width is below 700px.
 
 The default `0.80 <= K / S <= 1.20` surface fills missing

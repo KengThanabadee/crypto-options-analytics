@@ -198,16 +198,23 @@ def test_smile_draws_a_labelled_display_band_and_names_the_source(midpoint_frame
     tau = result.expiries[-1]
     figure = make_smile_figure(frame, selected_expiries=[tau], iv_source="Quote midpoint")
     lines = [trace for trace in figure.data if trace.mode == "lines+markers"]
-    band_high, band_low = [trace for trace in figure.data if trace.mode != "lines+markers"]
+    (band,) = [trace for trace in figure.data if trace.mode != "lines+markers"]
     assert len(lines) == 1
     assert "Quote midpoint IV: %{y:.2%}" in lines[0].hovertemplate
     assert "display band" in lines[0].hovertemplate
     row = result.expiries.index(tau)
     order = np.argsort(result.strikes)
-    np.testing.assert_allclose(band_high.y, result.band_high[row, order], equal_nan=True)
-    np.testing.assert_allclose(band_low.y, result.band_low[row, order], equal_nan=True)
+    moneyness = np.asarray(result.strikes)[order] / result.spot_price
+    low, high = result.band_low[row, order], result.band_high[row, order]
+    both = np.isfinite(low) & np.isfinite(high)
+    expected = sorted(
+        [(m, v) for m, v in zip(moneyness[both], high[both])]
+        + [(m, v) for m, v in zip(moneyness[both], low[both])]
+    )
+    drawn = sorted((x, y) for x, y in zip(band.x, band.y) if x is not None)
+    np.testing.assert_allclose(drawn, expected)
     assert all(trace.connectgaps is False for trace in figure.data)
-    assert "display band" in band_low.name
+    assert "display band" in band.name
 
 
 @pytest.mark.parametrize("builder", ["make_iv_heatmap", "make_iv_surface_figure"])

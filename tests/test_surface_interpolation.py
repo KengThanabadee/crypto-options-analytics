@@ -124,7 +124,7 @@ def test_2d_shows_correct_method_in_both_figures(with_source):
     ]
     assert surface.data[0].customdata.tolist() == heatmap.customdata.tolist()
     assert heatmap.customdata[0][0].tolist() == [
-        90., "put" if with_source else "Observed IV", "Observed"
+        90., "Put" if with_source else "Observed IV", "Observed"
     ]
     assert len(surface.data[1].x) == 4
     assert heatmap.connectgaps is False
