@@ -651,37 +651,53 @@ def _strike_axis_range(shown: pd.DataFrame, strike_range) -> list[float]:
     return [low - step / 2, high + step / 2]
 
 
+GEX_MODES = ("Net", "Gross")
+
+
 def make_gex_figure(
     gex_table: pd.DataFrame, index_price: float, strike_range, scope: str,
-    assumption: str, oi_share: float,
+    assumption: str, oi_share: float, mode: str = "Net",
 ) -> go.Figure:
-    """Create Net GEX bars by strike in USD per 1% BTC move.
+    """Create Net or Gross GEX bars by strike in USD per 1% BTC move.
 
     ``gex_table`` is the full table from ``net_gex_by_strike``; ``strike_range``
     only zooms the display and the strike axis matches the OI figure's.
+    ``mode`` picks ``net_gex`` (signed) or ``gross_gex`` (magnitudes). The
+    title states ``assumption`` as a scenario, not observed dealer inventory.
     """
+    if mode not in GEX_MODES:
+        raise ValueError(f"mode must be one of {GEX_MODES}, got {mode!r}")
     detail_columns = ["call_gex", "put_gex", "call_oi", "put_oi", "contracts"]
-    _require_columns(gex_table, {"strike", "net_gex", *detail_columns}, "gex_table")
+    value_column = f"{mode.lower()}_gex"
+    _require_columns(gex_table, {"strike", value_column, *detail_columns}, "gex_table")
     shown = strikes_in_range(gex_table, strike_range).sort_values("strike")
-    net = shown["net_gex"].to_numpy(dtype=float)
+    values = shown[value_column].to_numpy(dtype=float)
+    details = shown[detail_columns].to_numpy(dtype=float)
+    if mode == "Gross":
+        # Each type has one sign, so its Gross share is the magnitude of its subtotal.
+        details[:, :2] = np.abs(details[:, :2])
+        colors = "#60A5FA"
+    else:
+        colors = np.where(values >= 0, "#34D399", "#F87171")
     share = "unknown share" if not np.isfinite(oi_share) else f"{oi_share:.0%}"
+    scenario = f"Scenario: {escape(assumption)}"
     hovertemplate = (
         "Strike: $%{x:,.0f}<br>"
-        "Net GEX: %{y:$,.0f} per 1% BTC move<br>"
+        f"{mode} GEX: %{{y:$,.0f}} per 1% BTC move<br>"
         "Call GEX: %{customdata[0]:$,.0f}<br>"
         "Put GEX: %{customdata[1]:$,.0f}<br>"
         "Call OI: %{customdata[2]:,.1f} BTC<br>"
         "Put OI: %{customdata[3]:,.1f} BTC<br>"
         "Contracts: %{customdata[4]:,.0f}<br>"
-        f"Assumption: {escape(assumption)}<br>"
+        f"{scenario}<br>"
         f"Expiries: {escape(scope)}<extra></extra>"
     )
     figure = go.Figure(go.Bar(
         x=shown["strike"].to_numpy(dtype=float),
-        y=net,
-        customdata=shown[detail_columns].to_numpy(dtype=float),
-        name="Net GEX",
-        marker_color=np.where(net >= 0, "#34D399", "#F87171"),
+        y=values,
+        customdata=details,
+        name=f"{mode} GEX",
+        marker_color=colors,
         hovertemplate=hovertemplate,
     ))
     figure.add_vline(
@@ -691,15 +707,16 @@ def make_gex_figure(
     )
     figure.update_layout(
         title=(
-            f"Net gamma exposure · {escape(scope)}<br><sup>"
-            f"USD per 1% BTC move · Exchange mark IV · {escape(assumption)} · "
-            f"{share} of OI computable</sup>"
+            f"{mode} gamma exposure · {escape(scope)}<br><sup>"
+            f"USD per 1% BTC move · Exchange mark IV · "
+            f"{share} of OI computable<br>"
+            f"{scenario}, not observed dealer inventory</sup>"
         ),
-        height=430,
-        margin=dict(l=12, r=12, t=80, b=12),
+        height=450,
+        margin=dict(l=12, r=12, t=100, b=12),
         showlegend=False,
         xaxis_title="Strike · USD",
-        yaxis_title="Net GEX · USD per 1% BTC move",
+        yaxis_title=f"{mode} GEX · USD per 1% BTC move",
         hovermode="closest",
     )
     figure.update_xaxes(range=_strike_axis_range(shown, strike_range), tickformat=",.0f")

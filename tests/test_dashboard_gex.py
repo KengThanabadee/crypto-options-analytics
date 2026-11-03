@@ -89,3 +89,56 @@ def test_gex_follows_the_oi_expiries_and_strike_zoom(figures, chain):
         figures["make_open_interest_figure"].layout.xaxis.range
     )
     assert "2026-10-17, 2026-10-23" in figure.layout.title.text
+
+
+def _control(app, label):
+    (control,) = [c for c in app.segmented_control if c.label == label]
+    return control
+
+
+def test_new_analysis_starts_at_call_plus_put_minus_and_net(figures):
+    app = _app()
+    assert _control(app, "Calls").value == "Customer sells"
+    assert _control(app, "Puts").value == "Customer buys"
+    assert _control(app, "GEX view").value == "Net"
+    assert figures["make_gex_figure"].layout.title.text.startswith("Net gamma exposure")
+
+
+def test_flipping_an_assumption_changes_only_gex_signs_without_fetching(figures, chain):
+    app = _app()
+    oi_before = figures["make_open_interest_figure"].to_json()
+    _control(app, "Calls").set_value("Customer buys").run()
+    assert not app.exception and not app.error
+
+    figure = figures["make_gex_figure"]
+    low, high = near_spot_range(chain["index_price"].iloc[0])
+    expected = net_gex_by_strike(chain, signs={"call": -1, "put": -1})
+    expected = expected[(expected.strike >= low) & (expected.strike <= high)]
+    np.testing.assert_allclose(list(figure.data[0].y), expected["net_gex"])
+    title = figure.layout.title.text
+    assert "Scenario: Call− / Put− (Calls customer buys, Puts customer buys)" in title
+    assert "not observed dealer inventory" in title
+    assert figures["make_open_interest_figure"].to_json() == oi_before
+
+
+def test_gross_view_ignores_the_assumption(figures, chain):
+    app = _app()
+    _control(app, "GEX view").set_value("Gross").run()
+    gross = list(figures["make_gex_figure"].data[0].y)
+    low, high = near_spot_range(chain["index_price"].iloc[0])
+    expected = net_gex_by_strike(chain)
+    expected = expected[(expected.strike >= low) & (expected.strike <= high)]
+    np.testing.assert_allclose(gross, expected["gross_gex"])
+
+    _control(app, "Puts").set_value("Customer sells").run()
+    figure = figures["make_gex_figure"]
+    assert list(figure.data[0].y) == gross
+    assert "Scenario: Call+ / Put+" in figure.layout.title.text
+
+
+def test_switching_iv_source_never_changes_gex(figures):
+    app = _app()
+    before = figures["make_gex_figure"].to_json()
+    _control(app, "IV source").set_value("Quote midpoint").run()
+    assert not app.exception
+    assert figures["make_gex_figure"].to_json() == before

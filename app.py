@@ -19,6 +19,7 @@ from iv_surface.iv_source import (
     iv_source_long_frame,
 )
 from iv_surface.positioning import (
+    DEFAULT_SIGNS,
     assumption_label,
     computable_oi_share,
     expiry_scope_label,
@@ -32,6 +33,7 @@ from iv_surface.surface_transforms import (
     interpolate_surface_2d,
 )
 from iv_surface.visualization import (
+    GEX_MODES,
     make_atm_term_structure_figure,
     make_gex_figure,
     make_iv_heatmap,
@@ -132,17 +134,55 @@ def open_interest_section(chain, snapshot_id):
         ),
         use_container_width=True,
     )
-    gamma_exposure_section(chain, expiries, scope, index_price, strike_range)
+    gamma_exposure_section(chain, expiries, scope, index_price, strike_range, snapshot_id)
 
 
-def gamma_exposure_section(chain, expiries, scope, index_price, strike_range):
-    """Net GEX by strike below OI, sharing its expiries, strike zoom and index line."""
+CUSTOMER_SIDES = {"Customer sells": 1, "Customer buys": -1}
+
+
+def gex_scenario_controls(snapshot_id):
+    """Customer side per option type and Net/Gross; a new snapshot starts at the defaults."""
+    side_of = {sign: side for side, sign in CUSTOMER_SIDES.items()}
+    defaults = {flag: side_of[sign] for flag, sign in DEFAULT_SIGNS.items()}
+    columns = st.columns(3)
+    signs = {}
+    for column, flag in zip(columns, ("call", "put")):
+        with column:
+            side = st.segmented_control(
+                f"{flag.capitalize()}s",
+                list(CUSTOMER_SIDES),
+                default=defaults[flag],
+                required=True,
+                key=f"gex_{flag}_side_{snapshot_id}",
+                help=(
+                    f"Scenario for every {flag} in the analysed set, with the dealer "
+                    "as counterparty: customer sells → dealer long gamma (+); "
+                    "customer buys → dealer short gamma (−)."
+                ),
+            ) or defaults[flag]
+        signs[flag] = CUSTOMER_SIDES[side]
+    with columns[2]:
+        mode = st.segmented_control(
+            "GEX view",
+            GEX_MODES,
+            default="Net",
+            required=True,
+            key=f"gex_mode_{snapshot_id}",
+            help="Net lets Calls and Puts cancel. Gross adds magnitudes and ignores the scenario.",
+        ) or "Net"
+    return signs, mode
+
+
+def gamma_exposure_section(chain, expiries, scope, index_price, strike_range, snapshot_id):
+    """GEX by strike below OI, sharing its expiries, strike zoom and index line."""
+    signs, mode = gex_scenario_controls(snapshot_id)
     st.plotly_chart(
         make_gex_figure(
-            net_gex_by_strike(chain, expiries),
+            net_gex_by_strike(chain, expiries, signs=signs),
             index_price=index_price, strike_range=strike_range, scope=scope,
-            assumption=assumption_label(),
+            assumption=assumption_label(signs),
             oi_share=computable_oi_share(chain, expiries),
+            mode=mode,
         ),
         use_container_width=True,
     )

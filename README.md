@@ -161,13 +161,22 @@ only. A range with no listed strikes shows "No strikes in this range" with a
 button that zooms out to every strike. Hover shows the strike, Call and Put OI
 in BTC and the expiry scope.
 
-Directly below OI, a Net gamma exposure (GEX) bar chart uses the same expiry
+Directly below OI, a gamma exposure (GEX) bar chart uses the same expiry
 selection, strike range, strike axis and index line. Bars are in USD per 1%
-BTC move, computed from Exchange mark IV under the assumption Call+ / Put−
-(Calls customer sells, Puts customer buys). The title names the source, unit,
-assumption and the share of OI whose GEX is computable. Hover shows Net GEX,
-the Call and Put subtotals, Call and Put OI, the contract count, the
-assumption and the expiry scope.
+BTC move, computed from Exchange mark IV. Two controls, **Calls** and
+**Puts**, each set Customer sells or Customer buys, with the dealer as
+counterparty: customer sells gives the dealer positive gamma, customer buys
+negative. One choice per option type covers every strike and expiry. A new
+snapshot starts at Call+ / Put− (Calls customer sells, Puts customer buys).
+**GEX view** switches between **Net** (the default; signed contributions,
+so Calls and Puts can cancel) and **Gross** (the sum of contribution
+magnitudes, unaffected by the assumption). Flipping a control recomputes the
+signs from the loaded snapshot without fetching; OI, IV and gamma
+magnitudes stay the same. The title names the source, unit, the share of OI
+whose GEX is computable, and the active assumption as a scenario, not
+observed dealer inventory. Hover shows Net or Gross GEX, the Call and Put
+subtotals (magnitudes in Gross), Call and Put OI, the contract count, the
+scenario and the expiry scope.
 
 Below it, the dashboard shows a Combined IV heatmap, 3D surface, IV smiles, and ATM term
 structure. IV smiles use original observed
@@ -352,8 +361,9 @@ Each contract contributes `s × gamma × OI × X² × 0.01` USD per 1% BTC move,
 where `X` is the index, OI is in BTC and `s` is `+1` where the customer sells
 (dealer long gamma) and `−1` where the customer buys. `signs` maps `call` and
 `put` to `s`; the default `DEFAULT_SIGNS` is Call+ / Put−. Returns `strike`,
-`net_gex`, `call_gex`, `put_gex`, `call_oi`, `put_oi` and `contracts`; a strike
-with any non-computable contract is `NaN`. `gex_contributions(chain, signs)`
+`net_gex`, `gross_gex`, `call_gex`, `put_gex`, `call_oi`, `put_oi` and
+`contracts`; `gross_gex` is the sum of `abs(contribution)` and does not depend
+on `signs`. A strike with any non-computable contract is `NaN` in both. `gex_contributions(chain, signs)`
 returns the per-contract rows and `computable_oi_share(chain, expiries)` the
 share of OI with a computable contribution.
 

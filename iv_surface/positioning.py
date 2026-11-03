@@ -143,9 +143,10 @@ def _complete_sum(values: pd.Series) -> float:
 
 
 def net_gex_by_strike(chain: pd.DataFrame, expiries=None, signs=None) -> pd.DataFrame:
-    """Sum signed GEX contributions by strike (Net), USD per 1% BTC move.
+    """Sum GEX contributions by strike, USD per 1% BTC move.
 
-    Calls and Puts can cancel. ``call_gex``/``put_gex`` are the per-type
+    ``net_gex`` sums signed contributions, so Calls and Puts can cancel;
+    ``gross_gex`` sums their magnitudes and does not depend on ``signs``. ``call_gex``/``put_gex`` are the per-type
     subtotals and ``call_oi``/``put_oi`` the strike's OI in BTC. A strike with
     any non-computable contract gets NaN, never a partial sum.
     """
@@ -156,13 +157,14 @@ def net_gex_by_strike(chain: pd.DataFrame, expiries=None, signs=None) -> pd.Data
         records.append({
             "strike": float(strike),
             "net_gex": _complete_sum(group["contribution"]),
+            "gross_gex": _complete_sum(group["contribution"].abs()),
             "call_gex": _complete_sum(by_type["call"]["contribution"]),
             "put_gex": _complete_sum(by_type["put"]["contribution"]),
             "call_oi": _complete_sum(by_type["call"]["open_interest"]),
             "put_oi": _complete_sum(by_type["put"]["open_interest"]),
             "contracts": len(group),
         })
-    columns = ["strike", "net_gex", "call_gex", "put_gex", "call_oi", "put_oi", "contracts"]
+    columns = ["strike", "net_gex", "gross_gex", "call_gex", "put_gex", "call_oi", "put_oi", "contracts"]
     return pd.DataFrame(records, columns=columns)
 
 

@@ -68,7 +68,7 @@ def test_iv_charts_open_on_exchange_mark_and_switch_to_quote_midpoint(monkeypatc
     chain = _chain()
     app = _app()
     assert not app.exception and not app.error
-    control = app.segmented_control[0]
+    control = app.segmented_control(key="iv_source")
     assert control.label == "IV source"
     assert control.value == "Exchange mark"
     assert list(control.options) == ["Exchange mark", "Quote midpoint"]
@@ -276,7 +276,7 @@ def test_without_quotes_exchange_mark_still_charts_and_quote_midpoint_stays_miss
     line = _line_traces(figures["make_smile_figure"])[0]
     assert np.isfinite(line.y).any()
 
-    app.segmented_control[0].set_value("Quote midpoint").run()
+    app.segmented_control(key="iv_source").set_value("Quote midpoint").run()
     assert not app.exception and not app.error
     assert any("No IV solves succeeded" in item.value for item in app.warning)
     counts = [int(metric.value.replace(",", "")) for metric in app.metric]
