@@ -112,7 +112,8 @@ def gex_contributions(chain: pd.DataFrame, signs=None) -> pd.DataFrame:
 
     Gamma always comes from the contract's own ``tau`` and Exchange mark IV
     (``mark_iv``) on its reported forward; ``s`` is +1 where the customer
-    sells and -1 where the customer buys. Missing inputs give NaN.
+    sells and -1 where the customer buys. Missing inputs give NaN, except
+    that known zero OI contributes zero even without a gamma.
     """
     signs = DEFAULT_SIGNS if signs is None else signs
     index_price = chain["index_price"].to_numpy(dtype=float)
@@ -123,6 +124,7 @@ def gex_contributions(chain: pd.DataFrame, signs=None) -> pd.DataFrame:
     sign = chain["flag"].map(signs).to_numpy(dtype=float)
     open_interest = chain["open_interest"].to_numpy(dtype=float)
     contribution = sign * gamma * open_interest * index_price**2 * GEX_MOVE
+    contribution = np.where(open_interest == 0, 0.0, contribution)
     return pd.DataFrame({
         "symbol": chain["symbol"].to_numpy(),
         "flag": chain["flag"].to_numpy(),
@@ -142,30 +144,110 @@ def _complete_sum(values: pd.Series) -> float:
     return float(values.sum()) if values.notna().all() else np.nan
 
 
+_CAUSES = ("no OI", "no mark IV", "no gamma inputs")
+
+
+def _missing_reason(rows: pd.DataFrame) -> str:
+    """Say why contracts lack a GEX contribution, e.g. ``1 Put: no mark IV``."""
+    missing = rows[rows["contribution"].isna()]
+    causes = np.select(
+        [
+            missing["open_interest"].isna().to_numpy(),
+            ~(missing["mark_iv"].to_numpy(dtype=float) > 0),
+        ],
+        list(_CAUSES[:2]),
+        default=_CAUSES[2],
+    )
+    parts = []
+    for cause in _CAUSES:
+        flags = missing["flag"].to_numpy()[causes == cause]
+        for flag in ("call", "put"):
+            count = int((flags == flag).sum())
+            if count:
+                noun = flag.capitalize() + ("s" if count > 1 else "")
+                parts.append(f"{count} {noun}: {cause}")
+    return "; ".join(parts)
+
+
+def strike_coverage(rows: pd.DataFrame, values: pd.Series) -> dict:
+    """Assess one strike's GEX from all its contracts in the selected expiries.
+
+    ``rows`` are the strike's ``gex_contributions`` rows with a ``mark_iv``
+    column; ``values`` are the per-contract numbers the mode adds: the signed
+    contributions for Net or their magnitudes for Gross (NaN where not
+    computable). ``status`` is ``complete`` when every contract is
+    computable, ``incomplete`` when some are and ``insufficient`` when none
+    are. ``total`` is the full sum only when complete; ``partial`` is the sum
+    over computable contracts whenever any exist. ``oi_share`` is the
+    computable share of the strike's OI, NaN unless every OI is known.
+    """
+    usable = rows["contribution"].notna()
+    count = int(usable.sum())
+    status = (
+        "complete" if count == len(rows)
+        else "insufficient" if count == 0
+        else "incomplete"
+    )
+    oi_total = _complete_sum(rows["open_interest"])
+    if oi_total > 0:
+        oi_share = float(rows.loc[usable, "open_interest"].sum() / oi_total)
+    else:
+        oi_share = 1.0 if oi_total == 0 else np.nan
+    return {
+        "status": status,
+        "total": float(values.sum()) if status == "complete" else np.nan,
+        "partial": float(values[usable].sum()) if count else np.nan,
+        "usable": count,
+        "contracts": len(rows),
+        "oi_share": oi_share,
+        "reason": _missing_reason(rows),
+    }
+
+
+GEX_COLUMNS = [
+    "strike", "net_gex", "gross_gex", "call_gex", "put_gex", "call_oi", "put_oi",
+    "contracts", "status", "partial_net_gex", "partial_gross_gex", "usable",
+    "oi_share", "reason",
+]
+
+
 def net_gex_by_strike(chain: pd.DataFrame, expiries=None, signs=None) -> pd.DataFrame:
     """Sum GEX contributions by strike, USD per 1% BTC move.
 
     ``net_gex`` sums signed contributions, so Calls and Puts can cancel;
-    ``gross_gex`` sums their magnitudes and does not depend on ``signs``. ``call_gex``/``put_gex`` are the per-type
-    subtotals and ``call_oi``/``put_oi`` the strike's OI in BTC. A strike with
-    any non-computable contract gets NaN, never a partial sum.
+    ``gross_gex`` sums their magnitudes and does not depend on ``signs``.
+    ``call_gex``/``put_gex`` are the per-type subtotals and
+    ``call_oi``/``put_oi`` the strike's OI in BTC. ``net_gex`` and
+    ``gross_gex`` are NaN unless every contract is computable, never a partial
+    sum; ``partial_net_gex``/``partial_gross_gex`` sum the computable
+    contracts, and ``status``, ``usable``, ``oi_share`` and ``reason`` come
+    from ``strike_coverage``.
     """
-    rows = gex_contributions(_in_expiries(chain, expiries), signs)
+    scoped = _in_expiries(chain, expiries)
+    rows = gex_contributions(scoped, signs)
+    rows["mark_iv"] = scoped["mark_iv"].to_numpy(dtype=float)
     records = []
     for strike, group in rows.groupby("strike", sort=True):
         by_type = {flag: group[group["flag"] == flag] for flag in ("call", "put")}
+        coverage = strike_coverage(group, group["contribution"])
+        gross = strike_coverage(group, group["contribution"].abs())
         records.append({
             "strike": float(strike),
-            "net_gex": _complete_sum(group["contribution"]),
-            "gross_gex": _complete_sum(group["contribution"].abs()),
+            "net_gex": coverage["total"],
+            "gross_gex": gross["total"],
             "call_gex": _complete_sum(by_type["call"]["contribution"]),
             "put_gex": _complete_sum(by_type["put"]["contribution"]),
             "call_oi": _complete_sum(by_type["call"]["open_interest"]),
             "put_oi": _complete_sum(by_type["put"]["open_interest"]),
-            "contracts": len(group),
+            "contracts": coverage["contracts"],
+            "status": coverage["status"],
+            "partial_net_gex": coverage["partial"],
+            "partial_gross_gex": gross["partial"],
+            "usable": coverage["usable"],
+            "oi_share": coverage["oi_share"],
+            "reason": coverage["reason"],
         })
-    columns = ["strike", "net_gex", "gross_gex", "call_gex", "put_gex", "call_oi", "put_oi", "contracts"]
-    return pd.DataFrame(records, columns=columns)
+    return pd.DataFrame(records, columns=GEX_COLUMNS)
 
 
 def computable_oi_share(chain: pd.DataFrame, expiries=None) -> float:

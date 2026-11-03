@@ -654,6 +654,63 @@ def _strike_axis_range(shown: pd.DataFrame, strike_range) -> list[float]:
 GEX_MODES = ("Net", "Gross")
 
 
+# Incomplete/Insufficient markers sit in a strip near the top of the plot on
+# their own 0..1 axis, so they never read as a GEX value or a zero bar.
+_STATUS_STRIP_Y = 0.94
+
+
+def _incomplete_text(row, scope: str, mode: str) -> str:
+    oi_share = (
+        f"{row.oi_share:.1%} of strike OI computable"
+        if np.isfinite(row.oi_share) else "Computable OI share unknown (OI missing)"
+    )
+    return (
+        f"<b>Incomplete data</b><br>Strike: ${row.strike:,.0f}<br>"
+        f"Partial {mode} GEX (computable contracts only): "
+        f"${getattr(row, f'partial_{mode.lower()}_gex'):,.0f} "
+        f"per 1% BTC move<br>"
+        f"{row.usable} of {row.contracts} contracts usable<br>{oi_share}<br>"
+        f"Reason: {escape(row.reason)}<br>Expiries: {escape(scope)}"
+    )
+
+
+def _insufficient_text(row, scope: str, mode: str) -> str:
+    return (
+        f"<b>Insufficient data</b><br>Strike: ${row.strike:,.0f}<br>"
+        f"0 of {row.contracts} contracts usable<br>"
+        f"Reason: {escape(row.reason)}<br>Expiries: {escape(scope)}"
+    )
+
+
+def _add_gex_status_markers(figure: go.Figure, shown: pd.DataFrame, scope: str, mode: str):
+    styles = [
+        ("incomplete", "Incomplete data", "diamond-open", "#F59E0B", _incomplete_text),
+        ("insufficient", "Insufficient data", "x-thin-open", "#9CA3AF", _insufficient_text),
+    ]
+    added = False
+    for status, name, symbol, color, describe in styles:
+        rows = shown[shown["status"] == status]
+        if rows.empty:
+            continue
+        added = True
+        figure.add_trace(go.Scatter(
+            x=rows["strike"].to_numpy(dtype=float),
+            y=np.full(len(rows), _STATUS_STRIP_Y),
+            yaxis="y2",
+            mode="markers",
+            name=name,
+            marker=dict(symbol=symbol, size=11, color=color, line=dict(width=2, color=color)),
+            hovertext=[describe(row, scope, mode) for row in rows.itertuples()],
+            hoverinfo="text",
+            showlegend=True,
+        ))
+    if added:
+        figure.update_layout(
+            yaxis2=dict(overlaying="y", range=[0, 1], visible=False, fixedrange=True),
+            legend=dict(orientation="h", x=0.01, y=0.86, bgcolor="rgba(0,0,0,0)"),
+        )
+
+
 def make_gex_figure(
     gex_table: pd.DataFrame, index_price: float, strike_range, scope: str,
     assumption: str, oi_share: float, mode: str = "Net",
@@ -669,7 +726,12 @@ def make_gex_figure(
         raise ValueError(f"mode must be one of {GEX_MODES}, got {mode!r}")
     detail_columns = ["call_gex", "put_gex", "call_oi", "put_oi", "contracts"]
     value_column = f"{mode.lower()}_gex"
-    _require_columns(gex_table, {"strike", value_column, *detail_columns}, "gex_table")
+    _require_columns(
+        gex_table,
+        {"strike", value_column, *detail_columns, "status", f"partial_{value_column}",
+         "usable", "oi_share", "reason"},
+        "gex_table",
+    )
     shown = strikes_in_range(gex_table, strike_range).sort_values("strike")
     values = shown[value_column].to_numpy(dtype=float)
     details = shown[detail_columns].to_numpy(dtype=float)
@@ -697,24 +759,28 @@ def make_gex_figure(
         y=values,
         customdata=details,
         name=f"{mode} GEX",
+        showlegend=False,
         marker_color=colors,
         hovertemplate=hovertemplate,
     ))
+    _add_gex_status_markers(figure, shown, scope, mode)
     figure.add_vline(
         x=index_price, line_dash="dash", line_color="gray", line_width=1,
         annotation_text=f"Index ${index_price:,.0f}",
         annotation_position="top",
     )
+    complete = int((gex_table["status"] == "complete").sum())
     figure.update_layout(
         title=(
             f"{mode} gamma exposure · {escape(scope)}<br><sup>"
             f"USD per 1% BTC move · Exchange mark IV · "
-            f"{share} of OI computable<br>"
+            f"{share} of OI computable · {complete} of {len(gex_table)} strikes "
+            f"complete (every strike in {escape(scope)})<br>"
             f"{scenario}, not observed dealer inventory</sup>"
         ),
         height=450,
         margin=dict(l=12, r=12, t=100, b=12),
-        showlegend=False,
+        showlegend=len(figure.data) > 1,
         xaxis_title="Strike · USD",
         yaxis_title=f"{mode} GEX · USD per 1% BTC move",
         hovermode="closest",

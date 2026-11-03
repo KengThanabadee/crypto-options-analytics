@@ -173,10 +173,16 @@ so Calls and Puts can cancel) and **Gross** (the sum of contribution
 magnitudes, unaffected by the assumption). Flipping a control recomputes the
 signs from the loaded snapshot without fetching; OI, IV and gamma
 magnitudes stay the same. The title names the source, unit, the share of OI
-whose GEX is computable, and the active assumption as a scenario, not
+whose GEX is computable and how many strikes are complete, both over every
+strike in the selected expiries, and the active assumption as a scenario, not
 observed dealer inventory. Hover shows Net or Gross GEX, the Call and Put
 subtotals (magnitudes in Gross), Call and Put OI, the contract count, the
-scenario and the expiry scope.
+scenario and the expiry scope. A strike where only some contracts are
+computable shows an Incomplete data marker instead of a bar, with the labelled
+partial subtotal in the selected Net/Gross view, usable/total contracts, the
+computable OI share (when all OI is known) and the reason; a strike with none
+shows Insufficient data and the reason. Markers sit in a strip near the top of
+the chart, away from zero.
 
 Below it, the dashboard shows a Combined IV heatmap, 3D surface, IV smiles, and ATM term
 structure. IV smiles use original observed
@@ -362,8 +368,18 @@ where `X` is the index, OI is in BTC and `s` is `+1` where the customer sells
 (dealer long gamma) and `−1` where the customer buys. `signs` maps `call` and
 `put` to `s`; the default `DEFAULT_SIGNS` is Call+ / Put−. Returns `strike`,
 `net_gex`, `gross_gex`, `call_gex`, `put_gex`, `call_oi`, `put_oi` and
-`contracts`; `gross_gex` is the sum of `abs(contribution)` and does not depend
-on `signs`. A strike with any non-computable contract is `NaN` in both. `gex_contributions(chain, signs)`
+`contracts`, plus `status`, `partial_net_gex`, `partial_gross_gex`, `usable`,
+`oi_share` and `reason` from `strike_coverage(rows, values)`. `gross_gex` sums
+`abs(contribution)` and does not depend on `signs`. A contract with known zero
+OI contributes zero even without IV; missing OI or mark IV leaves it
+non-computable, with no midpoint or interpolated IV filled in. `status` is
+`complete` (every contract computable, `net_gex`/`gross_gex` are the sums, a
+true zero included), `incomplete` (some: both `NaN`, the `partial_*` columns
+sum the computable contracts) or `insufficient` (none: all `NaN`). `oi_share`
+is the strike's computable OI share, `NaN` unless every OI is known; `reason`
+counts the missing inputs by type, e.g. `1 Put: no mark IV`. `strike_coverage`
+takes the values to add: signed contributions for Net, magnitudes for Gross.
+`gex_contributions(chain, signs)`
 returns the per-contract rows and `computable_oi_share(chain, expiries)` the
 share of OI with a computable contribution.
 
