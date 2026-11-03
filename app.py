@@ -110,7 +110,7 @@ def positioning_section(chain, snapshot_id):
             min_value=all_strikes[0],
             max_value=all_strikes[1],
             step=500.0,
-            format="$%.0f",
+            format="$%,.0f",
             key=range_key,
             help="Display zoom only. OI and GEX use every strike in the selected expiries.",
         )

@@ -113,6 +113,15 @@ def test_strike_range_zooms_and_resets_to_near_spot(figures, chain):
     assert app.slider[0].value == pytest.approx(near)
 
 
+def test_strike_range_labels_read_as_thousands_separated_usd(chain):
+    app = _app()
+    slider = app.slider[0]
+    # sprintf-js: "%,.0f" groups thousands, so 74,004.96 reads "$74,005".
+    assert slider.proto.format == "$%,.0f"
+    index_price = chain["index_price"].iloc[0]
+    assert slider.value == (index_price * 0.9, index_price * 1.1)
+
+
 def test_empty_strike_range_shows_a_state_that_zooms_out(figures, chain):
     app = _app()
     # 81,000 and 81,500 are adjacent listed strikes; nothing lies strictly between.
