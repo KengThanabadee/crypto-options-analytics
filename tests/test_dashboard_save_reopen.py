@@ -9,7 +9,7 @@ import requests
 import streamlit
 from streamlit.testing.v1 import AppTest
 
-from iv_surface import saved_analysis
+from iv_surface import iv_source, saved_analysis
 from iv_surface.deribit import load_deribit_snapshot, parse_deribit_snapshot
 
 
@@ -204,6 +204,39 @@ def test_reopening_another_snapshot_switches_the_page_and_controls_keep_working(
     assert app.checkbox[0].value and app.checkbox[3].value
     assert app.slider[0].value == (70_000.0, 100_000.0)
     assert any("Reopened snapshot: 2026-10-15 16:18:14 UTC" in c.value for c in app.caption)
+
+
+def test_a_failed_iv_build_keeps_the_iv_view_settings_and_saves_them(
+    saved_files, monkeypatch
+):
+    build = iv_source.build_iv_source_surface
+
+    def build_or_fail(chain, source, **kwargs):
+        if source == "Quote midpoint":
+            raise ValueError("no usable quotes")
+        return build(chain, source, **kwargs)
+
+    streamlit.cache_data.clear()
+    monkeypatch.setattr(iv_source, "build_iv_source_surface", build_or_fail)
+    app = _app()
+    app.sidebar.radio[0].set_value("Extended (0.7–1.3)").run()
+    app.main.radio[0].set_value("Observed").run()
+    app.checkbox[0].set_value(False).run()
+    app.checkbox[5].set_value(True).run()
+    chosen = json.loads(saved_files[-1])["settings"]
+    shown = _settings_shown(app)
+
+    app.segmented_control(key="iv_source").set_value("Quote midpoint").run()
+    assert any("Cannot build IV" in error.value for error in app.error)
+    _segmented(app, "GEX view").set_value("Gross").run()
+    _segmented(app, "GEX view").set_value("Net").run()
+    saved = json.loads(saved_files[-1])["settings"]
+    assert saved == {**chosen, "iv_source": "Quote midpoint"}
+
+    app.segmented_control(key="iv_source").set_value("Exchange mark").run()
+    assert not app.exception and not app.error
+    assert _settings_shown(app) == shown
+    streamlit.cache_data.clear()
 
 
 def test_an_empty_strike_range_keeps_the_gex_scenario_and_saves_it(saved_files):

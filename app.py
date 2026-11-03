@@ -235,6 +235,20 @@ def current_settings(chain, snapshot_id):
     }
 
 
+def keep_iv_view_settings(chain, snapshot_id):
+    """Hold the IV view settings on a run that cannot draw the IV charts.
+
+    Streamlit drops a widget's value on any run that does not draw it.
+    Writing each value back as session state keeps the user's moneyness range,
+    heatmap values and smile expiries for Save and for when the charts return.
+    """
+    state = st.session_state
+    smile_keys = [_smile_key(snapshot_id, tau) for tau in _expiry_taus(chain)]
+    for key in ["moneyness_range", "heatmap_view", *smile_keys]:
+        if key in state:
+            state[key] = state[key]
+
+
 def save_analysis_control(slot, snapshot, chain):
     """Download the raw snapshot with the current settings as one file."""
     captured_at = snapshot["captured_at_utc"]
@@ -359,6 +373,7 @@ def main():
             "Cannot build IV: the snapshot needs valid, unique contracts and "
             "usable bid/ask quotes."
         )
+        keep_iv_view_settings(chain, snapshot["captured_at_utc"])
         save_analysis_control(save_slot, snapshot, chain)
         return
 
