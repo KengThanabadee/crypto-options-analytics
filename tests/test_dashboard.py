@@ -501,3 +501,23 @@ def test_smile_checkboxes_show_what_the_chart_draws_on_every_run(monkeypatch):
         assert sum(box.value for box in app.checkbox) == 3
         assert [box.proto.default for box in app.checkbox] == [box.value for box in app.checkbox]
         app.main.radio[0].set_value("Observed").run()
+
+
+@pytest.mark.parametrize("source", ["Exchange mark", "Quote midpoint"])
+def test_no_chart_draws_across_missing_values(source):
+    # Missing values stay gaps on screen: lines never bridge them, and a band
+    # is only ever a closed shape, since "tonexty" joins two edges across gaps.
+    app = _app()
+    (control,) = [c for c in app.segmented_control if c.label == "IV source"]
+    control.set_value(source).run()
+    assert not app.exception
+    traces = [
+        trace
+        for chart in app.get("plotly_chart")
+        for trace in json.loads(chart.proto.spec)["data"]
+    ]
+    assert traces
+    for trace in traces:
+        if trace.get("type", "scatter") in ("scatter", "heatmap", "surface"):
+            assert trace.get("connectgaps") is False, trace.get("name")
+        assert trace.get("fill") in (None, "none", "toself"), trace.get("name")

@@ -22,9 +22,19 @@ dashboard = [
 ]
 dev = [
     "pytest",
+    "pytest-xdist",
+    "ruff",
     "plotly",
     "streamlit>=1.40",
 ]
 
+[tool.pytest.ini_options]
+addopts = "-n auto"
+
 [tool.setuptools.packages.find]
 include = ["iv_surface*"]
+
+[tool.ruff.lint]
+# Pyflakes and syntax errors only: undefined names, unused imports and
+# variables. Formatting is left as it is.
+select = ["E9", "F"]

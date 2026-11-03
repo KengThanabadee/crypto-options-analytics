@@ -160,9 +160,9 @@ def interpolate_iv(iv_surface, expiries, strikes, target_T, target_K):
 
     # Step 1: validate target point is inside the grid
     if target_T < expiries[0] or target_T > expiries[-1]:
-        raise ValueError(f"target_T is outside the bound")
+        raise ValueError("target_T is outside the bound")
     if target_K < strikes[0] or target_K > strikes[-1]:
-        raise ValueError(f"target_K is outside the bound")
+        raise ValueError("target_K is outside the bound")
 
     # Step 2: find bracketing indices for target_T and target_K
     i_high = bisect.bisect_right(expiries, target_T)

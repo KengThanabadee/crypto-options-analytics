@@ -10,7 +10,6 @@ import pytest
 
 from iv_surface.surface_transforms import (
     atm_term_structure_frame,
-    interpolate_surface_2d,
     interpolate_smiles_1d,
     surface_to_long_frame,
 )

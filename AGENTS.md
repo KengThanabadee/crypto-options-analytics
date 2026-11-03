@@ -14,6 +14,9 @@ API. Read it before changing analytics, inputs or the dashboard.
 
 - Quantitative transforms and figure construction work without Streamlit;
   Plotly and Streamlit stay in optional extras.
+- Page sections live in `dashboard/`; `app.py` lays them out. They call
+  `iv_surface` functions through their module (`visualization.make_*`,
+  `deribit.*`, `iv_source.*`), since dashboard tests patch them there.
 - IV root finding stays in `iv_surface/solver.py` (own Newton-Raphson with
   bisection fallback).
 - Public argument names: `option_price`, `option_price_grid`, `spot_price`,
@@ -40,9 +43,15 @@ API. Read it before changing analytics, inputs or the dashboard.
 
 ## Validation
 
-Run `.venv/bin/python -m pytest`. Tests run offline on the frozen Deribit
-snapshot in `data/`.
+Run `.venv/bin/python -m ruff check .` and `.venv/bin/python -m pytest`; CI
+runs both. Tests run offline on the frozen Deribit snapshot in `data/`, in
+parallel; add `-n0` to debug one test.
+From a worktree, use the main checkout's interpreter:
+`"$(git rev-parse --git-common-dir)/../.venv/bin/python" -m pytest`.
 Launch the dashboard with `.venv/bin/python -m streamlit run app.py`.
+A change to a chart or the page is done once you have opened the dashboard
+and looked at every chart it touches; `scripts/capture_readme_images.py`
+screenshots them.
 
 ## Agent skills
 
