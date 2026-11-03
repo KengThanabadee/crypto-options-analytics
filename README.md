@@ -131,7 +131,10 @@ python -m streamlit run app.py
 ```
 
 The dashboard opens on the checked-in Deribit BTC snapshot and runs offline;
-the header shows the capture time.
+the header shows the capture time. **Fetch latest** pulls a new snapshot from
+Deribit's public API and the whole page switches to it, with its capture time.
+A failed fetch keeps the current snapshot and shows the error. Only that button
+fetches; every other control reuses the current snapshot.
 
 The dashboard shows a Combined IV heatmap, 3D surface, IV smiles, and ATM term
 structure. IV smiles use original observed
@@ -249,6 +252,15 @@ and BTC bid/ask prices, mid price, mark price, mark IV, index price, open
 interest (BTC), reported forward (`underlying_price`),
 `estimated_delivery_price`, expiry and time to expiry. Settled contracts are
 left out.
+
+### `fetch_deribit_snapshot(session=None)`
+
+Captures a new snapshot from Deribit's public API in the same version-1
+envelope as the frozen file: the three requests in order, each with its UTC
+receive time and unchanged JSON-RPC response. The capture starts just before
+the first request and ends at the last response. Each request has a 15 s
+timeout. Network, HTTP, JSON-RPC and validation failures raise
+`DeribitFetchError`.
 
 `mid_price` is computed only from valid positive bid/ask quotes. If the bid/ask quote is not usable, `mid_price` is `NaN` and `quote_source` is `"none"`; the adapter does not fall back to `mark_price`.
 

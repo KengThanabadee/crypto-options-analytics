@@ -149,6 +149,71 @@ def parse_deribit_snapshot(snapshot: dict) -> pd.DataFrame:
     return frame.sort_values(["tau", "strike", "flag"]).reset_index(drop=True)
 
 
+BASE_URL = "https://www.deribit.com"
+FETCH_TIMEOUT_SECONDS = 15
+
+
+class DeribitFetchError(RuntimeError):
+    """A live fetch failed: network, HTTP, JSON-RPC error or invalid snapshot."""
+
+
+def _utc_now_text():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+
+def _get_json(session, endpoint, params):
+    import requests
+
+    try:
+        response = session.get(
+            BASE_URL + endpoint, params=params, timeout=FETCH_TIMEOUT_SECONDS
+        )
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = None
+        if isinstance(payload, dict) and isinstance(payload.get("error"), dict):
+            message = payload["error"].get("message", "unknown error")
+            raise DeribitFetchError(f"Deribit {endpoint} returned an error: {message}")
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        raise DeribitFetchError(f"Deribit {endpoint} request failed: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise DeribitFetchError(f"Deribit {endpoint} did not return a JSON object")
+    return payload
+
+
+def fetch_deribit_snapshot(session=None) -> dict:
+    """Capture a new snapshot from Deribit's public API in the frozen file's shape.
+
+    Each request records when its response arrived; the capture window runs from
+    just before the first request to the last response. The result is validated
+    like a frozen snapshot, and any failure raises DeribitFetchError.
+    """
+    import requests
+
+    session = session or requests.Session()
+    started = _utc_now_text()
+    requests_made = []
+    for endpoint, params in _REQUESTS.items():
+        payload = _get_json(session, endpoint, params)
+        requests_made.append({
+            "endpoint": endpoint, "params": dict(params),
+            "received_at_utc": _utc_now_text(), "response": payload,
+        })
+    snapshot = {
+        "schema_version": 1, "exchange": "deribit", "currency": "BTC",
+        "capture_started_at_utc": started,
+        "captured_at_utc": requests_made[-1]["received_at_utc"],
+        "base_url": BASE_URL, "requests": requests_made,
+    }
+    try:
+        _snapshot_results(snapshot)
+    except ValueError as exc:
+        raise DeribitFetchError(f"Deribit returned an invalid snapshot: {exc}") from exc
+    return snapshot
+
+
 def load_deribit_snapshot(path) -> dict:
     """Read and validate a Deribit snapshot without a network request."""
     with Path(path).open(encoding="utf-8") as source:
