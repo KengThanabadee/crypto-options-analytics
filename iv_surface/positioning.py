@@ -265,13 +265,15 @@ def net_gex_by_strike(chain: pd.DataFrame, expiries=None, signs=None) -> pd.Data
     return pd.DataFrame(records, columns=GEX_COLUMNS)
 
 
-def computable_oi_share(chain: pd.DataFrame, expiries=None) -> float:
+def computable_oi_share(gex_table: pd.DataFrame) -> float:
     """Share of OI (BTC) whose GEX contribution is computable.
 
-    NaN when any OI in scope is missing or the total is zero.
+    ``gex_table`` is the ``net_gex_by_strike`` table for the analysed set, so
+    the contributions are computed once. NaN when any OI in it is missing or
+    the total is zero.
     """
-    rows = gex_contributions(_in_expiries(chain, expiries))
-    total = _complete_sum(rows["open_interest"])
+    strike_oi = gex_table["call_oi"] + gex_table["put_oi"]
+    total = _complete_sum(strike_oi)
     if not total > 0:
         return np.nan
-    return float(rows.loc[rows["contribution"].notna(), "open_interest"].sum() / total)
+    return float((gex_table["oi_share"] * strike_oi).sum() / total)

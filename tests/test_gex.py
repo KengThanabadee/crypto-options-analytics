@@ -159,13 +159,15 @@ def test_net_lets_calls_and_puts_cancel():
 
 
 def test_computable_oi_share_counts_oi_with_a_gamma(chain):
-    from iv_surface.positioning import computable_oi_share
+    from iv_surface.positioning import computable_oi_share, net_gex_by_strike
 
-    assert computable_oi_share(chain) == 1.0
+    assert computable_oi_share(net_gex_by_strike(chain)) == 1.0
     damaged = chain.copy()
     damaged.loc[damaged.symbol == "BTC-30OCT26-82000-C", "mark_iv"] = np.nan
     expected = 1 - 1698.2 / chain["open_interest"].sum()
-    assert computable_oi_share(damaged) == pytest.approx(expected)
+    assert computable_oi_share(net_gex_by_strike(damaged)) == pytest.approx(expected)
+    damaged.loc[damaged.symbol == "BTC-30OCT26-84000-C", "open_interest"] = np.nan
+    assert np.isnan(computable_oi_share(net_gex_by_strike(damaged)))
 
 
 def _title(figure, name):

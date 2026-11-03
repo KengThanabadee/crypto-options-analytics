@@ -131,7 +131,7 @@ def positioning_section(chain, snapshot_id):
         make_positioning_figure(
             oi_table, gex_table, index_price=index_price, strike_range=strike_range,
             scope=scope, assumption=assumption_label(signs),
-            oi_share=computable_oi_share(chain, expiries), mode=mode,
+            oi_share=computable_oi_share(gex_table), mode=mode,
         ),
         use_container_width=True,
     )

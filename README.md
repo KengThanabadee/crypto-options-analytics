@@ -452,8 +452,8 @@ is the strike's computable OI share, `NaN` unless every OI is known; `reason`
 counts the missing inputs by type, e.g. `1 Put: no mark IV`. `strike_coverage`
 takes the values to add: signed contributions for Net, magnitudes for Gross.
 `gex_contributions(chain, signs)`
-returns the per-contract rows and `computable_oi_share(chain, expiries)` the
-share of OI with a computable contribution.
+returns the per-contract rows and `computable_oi_share(gex_table)` the share
+of OI with a computable contribution, from a `net_gex_by_strike` table.
 
 `contract_gamma(strike, tau, mark_iv, forward, index_price)` is the spot gamma
 of the contract's USD value per USD of index move, with the index and every

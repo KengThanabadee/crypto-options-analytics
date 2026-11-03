@@ -6,7 +6,7 @@ import pytest
 import requests
 from streamlit.testing.v1 import AppTest
 
-from iv_surface import deribit, visualization
+from iv_surface import deribit, positioning, visualization
 from iv_surface.positioning import near_spot_range, net_gex_by_strike
 
 
@@ -149,3 +149,18 @@ def test_switching_iv_source_never_changes_gex(figures):
     _control(app, "IV source").set_value("Quote midpoint").run()
     assert not app.exception
     assert figures["make_positioning_figure"].to_json() == before
+
+
+def test_one_rerun_computes_gex_contributions_once(monkeypatch):
+    calls = []
+    compute = positioning.gex_contributions
+
+    def record(*args, **kwargs):
+        calls.append(1)
+        return compute(*args, **kwargs)
+
+    monkeypatch.setattr(positioning, "gex_contributions", record)
+    app = _app()
+    assert not app.exception and len(calls) == 1
+    _control(app, "Calls").set_value("Customer buys").run()
+    assert not app.exception and len(calls) == 2
