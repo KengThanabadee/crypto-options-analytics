@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
+from iv_surface.chain import DAYS_PER_YEAR
+
 
 _LONG_FRAME_COLUMNS = {"tau", "strike", "iv", "moneyness"}
 _ATM_FRAME_COLUMNS = {
@@ -71,7 +73,7 @@ def _maturity_hover(frame, taus):
     """Format source expiry and frozen maturity consistently across charts."""
     return [
         f"Expiry (UTC): {label if not label.startswith('tau=') else 'Unavailable'}<br>"
-        f"Time to expiry: {float(tau) * 365.25:.2f} days<br>"
+        f"Time to expiry: {float(tau) * DAYS_PER_YEAR:.2f} days<br>"
         f"tau: {float(tau):.4f} years"
         for tau, label in zip(taus, _expiry_labels(frame, taus))
     ]

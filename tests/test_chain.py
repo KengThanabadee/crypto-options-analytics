@@ -33,9 +33,9 @@ def test_compute_tau_clamps_expired_time_to_zero():
     assert compute_tau(datetime(2025, 12, 31, tzinfo=timezone.utc), now) == 0.0
 
 
-def test_compute_tau_one_year_is_365_25_days():
-    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    expiry = datetime(2027, 1, 1, 6, tzinfo=timezone.utc)
+def test_compute_tau_one_year_is_365_days():
+    now = datetime(2027, 1, 1, tzinfo=timezone.utc)
+    expiry = datetime(2028, 1, 1, tzinfo=timezone.utc)  # 2027 has 365 days
 
     assert abs(compute_tau(expiry, now) - 1.0) < 1e-12
 

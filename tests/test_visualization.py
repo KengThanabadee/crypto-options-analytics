@@ -697,8 +697,8 @@ def test_all_views_share_source_expiry_and_frozen_maturity_hover():
         expiry_datetimes=['2027-03-26T01:00:00-07:00', None],
     ).sample(frac=1, random_state=7)
     expected = [
-        'Expiry (UTC): Unavailable<br>Time to expiry: 91.31 days<br>tau: 0.2500 years',
-        'Expiry (UTC): 2027-03-26<br>Time to expiry: 182.62 days<br>tau: 0.5000 years',
+        'Expiry (UTC): Unavailable<br>Time to expiry: 91.25 days<br>tau: 0.2500 years',
+        'Expiry (UTC): 2027-03-26<br>Time to expiry: 182.50 days<br>tau: 0.5000 years',
     ]
     for categorical in [False, True]:
         trace = make_iv_heatmap(frame, equal_expiry_spacing=categorical).data[0]

@@ -5,6 +5,9 @@ from datetime import datetime, timezone
 import numpy as np
 
 
+DAYS_PER_YEAR = 365  # Deribit's day count; the whole app uses it.
+
+
 def _to_float(value):
     try:
         v = float(value)
@@ -24,10 +27,10 @@ def _compute_mid_price(bid_price, ask_price):
 
 
 def compute_tau(expiry_dt: datetime, now: datetime) -> float:
-    """Time to expiry in years of 365.25 days; settled contracts clamp to 0."""
+    """Time to expiry in years of 365 days; settled contracts clamp to 0."""
     diff = expiry_dt - now
     seconds = diff.total_seconds()
-    return max(seconds / (365.25 * 24 * 3600), 0.0)
+    return max(seconds / (DAYS_PER_YEAR * 24 * 3600), 0.0)
 
 
 def _parse_utc_timestamp(value: str) -> datetime:
