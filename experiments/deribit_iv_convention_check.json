@@ -1,0 +1,190 @@
+{
+  "synthetic": {
+    "formula_error_btc": {
+      "count": 216,
+      "median_signed": 0.0,
+      "p95_absolute": 1.6653345369377348e-16,
+      "maximum_absolute": 2.636779683484747e-16
+    },
+    "iv_error_decimal": {
+      "count": 216,
+      "median_signed": -3.802513859341161e-15,
+      "p95_absolute": 1.5837950644553844e-05,
+      "maximum_absolute": 5.060772817361281e-05
+    }
+  },
+  "fixture": {
+    "source": "data/deribit_btc_options_snapshot.json",
+    "source_sha256": "26f1ae9a19eee9673561b64ce5c1ca35bdd769d1225d55250c7edcd48f29df13",
+    "captured_at_utc": "2026-10-15T15:18:14.299995Z",
+    "index_price_usd": 82227.73,
+    "instrument_rows": 936,
+    "summary_rows": 936,
+    "day_count_proposed": "ACT/365 fixed; capture end is frozen analysis time",
+    "forward_policy_under_test": "original per-contract underlying_price; no averaging",
+    "api_interest_rate_values": [
+      0.0
+    ],
+    "inferred_rate_range_decimal": [
+      0.052556326353843254,
+      0.3399207498963969
+    ],
+    "forward_by_expiry": [
+      {
+        "expiry_label": "16OCT26",
+        "unique_forward_count": 2,
+        "minimum": 82271.98,
+        "maximum": 82281.02
+      },
+      {
+        "expiry_label": "17OCT26",
+        "unique_forward_count": 5,
+        "minimum": 82272.65,
+        "maximum": 82290.87
+      },
+      {
+        "expiry_label": "18OCT26",
+        "unique_forward_count": 2,
+        "minimum": 82284.79,
+        "maximum": 82293.83
+      },
+      {
+        "expiry_label": "19OCT26",
+        "unique_forward_count": 2,
+        "minimum": 82300.61,
+        "maximum": 82309.98
+      },
+      {
+        "expiry_label": "23OCT26",
+        "unique_forward_count": 2,
+        "minimum": 82369.09,
+        "maximum": 82378.13
+      },
+      {
+        "expiry_label": "30OCT26",
+        "unique_forward_count": 2,
+        "minimum": 82480.49,
+        "maximum": 82489.53
+      },
+      {
+        "expiry_label": "6NOV26",
+        "unique_forward_count": 2,
+        "minimum": 82563.71,
+        "maximum": 82572.75
+      },
+      {
+        "expiry_label": "27NOV26",
+        "unique_forward_count": 2,
+        "minimum": 82821.17,
+        "maximum": 82830.71
+      },
+      {
+        "expiry_label": "25DEC26",
+        "unique_forward_count": 2,
+        "minimum": 83159.46,
+        "maximum": 83168.5
+      },
+      {
+        "expiry_label": "26MAR27",
+        "unique_forward_count": 2,
+        "minimum": 84185.12,
+        "maximum": 84194.35
+      },
+      {
+        "expiry_label": "25JUN27",
+        "unique_forward_count": 2,
+        "minimum": 85313.28,
+        "maximum": 85322.78
+      },
+      {
+        "expiry_label": "24SEP27",
+        "unique_forward_count": 2,
+        "minimum": 86399.45,
+        "maximum": 86408.49
+      }
+    ],
+    "nonnull_summary_fields": {
+      "open_interest": 936,
+      "volume": 936,
+      "volume_usd": 936,
+      "greeks": 0,
+      "best_bid_amount": 0,
+      "best_ask_amount": 0
+    },
+    "missing_or_failed": {
+      "bid_price_solve_failed": 166,
+      "mark_price_solve_failed": 34,
+      "mid_price_solve_failed": 18,
+      "old_zero_rate_mid_solve_failed_among_new_successes": 130,
+      "bid_price_missing_or_nonpositive": 36,
+      "mid_price_missing_or_nonpositive": 36,
+      "mark_price_missing_or_nonpositive": 3
+    },
+    "metrics": {
+      "bid_price_repricing_error_usd": {
+        "count": 734,
+        "median_signed": 3.341918023535547e-08,
+        "p95_absolute": 6.0658333139893765e-05,
+        "maximum_absolute": 0.0002695647725394179
+      },
+      "ask_price_repricing_error_usd": {
+        "count": 936,
+        "median_signed": 4.4655906766243034e-08,
+        "p95_absolute": 6.184770415989377e-05,
+        "maximum_absolute": 0.00020577545909760574
+      },
+      "mark_price_repricing_error_usd": {
+        "count": 899,
+        "median_signed": 7.483817716730234e-08,
+        "p95_absolute": 6.566400283004222e-05,
+        "maximum_absolute": 0.00016775458858590218
+      },
+      "mark_iv_difference_percentage_points": {
+        "count": 899,
+        "median_signed": 0.0012399666544038457,
+        "p95_absolute": 1.6084035432130641,
+        "maximum_absolute": 35.07015919358232
+      },
+      "mid_price_repricing_error_usd": {
+        "count": 882,
+        "median_signed": 6.056053142345501e-08,
+        "p95_absolute": 5.987509716068535e-05,
+        "maximum_absolute": 0.00016522576068280892
+      },
+      "mid_change_vs_old_zero_rate_percentage_points": {
+        "count": 752,
+        "median_signed": -0.8684819331058996,
+        "p95_absolute": 16.060994591099178,
+        "maximum_absolute": 44.610273565543594
+      }
+    },
+    "largest_mark_iv_differences": [
+      {
+        "symbol": "BTC-16OCT26-70000-C",
+        "iv_difference_percentage_points": 35.07015919358232
+      },
+      {
+        "symbol": "BTC-30OCT26-40000-C",
+        "iv_difference_percentage_points": 21.743563265364696
+      },
+      {
+        "symbol": "BTC-16OCT26-75000-C",
+        "iv_difference_percentage_points": 12.638521855971108
+      },
+      {
+        "symbol": "BTC-16OCT26-85000-P",
+        "iv_difference_percentage_points": -11.689942756928751
+      },
+      {
+        "symbol": "BTC-30OCT26-104000-P",
+        "iv_difference_percentage_points": -10.101454885655702
+      }
+    ],
+    "limitations": [
+      "This is convention research, not a changed runtime or exchange parity certification.",
+      "Mark is compared with mark; midpoint changes are compared only on mutually solved rows.",
+      "Independently solved bid/ask diagnostics are not a validated executable spread or Combined-IV band.",
+      "Reasons for real mark-price/mark-IV discrepancies have not been established."
+    ]
+  }
+}
