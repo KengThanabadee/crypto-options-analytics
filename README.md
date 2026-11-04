@@ -11,6 +11,8 @@ checked-in snapshot, pulls a live one with one click, and saves an analysis
 as a file that reopens to the same numbers. It is a research tool, not
 trading infrastructure, and not financial advice.
 
+**Live demo: [crypto-options-analytics.streamlit.app](https://crypto-options-analytics.streamlit.app)**
+
 ![Open interest by strike in BTC above net gamma exposure by strike in USD per 1% BTC move, sharing one strike axis with a dashed index line.](docs/images/oi-gex.jpg)
 
 ## Why it exists
