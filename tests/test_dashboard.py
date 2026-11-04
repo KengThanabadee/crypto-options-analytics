@@ -577,3 +577,55 @@ def test_no_chart_draws_across_missing_values(source, view):
         if trace.get("type", "scatter") in ("scatter", "heatmap", "surface"):
             assert trace.get("connectgaps") is False, trace.get("name")
         assert trace.get("fill") in (None, "none", "toself"), trace.get("name")
+
+
+def _notes_after_chart(block, chart=0):
+    """Caption, expander label and expander text between a chart and the next chart."""
+    nodes = list(block)
+    charts = [i for i, node in enumerate(nodes) if node.type == "plotly_chart"]
+    end = charts[chart + 1] if chart + 1 < len(charts) else len(nodes)
+    after = nodes[charts[chart] + 1:end]
+    caption = next(node for node in after if node.type == "caption")
+    expander = next(node for node in after if node.type == "expander")
+    text = " ".join(node.value for node in expander if node.type in ("caption", "markdown"))
+    return caption.value, expander.label, text
+
+
+def test_gex_chart_has_a_one_line_caption_and_the_method_in_an_expander():
+    caption, title, text = _notes_after_chart(_app().main, chart=0)
+    assert caption == "GEX = s × gamma × OI × index² × 1% · USD per 1% BTC move"
+    assert title == "How GEX is calculated"
+    assert text.startswith("GEX per contract = s × gamma × OI × index² × 1%")
+    assert text.endswith("Neither is drawn as a bar.")
+
+
+def _tab(app, label):
+    return next(tab for tab in app.tabs if tab.label == label)
+
+
+def test_smile_chart_has_a_one_line_caption_and_the_band_in_an_expander():
+    caption, title, text = _notes_after_chart(_tab(_app(), "IV smiles"))
+    assert caption == (
+        "Observed Combined Exchange mark IV · all strikes · gaps preserved · "
+        "shading = bid–ask IV band"
+    )
+    assert title == "Smile shading"
+    assert text == (
+        "Shading is a bid–ask IV display band from our solver, blended with the "
+        "line's Call/Put weights; it is not a tradable quote, and mark IV may sit "
+        "outside it."
+    )
+
+
+@pytest.mark.parametrize("view", ["Heatmap", "3D"])
+def test_surface_interpolation_note_sits_under_the_surface_chart_not_in_the_sidebar(view):
+    app = _app()
+    app.segmented_control(key="surface_view").set_value(view).run()
+    nodes = list(_tab(app, "IV surface"))
+    last_chart = max(i for i, node in enumerate(nodes) if node.type == "plotly_chart")
+    expanders = [node for node in nodes[last_chart + 1:] if node.type == "expander"]
+    assert [e.label for e in expanders] == ["Surface interpolation"]
+    text = " ".join(node.value for node in expanders[0] if node.type == "markdown")
+    assert text.startswith("Convert observed IV to total variance (IV² × tau)")
+    assert "hover reports their original IV." in text
+    assert "Surface interpolation" not in [e.label for e in app.sidebar.expander]

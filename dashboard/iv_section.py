@@ -92,9 +92,6 @@ def iv_section(chain, snapshot_id, sidebar):
     if not np.isfinite(frame["iv"]).any():
         st.warning("No IV solves succeeded for this snapshot.")
 
-    with sidebar:
-        surface_view.interpolation_notes()
-
     surface_tab, smile_tab, atm_tab = st.tabs(
         ["IV surface", "IV smiles", "ATM term structure"]
     )
