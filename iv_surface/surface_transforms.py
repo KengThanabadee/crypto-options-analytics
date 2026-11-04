@@ -255,6 +255,23 @@ def interpolate_surface_2d(
     return finish()
 
 
+def observed_surface_frame(surface_frame: pd.DataFrame) -> pd.DataFrame:
+    """Return a surface frame showing only observed IV, without interpolation.
+
+    ``iv`` becomes ``observed_iv`` and each cell is Observed or Missing; every
+    other column is kept. The input frame is not changed.
+    """
+    _require_columns(surface_frame, {"observed_iv"}, "surface_frame")
+    frame = surface_frame.copy()
+    frame["iv"] = frame["observed_iv"]
+    frame["surface_value_type"] = np.where(
+        np.isfinite(frame["observed_iv"]),
+        _SURFACE_VALUE_TYPES["observed"],
+        _SURFACE_VALUE_TYPES["missing"],
+    )
+    return frame
+
+
 def atm_term_structure_frame(
     long_frame: pd.DataFrame, max_moneyness_distance: float = 0.02
 ) -> pd.DataFrame:

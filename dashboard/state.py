@@ -31,14 +31,6 @@ def widget_default(key, default):
     return st.session_state.get(key, default)
 
 
-def smile_key(snapshot_id, tau):
-    return f"smile_expiry_{snapshot_id}_{tau}"
-
-
-def expiry_taus(chain):
-    return chain.drop_duplicates("expiry_dt").set_index("expiry_dt")["tau"]
-
-
 def use_snapshot(snapshot, chain, label):
     """Switch the page to a snapshot, keeping its parsed chain for every rerun."""
     st.session_state["snapshot"] = snapshot

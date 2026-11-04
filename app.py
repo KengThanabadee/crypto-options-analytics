@@ -18,6 +18,7 @@ from dashboard.snapshot_controls import (
     save_analysis_control,
 )
 from dashboard.state import start_run
+from dashboard.surface_view import SURFACE_LAYOUT_CSS
 
 
 DATA_PATH = Path(__file__).resolve().parent / "data"
@@ -27,15 +28,8 @@ SNAPSHOT_FILE = "deribit_btc_options_snapshot.json"
 def main():
     st.set_page_config(page_title="BTC volatility", layout="wide")
     st.markdown(
-        """<style>
-        .stMainBlockContainer {padding-top: 2rem; padding-bottom: 1rem;}
-        .st-key-surface-responsive {container-type: inline-size;}
-        .st-key-surface-narrow {display: none;}
-        @container (max-width: 699px) {
-            .st-key-surface-wide {display: none;}
-            .st-key-surface-narrow {display: block;}
-        }
-        </style>""",
+        "<style>.stMainBlockContainer {padding-top: 2rem; padding-bottom: 1rem;}"
+        f"{SURFACE_LAYOUT_CSS}</style>",
         unsafe_allow_html=True,
     )
     st.title("BTC volatility")
@@ -45,6 +39,7 @@ def main():
         st.subheader("Saved analysis")
         reopen_saved_analysis()
         save_slot = st.container()
+        iv_notes_slot = st.container()
     snapshot = st.session_state.get("snapshot")
     chain = st.session_state.get("chain")
     snapshot_label = st.session_state.get("snapshot_label", "Frozen snapshot")
@@ -64,7 +59,7 @@ def main():
     if "reopen_notice" in st.session_state:
         st.info(st.session_state["reopen_notice"])
     positioning_section(chain, snapshot["captured_at_utc"])
-    iv_section(chain, snapshot["captured_at_utc"])
+    iv_section(chain, snapshot["captured_at_utc"], sidebar=iv_notes_slot)
     save_analysis_control(save_slot, snapshot, chain)
 
 

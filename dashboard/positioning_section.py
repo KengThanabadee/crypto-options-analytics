@@ -18,12 +18,18 @@ from iv_surface.positioning import (
     strikes_in_range,
 )
 
+from dashboard.settings import (
+    CUSTOMER_SIDES,
+    GEX_VIEW_KEY,
+    SIDE_OF_SIGN,
+    customer_side_key,
+    oi_expiries_key,
+    strike_range_key,
+)
 from dashboard.state import widget_default
 
 
 POSITIONING_CHART_KEY = "positioning_chart"
-CUSTOMER_SIDES = {"Customer sells": 1, "Customer buys": -1}
-SIDE_OF_SIGN = {sign: side for side, sign in CUSTOMER_SIDES.items()}
 
 
 def positioning_section(chain, snapshot_id):
@@ -34,7 +40,7 @@ def positioning_section(chain, snapshot_id):
     view carry over. Every control renders before the chart, so an empty
     range keeps their values.
     """
-    range_key = f"oi_strike_range_{snapshot_id}"
+    range_key = strike_range_key(snapshot_id)
     st.subheader("Open interest and gamma exposure")
     index_price = float(chain["index_price"].iloc[0])
     expiry_dates = chain.drop_duplicates("tau").set_index("tau")["expiry_dt"]
@@ -43,7 +49,7 @@ def positioning_section(chain, snapshot_id):
         sorted(expiry_dates.index),
         format_func=lambda tau: f"{expiry_dates[tau]:%Y-%m-%d}",
         placeholder="All expiries",
-        key=f"oi_expiries_{snapshot_id}",
+        key=oi_expiries_key(snapshot_id),
         help="Leave empty for All expiries. The IV charts keep their own expiries.",
     )
     expiries = selected or None
@@ -123,9 +129,9 @@ def gex_scenario_controls():
             side = st.segmented_control(
                 f"{flag.capitalize()}s",
                 list(CUSTOMER_SIDES),
-                default=widget_default(f"gex_{flag}_side", defaults[flag]),
+                default=widget_default(customer_side_key(flag), defaults[flag]),
                 required=True,
-                key=f"gex_{flag}_side",
+                key=customer_side_key(flag),
                 help=(
                     f"Scenario for every {flag} in the analysed set, with the dealer "
                     "as counterparty: customer sells → dealer long gamma (+); "
@@ -137,9 +143,9 @@ def gex_scenario_controls():
         mode = st.segmented_control(
             "GEX view",
             GEX_MODES,
-            default=widget_default("gex_mode", "Net"),
+            default=widget_default(GEX_VIEW_KEY, "Net"),
             required=True,
-            key="gex_mode",
+            key=GEX_VIEW_KEY,
             help="Net lets Calls and Puts cancel. Gross adds magnitudes and ignores the scenario.",
         ) or "Net"
     return signs, mode

@@ -2,7 +2,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from iv_surface.surface_transforms import interpolate_surface_2d, surface_to_long_frame
+from iv_surface.surface_transforms import (
+    interpolate_surface_2d,
+    observed_surface_frame,
+    surface_to_long_frame,
+)
 
 
 def _frame():
@@ -37,6 +41,22 @@ def test_total_variance_is_linear_across_both_axes_and_preserves_inputs():
     pd.testing.assert_series_equal(result.source, frame.source)
     pd.testing.assert_series_equal(result.expiry_datetime, frame.expiry_datetime)
     pd.testing.assert_frame_equal(frame, original)
+
+
+def test_observed_frame_shows_only_observed_iv_and_leaves_the_surface_unchanged():
+    surface = interpolate_surface_2d(_frame())
+    original = surface.copy(deep=True)
+    observed = observed_surface_frame(surface)
+    expected = _frame().iv
+    np.testing.assert_array_equal(observed.iv, expected)
+    assert observed.loc[expected.notna(), "surface_value_type"].eq("Observed").all()
+    assert observed.loc[expected.isna(), "surface_value_type"].eq("Missing").all()
+    assert (observed.surface_value_type == "Missing").sum() == 5
+    pd.testing.assert_frame_equal(
+        observed.drop(columns=["iv", "surface_value_type"]),
+        surface.drop(columns=["iv", "surface_value_type"]),
+    )
+    pd.testing.assert_frame_equal(surface, original)
 
 
 def test_2d_preserves_duplicate_row_labels_and_shuffled_order():
