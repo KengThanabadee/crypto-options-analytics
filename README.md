@@ -281,9 +281,11 @@ snapshot and settings.
   and [`public/get_index_price`](https://docs.deribit.com/api-reference/market-data/public-get_index_price).
   Fetched snapshots and saved analyses use the same envelope, so any number
   can be recomputed from what Deribit sent.
-- **Every step is our own code.** USD conversion, time to expiry, IV solving,
-  Combined IV, interpolation, gamma and GEX are computed here; only
-  Exchange mark IV is taken from Deribit as reported.
+- **Every step is visible.** USD conversion, time to expiry, IV solving (our
+  own solver), Combined IV, Black-76 gamma and GEX are our own code; the 2D
+  surface fill uses scipy's linear Delaunay interpolation
+  (`LinearNDInterpolator`) on total variance. Only Exchange mark IV is taken
+  from Deribit as reported.
 - **Missing stays missing.** Absent quotes, failed solves and unknown OI stay
   `NaN`, never zero or a substitute value; charts leave gaps
   (`connectgaps=False`) and label interpolated cells.

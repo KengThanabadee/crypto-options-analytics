@@ -69,9 +69,9 @@
   "source_sha256": {
     "data/bybit_btc_options_snapshot.json": "7e8b4be95b949cabba85463400ffd50532a3fb60fba9a123332be8003dd8e0d6",
     "app.py": "b9c09cf040688c805fa1e8146b2044b80a1ec6e18d91e9418ca1a237b6feb6aa",
-    "options_analytics/fetcher.py": "61b0bd93381720222f628eb5146c8bacc64042828d0cfea9fa4fdc2611e4ea6a",
-    "options_analytics/solver.py": "53dbffdc9e851f6776216fe2c93b1393907b3cfc91ea863951fa3a82c50861ee",
-    "options_analytics/surface_builder.py": "5e6fc9daac777f218c66cf70f24773e9b6434a2a32b408ab7acf617ce86bb20b"
+    "iv_surface/fetcher.py": "61b0bd93381720222f628eb5146c8bacc64042828d0cfea9fa4fdc2611e4ea6a",
+    "iv_surface/solver.py": "53dbffdc9e851f6776216fe2c93b1393907b3cfc91ea863951fa3a82c50861ee",
+    "iv_surface/surface_builder.py": "5e6fc9daac777f218c66cf70f24773e9b6434a2a32b408ab7acf617ce86bb20b"
   },
   "groups": {
     "all": {

@@ -16,7 +16,6 @@ _LONG_FRAME_COLUMNS = {"tau", "strike", "iv", "moneyness"}
 _ATM_TOLERANCE = 1e-12
 _SURFACE_VALUE_TYPES = {
     "observed": "Observed",
-    "interpolated": "Interpolated",
     "missing": "Missing",
 }
 
@@ -148,7 +147,9 @@ def interpolate_surface_2d(
     observed = np.where(finite, observed, np.nan)
     frame["observed_iv"] = observed
     frame["iv"] = observed
-    frame["surface_value_type"] = np.where(finite, "Observed", "Missing")
+    frame["surface_value_type"] = np.where(
+        finite, _SURFACE_VALUE_TYPES["observed"], _SURFACE_VALUE_TYPES["missing"]
+    )
     frame["interpolation_method"] = pd.Series(None, index=frame.index, dtype=object)
 
     def finish():

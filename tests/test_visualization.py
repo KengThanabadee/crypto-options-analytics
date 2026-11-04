@@ -36,6 +36,8 @@ def _with_filled_gap(frame, iv=0.40):
     gap = frame["iv"].isna()
     frame["surface_value_type"] = np.where(gap, "Interpolated", "Observed")
     frame.loc[gap, "iv"] = iv
+    frame["interpolation_method"] = pd.Series(None, index=frame.index, dtype=object)
+    frame.loc[gap, "interpolation_method"] = "2D linear total variance"
     return frame
 
 
@@ -389,7 +391,7 @@ def test_surface_heatmap_uses_equal_expiry_rows_and_value_type_hover():
     ]
     assert np.asarray(trace.z)[0].tolist() == pytest.approx([0.30, 0.40, 0.50])
     assert trace.customdata[0][1].tolist() == [
-        100.0, "1D interpolation within expiry", "Interpolated"
+        100.0, "2D linear total variance", "Interpolated"
     ]
     assert "Surface value: %{customdata[2]}" in trace.hovertemplate
     assert "Value source: %{customdata[1]}" in trace.hovertemplate
@@ -397,7 +399,7 @@ def test_surface_heatmap_uses_equal_expiry_rows_and_value_type_hover():
     assert surface.customdata.tolist() == trace.customdata.tolist()
     assert surface.hovertemplate is None
     assert surface.hoverinfo == "text"
-    assert "Value source: 1D interpolation within expiry" in surface.text[0][1]
+    assert "Value source: 2D linear total variance" in surface.text[0][1]
     # Display provenance changes must not rewrite the original quote provenance.
     assert frame.loc[frame["surface_value_type"].eq("Interpolated"), "source"].tolist() == [
         "missing"
@@ -674,7 +676,7 @@ def test_surface_mesh_and_observed_markers_share_identical_hover_for_same_quote(
         assert f'IV: {float(custom[2]):.2%}' in text
         assert lifted_iv > float(custom[2])
     assert 'Surface value: Interpolated' in surface.text[0][1]
-    assert 'Value source: 1D interpolation within expiry' in surface.text[0][1]
+    assert 'Value source: 2D linear total variance' in surface.text[0][1]
 
 
 @pytest.mark.parametrize("with_source", [False, True])

@@ -46,7 +46,7 @@ Status as of 2026-11-02: an additional proposal, not a condition for closing the
 
 ## What to keep and verify in development
 
-Reading `app.py` shows an Observed/Surface heatmap toggle, a 3D view with observed markers, and a smile with expiry selection starting at the first three usable expiries; `options_analytics/surface_builder.py` already has Combined IV and the near-ATM average. These need not be re-asked part by part. Accepting the developed behaviour requires checking the source again at that time.
+Reading `app.py` shows an Observed/Surface heatmap toggle, a 3D view with observed markers, and a smile with expiry selection starting at the first three usable expiries; `combine_call_put_iv` in `options_analytics/iv_source.py` already builds Combined IV with the near-ATM average. These need not be re-asked part by part. Accepting the developed behaviour requires checking the source again at that time.
 
 Computing bid/mid/ask separately, provenance, missingness, units, the same snapshot, and keeping display-interpolated IV out of per-contract gamma are correctness requirements, not extra preferences.
 

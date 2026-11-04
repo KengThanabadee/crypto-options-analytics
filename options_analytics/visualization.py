@@ -146,12 +146,10 @@ def _heatmap_customdata(long_frame, iv_grid, strike_grid):
                 long_frame["surface_value_type"].eq("Missing"), "missing"
             )
         )
-        if has_value_type:
+        if has_value_type and "interpolation_method" in long_frame.columns:
             display_source = display_source.mask(
                 long_frame["surface_value_type"].eq("Interpolated"),
-                long_frame["interpolation_method"]
-                if "interpolation_method" in long_frame.columns
-                else "1D interpolation within expiry",
+                long_frame["interpolation_method"],
             )
         source_grid = long_frame.assign(source=display_source.map(_source_label)).pivot(
             index="tau", columns="moneyness", values="source"

@@ -16,8 +16,8 @@ inputs or the dashboard.
 - Page sections live in `dashboard/`; `app.py` lays them out. They call
   `options_analytics` functions through their module (`visualization.make_*`,
   `deribit.*`, `iv_source.*`), since dashboard tests patch them there.
-- IV root finding stays in `options_analytics/solver.py` (own Newton-Raphson with
-  bisection fallback).
+- IV root finding stays in `options_analytics/solver.py` (own Newton-Raphson
+  with bisection fallback).
 - Public argument names: `option_price`, `spot_price`, `iv_surface`. Surfaces
   are expiry rows by strike columns; arguments take `expiries` before
   `strikes`.
@@ -27,7 +27,8 @@ inputs or the dashboard.
 - Spot is the index from the snapshot's `get_index_price` request; it drives
   USD conversion and moneyness. `estimated_delivery_price` is raw data only.
 - Time to expiry uses a 365-day year (`DAYS_PER_YEAR` in
-  `options_analytics/chain.py`). Contracts settled at the capture end are left out.
+  `options_analytics/chain.py`). Contracts settled at the capture end are left
+  out.
 - Missing quotes and failed solves stay `NaN`; Plotly traces use
   `connectgaps=False`; interpolation is a separate explicit operation.
 - Moneyness is spot-based `K / S`. Numerical `tau` drives calculations, expiry
@@ -35,8 +36,9 @@ inputs or the dashboard.
 - Combined IV and the ATM proxy follow the rules in `README.md`.
 - When a change picks a convention, tolerance or default that affects the
   numbers, name it and say why in the summary.
-- The project is Deribit only: snapshots go through `options_analytics/deribit.py`,
-  with shared parsing helpers in `options_analytics/chain.py`.
+- The project is Deribit only: snapshots go through
+  `options_analytics/deribit.py`, with shared parsing helpers in
+  `options_analytics/chain.py`.
 - `experiments/` holds research scripts and their results. Runtime behaviour
   is accepted through `tests/`.
 
