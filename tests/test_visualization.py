@@ -522,23 +522,33 @@ def test_3d_surface_uses_same_values_and_true_tau_axis_as_heatmap():
     assert list(surface.layout.scene.yaxis.ticktext) == [
         "2026<br>06-01", "2026<br>09-01"
     ]
-    assert surface.layout.scene.aspectratio.x == 1.7
-    assert surface.layout.scene.aspectratio.y == 1.2
-    assert surface.layout.scene.aspectratio.z == 0.72
+    assert surface.layout.scene.aspectratio.to_plotly_json() == {
+        "x": 2.0, "y": 1.2, "z": 0.72
+    }
+    assert compact.layout.scene.aspectratio == surface.layout.scene.aspectratio
     assert surface.layout.scene.dragmode == "turntable"
-    assert surface.layout.height == 460
-    assert compact.layout.height == 320
+    assert surface.layout.height == 500
+    assert compact.layout.height == 340
     assert surface.layout.scene.camera.eye.to_plotly_json() == {
-        "x": 1.6, "y": 1.6, "z": 0.5
+        "x": 1.4, "y": 1.5, "z": 0.55
     }
     assert compact.layout.scene.camera.eye.to_plotly_json() == {
-        "x": 1.7, "y": 1.7, "z": 0.6
+        "x": 1.6, "y": 1.7, "z": 0.62
     }
-    assert surface.layout.scene.camera.center.z == -0.36
+    assert surface.layout.scene.camera.center.to_plotly_json() == {
+        "x": 0.05, "y": -0.05, "z": -0.45
+    }
+    assert compact.layout.scene.camera.center.to_plotly_json() == {
+        "x": 0.15, "y": -0.15, "z": -0.45
+    }
+    assert surface.layout.scene.domain.x == (0, 0.93)
+    assert compact.layout.scene.domain.x == (0, 0.9)
+    assert (trace.colorbar.x, trace.colorbar.len) == (0.94, 0.8)
+    assert (compact.data[0].colorbar.x, compact.data[0].colorbar.len) == (0.92, 0.8)
     assert (surface.layout.margin.t, surface.layout.margin.b) == (10, 10)
-    assert surface.layout.uirevision == "iv-surface-camera-v19"
+    assert (compact.layout.margin.l, compact.layout.margin.r) == (10, 10)
+    assert surface.layout.uirevision == "iv-surface-camera-v20"
     assert trace.colorbar.thickness == 18
-    assert trace.colorbar.len == 0.72
     assert trace.lighting.ambient == 0.78
     assert "Surface value: Interpolated" in trace.text[0][1]
     assert observed.name == "Observed IV"

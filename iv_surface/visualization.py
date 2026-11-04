@@ -317,9 +317,9 @@ def make_iv_surface_figure(
         colorbar={
             "title": {"text": "IV", "side": "top"},
             "tickformat": ".0%",
-            "len": 0.72,
+            "len": 0.8,
             "thickness": 18,
-            "x": 1.02,
+            "x": 0.92 if compact_layout else 0.94,
             "y": 0.52,
         },
         lighting={
@@ -402,7 +402,9 @@ def make_iv_surface_figure(
     }
     figure.update_layout(
         scene={
-            "domain": {"x": [0, 1]},
+            # The scene stops short of the colorbar so the mesh can fill the
+            # width; its axis labels are clipped at the scene's edges.
+            "domain": {"x": [0, 0.9] if compact_layout else [0, 0.93]},
             "bgcolor": "rgba(0, 0, 0, 0)",
             "xaxis": {"title": {"text": "K / S", "font": {"size": 12}}, **axis_style},
             "yaxis": {
@@ -426,23 +428,27 @@ def make_iv_surface_figure(
                 **axis_style,
             },
             # Lowering the look-at point lifts the box in the frame, so the
-            # near corner's expiry ticks clear the bottom edge.
-            "camera": {
-                "eye": (
-                    {"x": 1.7, "y": 1.7, "z": 0.6}
-                    if compact_layout else {"x": 1.6, "y": 1.6, "z": 0.5}
-                ),
-                "center": {"x": 0, "y": 0, "z": -0.36},
-            },
+            # near corner's expiry ticks clear the bottom edge; moving it
+            # along +x/-y shifts the box right, clear of the left edge.
+            "camera": (
+                {
+                    "eye": {"x": 1.6, "y": 1.7, "z": 0.62},
+                    "center": {"x": 0.15, "y": -0.15, "z": -0.45},
+                }
+                if compact_layout else {
+                    "eye": {"x": 1.4, "y": 1.5, "z": 0.55},
+                    "center": {"x": 0.05, "y": -0.05, "z": -0.45},
+                }
+            ),
             "aspectmode": "manual",
-            "aspectratio": {"x": 1.7, "y": 1.2, "z": 0.72},
+            "aspectratio": {"x": 2.0, "y": 1.2, "z": 0.72},
             "dragmode": "turntable",
         },
         autosize=True,
-        height=320 if compact_layout else 460,
+        height=340 if compact_layout else 500,
         margin={
-            "l": 40 if compact_layout else 20,
-            "r": 20 if compact_layout else 12,
+            "l": 10 if compact_layout else 20,
+            "r": 10 if compact_layout else 12,
             "t": 10,
             "b": 10,
         },
@@ -455,7 +461,7 @@ def make_iv_surface_figure(
             "yanchor": "top",
             "bgcolor": "rgba(0, 0, 0, 0)",
         },
-        uirevision="iv-surface-camera-v19",
+        uirevision="iv-surface-camera-v20",
     )
     return figure
 

@@ -147,7 +147,3 @@ def _surface_3d_chart(surface_frame, iv_source):
                     width="stretch",
                     config={"modeBarButtonsToRemove": ["resetCameraDefault3d"]},
                 )
-    st.markdown(
-        '<div aria-hidden="true" style="height: 32px"></div>',
-        unsafe_allow_html=True,
-    )
