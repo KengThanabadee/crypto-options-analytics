@@ -49,9 +49,14 @@ def reopen_saved_analysis():
         st.session_state.pop("reopen_notice", None)
 
 
-def fetch_latest_snapshot():
-    """Fetch only on the button; a failure keeps the current snapshot."""
-    if not st.button("Fetch latest", help="Pull a new snapshot from Deribit's public API."):
+def fetch_latest_snapshot(button_slot):
+    """Fetch only on the button in ``button_slot``; a failure keeps the current snapshot.
+
+    The spinner and any error show at full width below the slot.
+    """
+    if not button_slot.button(
+        "Fetch latest", help="Pull a new snapshot from Deribit's public API."
+    ):
         return
     try:
         with st.spinner("Fetching from Deribit…"):

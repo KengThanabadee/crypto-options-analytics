@@ -7,7 +7,6 @@ import numpy as np
 import streamlit as st
 
 from iv_surface import iv_source as iv_sources
-from iv_surface import visualization
 from iv_surface.iv_source import DEFAULT_IV_SOURCE, IV_SOURCES, iv_source_long_frame
 from iv_surface.surface_transforms import interpolate_surface_2d
 
@@ -87,7 +86,6 @@ def iv_section(chain, snapshot_id, sidebar):
     frame = iv_source_long_frame(
         result, expiry_datetimes=expiry_dates.reindex(result.expiries).tolist()
     )
-    st.write(f"{visualization.index_label(result.spot_price)} · IV source: **{iv_source}**")
     with sidebar:
         _iv_method_notes(frame, iv_source)
     if not np.isfinite(frame["iv"]).any():
@@ -131,6 +129,7 @@ def _iv_method_notes(frame, iv_source):
         ),
         int(source.eq("missing").sum()),
     )
+    st.subheader("Method notes")
     with st.expander(f"Combined IV coverage · {iv_source}"):
         for label, count in zip(
             ["Preferred / averaged", "Fallback / one-sided", "Missing"], counts

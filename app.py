@@ -8,7 +8,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from iv_surface import deribit
+from iv_surface import deribit, visualization
 
 from dashboard.iv_section import iv_section
 from dashboard.positioning_section import positioning_section
@@ -34,7 +34,9 @@ def main():
     )
     st.title("BTC volatility")
     start_run()
-    fetch_latest_snapshot()
+    header, fetch_column = st.columns([6, 1], vertical_alignment="center")
+    # Fetch before the snapshot is read, so a fetch updates the header this run.
+    fetch_latest_snapshot(fetch_column)
     with st.sidebar:
         st.subheader("Saved analysis")
         reopen_saved_analysis()
@@ -55,7 +57,11 @@ def main():
     captured_at = datetime.fromisoformat(
         snapshot["captured_at_utc"].replace("Z", "+00:00")
     )
-    st.caption(f"Deribit BTC · {snapshot_label}: {captured_at:%Y-%m-%d %H:%M:%S} UTC")
+    index_price = float(chain["index_price"].iloc[0])
+    header.caption(
+        f"Deribit BTC · {snapshot_label}: {captured_at:%Y-%m-%d %H:%M:%S} UTC"
+        f" · {visualization.index_label(index_price)}"
+    )
     if "reopen_notice" in st.session_state:
         st.info(st.session_state["reopen_notice"])
     positioning_section(chain, snapshot["captured_at_utc"])

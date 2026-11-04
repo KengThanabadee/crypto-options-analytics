@@ -189,8 +189,10 @@ def test_reopening_another_snapshot_switches_the_page_and_controls_keep_working(
     app.run()
 
     assert not app.exception and not app.error and not app.warning
-    assert any("Reopened snapshot: 2026-10-15 16:18:14 UTC" in c.value for c in app.caption)
-    assert any("$90,000.00" in m.value for m in app.markdown)
+    assert any(
+        "Reopened snapshot: 2026-10-15 16:18:14 UTC · Index $90,000.00" in c.value
+        for c in app.caption
+    )
     tau = float(chain.loc[chain["expiry_dt"] == expiries[2], "tau"].iloc[0])
     assert app.multiselect[0].value == [tau]
     assert app.slider[0].value == (70_000.0, 100_000.0)

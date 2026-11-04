@@ -412,15 +412,14 @@ def test_fetch_latest_switches_the_whole_page_and_controls_do_not_fetch(monkeypa
     assert len(calls) == 1
     assert any("Fetched snapshot: 2026-10-15 16:18:14 UTC" in c.value for c in app.caption)
     assert not any("Frozen snapshot" in c.value for c in app.caption)
-    assert any("$90,000.00" in m.value for m in app.markdown)
+    assert any("16:18:14 UTC · Index $90,000.00" in c.value for c in app.caption)
 
     app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
     app.radio(key="heatmap_view").set_value("Observed").run()
     app.checkbox[0].set_value(not app.checkbox[0].value).run()
     assert not app.exception
     assert len(calls) == 1
-    assert any("Fetched snapshot: 2026-10-15 16:18:14 UTC" in c.value for c in app.caption)
-    assert any("$90,000.00" in m.value for m in app.markdown)
+    assert any("16:18:14 UTC · Index $90,000.00" in c.value for c in app.caption)
 
 
 @pytest.mark.parametrize("failure", ["network", "unusable"])
@@ -439,8 +438,11 @@ def test_failed_fetch_keeps_the_previous_snapshot_and_shows_the_error(monkeypatc
     assert len(app.error) == 1
     if failure == "network":
         assert "offline" in app.error[0].value
-    assert any("Frozen snapshot: 2026-10-15 15:18:14 UTC" in c.value for c in app.caption)
-    assert any("$82,227.73" in m.value for m in app.markdown)
+    assert any(
+        "Frozen snapshot: 2026-10-15 15:18:14 UTC · Index $82,227.73" in c.value
+        for c in app.caption
+    )
+    assert len(app.error) == 1 and not _in_header(app, app.error[0])
     assert len(app.get("plotly_chart")) == 6
 
 
@@ -479,14 +481,47 @@ def test_bid_ask_band_iv_is_solved_once_per_snapshot_across_iv_sources(monkeypat
     assert sorted(solved) == ["ask_price", "bid_price", "mid_price"]
 
 
-def test_page_labels_the_index_one_way_and_names_the_counted_iv_source():
+def _in_header(app, element):
+    return any(node is element for column in app.columns[:2] for node in column)
+
+
+def test_header_is_one_row_with_the_index_and_fetch_latest_on_the_right():
+    app = _app()
+    caption, fetch = app.columns[0], app.columns[1]
+    assert [c.value for c in caption.caption] == [
+        "Deribit BTC · Frozen snapshot: 2026-10-15 15:18:14 UTC · Index $82,227.73"
+    ]
+    assert [b.label for b in fetch.button] == ["Fetch latest"]
+
+
+def test_page_labels_the_index_once_and_names_the_counted_iv_source():
     app = _app()
     assert not any(c.value.startswith("Open interest ·") for c in app.caption)
-    assert any("Index $82,227.73" in m.value for m in app.markdown)
+    assert sum("Index $82,227.73" in c.value for c in app.caption) == 1
+    assert not any("Index $" in m.value for m in app.markdown)
+    assert not any("IV source:" in m.value for m in app.markdown)
     assert not any("spot:" in m.value.lower() for m in app.markdown)
     assert any(e.label == "Combined IV coverage · Exchange mark" for e in app.sidebar.expander)
     app.segmented_control(key="iv_source").set_value("Quote midpoint").run()
     assert any(e.label == "Combined IV coverage · Quote midpoint" for e in app.sidebar.expander)
+
+
+def test_method_notes_sit_under_their_own_heading_below_save_analysis():
+    app = _app()
+    order = []
+    for node in app.sidebar:
+        if node.type == "subheader":
+            order.append(node.value)
+        elif node.type in ("download_button", "expander"):
+            order.append(node.label)
+    start = order.index("Saved analysis")
+    assert order[start:start + 5] == [
+        "Saved analysis",
+        "Save analysis",
+        "Method notes",
+        "Combined IV coverage · Exchange mark",
+        "Deribit pricing",
+    ]
 
 
 def test_smile_checkboxes_show_what_the_chart_draws_on_every_run(monkeypatch):
