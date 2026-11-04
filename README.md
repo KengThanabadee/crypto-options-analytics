@@ -232,7 +232,9 @@ and a Put at one strike have very different prices but comparable IVs. The lower
 from the ask, so the band is wide where quotes are wide. It is drawn only where
 both edges exist; a point whose neighbours have no band is drawn as a short
 vertical bar, since a one-point shape has no width. Short-dated far OTM
-contracts often have no bid, so mark IV can show there with no shading. It is a
+contracts often have no bid, so mark IV can show there with no shading; in
+Quote midpoint, a deep ITM fallback contract can have a bid below intrinsic
+value, which has no bid IV. It is a
 display band, not a tradable quote, and mark IV may sit outside it. The caption
 and the **Reading the bid–ask shading** expander sit under the chart. Hover
 names the option the band belongs to, the same one as "IV from".

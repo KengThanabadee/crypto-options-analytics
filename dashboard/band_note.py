@@ -17,7 +17,9 @@ BAND_NOTES = (
     "Where a strike's neighbours have no band, its band is a short vertical "
     "bar. Where the line continues with no shading, the bid or ask is missing "
     "or did not solve: short-dated far out-of-the-money contracts often have "
-    "no bid, yet Exchange mark IV still exists there.",
+    "no bid, yet Exchange mark IV still exists there. In Quote midpoint the "
+    "line can fall back to a deep in-the-money contract whose bid sits below "
+    "intrinsic value; no volatility gives that price, so it has no bid IV.",
     "Within 2% of spot each edge is an average of two solved IVs: the lower "
     "edge averages the Call bid IV and the Put bid IV, the upper edge the Call "
     "ask IV and the Put ask IV. Each price is solved to IV first, because a "
