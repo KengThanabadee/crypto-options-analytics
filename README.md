@@ -4,10 +4,8 @@ A Streamlit dashboard for one Deribit BTC options snapshot: open interest and
 gamma exposure (GEX) by strike, and implied volatility (IV) as a surface,
 smiles and an ATM term structure. It opens offline on a checked-in snapshot,
 pulls a fresh one on request, and saves an analysis as one file that reopens
-to the same numbers. Every number is computed in this repository from the raw
-Deribit responses, including its own Black-Scholes IV solver (Newton-Raphson
-with bisection fallback, without `scipy.optimize`). It is a research tool, not
-trading infrastructure, and not financial advice.
+to the same numbers. Every number is computed from the raw Deribit responses.
+It is a research tool, not trading infrastructure, and not financial advice.
 
 ## Dashboard preview
 
@@ -281,11 +279,11 @@ snapshot and settings.
   and [`public/get_index_price`](https://docs.deribit.com/api-reference/market-data/public-get_index_price).
   Fetched snapshots and saved analyses use the same envelope, so any number
   can be recomputed from what Deribit sent.
-- **Every step is visible.** USD conversion, time to expiry, IV solving (our
-  own solver), Combined IV, Black-76 gamma and GEX are our own code; the 2D
-  surface fill uses scipy's linear Delaunay interpolation
-  (`LinearNDInterpolator`) on total variance. Only Exchange mark IV is taken
-  from Deribit as reported.
+- **Every step is visible.** USD conversion, time to expiry, IV solving
+  (Newton-Raphson with bisection fallback), Combined IV, Black-76 gamma, GEX
+  and the 2D surface fill (linear interpolation on total variance) are
+  computed from the snapshot. Only Exchange mark IV is taken from Deribit as
+  reported.
 - **Missing stays missing.** Absent quotes, failed solves and unknown OI stay
   `NaN`, never zero or a substitute value; charts leave gaps
   (`connectgaps=False`) and label interpolated cells.
