@@ -1,6 +1,6 @@
 # Crypto options analytics: the dashboard is the project
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 Accepted 2026-11-04 after a grilling session. Tickets go in `issues/` beside
 this file. Starts after the `dashboard-layout` spec is done.
