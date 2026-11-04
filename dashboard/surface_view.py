@@ -66,9 +66,10 @@ def surface_view(frame, iv_source):
         st.caption(visible_range_summary(surface_frame, moneyness))
         st.caption("2D total-variance interpolation · observed IV overlaid as points.")
         _surface_3d_chart(surface_frame, iv_source)
+    _interpolation_notes()
 
 
-def interpolation_notes():
+def _interpolation_notes():
     with st.expander("Surface interpolation"):
         st.write(
             "Convert observed IV to total variance (IV² × tau), linearly "

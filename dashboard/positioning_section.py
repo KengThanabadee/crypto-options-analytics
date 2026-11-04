@@ -109,15 +109,16 @@ def positioning_section(chain, snapshot_id):
             "zoom2d", "pan2d", "zoomIn2d", "zoomOut2d", "autoScale2d", "resetScale2d",
         ]},
     )
-    st.caption(
-        "GEX per contract = s × gamma × OI × index² × 1%, from Exchange mark IV "
-        "with the index and every forward moving 1% together. s = +1 where the "
-        "customer sells (dealer long gamma), −1 where the customer buys. "
-        "Known zero OI adds zero. A strike where some contracts lack OI or mark IV "
-        "shows Incomplete data; one where none are computable shows Insufficient "
-        "data. Neither is drawn as a bar."
-    )
-
+    st.caption("GEX = s × gamma × OI × index² × 1% · USD per 1% BTC move")
+    with st.expander("How GEX is calculated"):
+        st.caption(
+            "GEX per contract = s × gamma × OI × index² × 1%, from Exchange mark IV "
+            "with the index and every forward moving 1% together. s = +1 where the "
+            "customer sells (dealer long gamma), −1 where the customer buys. "
+            "Known zero OI adds zero. A strike where some contracts lack OI or mark IV "
+            "shows Incomplete data; one where none are computable shows Insufficient "
+            "data. Neither is drawn as a bar."
+        )
 
 def gex_scenario_controls():
     """Customer side per option type and Net/Gross; a new snapshot keeps them."""

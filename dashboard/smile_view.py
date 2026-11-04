@@ -32,12 +32,6 @@ def smile_view(frame, snapshot_id, iv_source):
                 key=smile_key(snapshot_id, tau),
             )
         ]
-    st.caption(
-        f"Observed Combined {iv_source} IV · all strikes · gaps preserved. "
-        "Shading is a bid–ask IV display band from our solver, blended "
-        "with the line's Call/Put weights; it is not a tradable quote, "
-        "and mark IV may sit outside it."
-    )
     if selected_expiries:
         st.plotly_chart(
             visualization.make_smile_figure(
@@ -47,3 +41,13 @@ def smile_view(frame, snapshot_id, iv_source):
         )
     else:
         st.info("Select an expiry to show its IV smile.")
+    st.caption(
+        f"Observed Combined {iv_source} IV · all strikes · gaps preserved · "
+        "shading = bid–ask IV band"
+    )
+    with st.expander("Smile shading"):
+        st.caption(
+            "Shading is a bid–ask IV display band from our solver, blended with the "
+            "line's Call/Put weights; it is not a tradable quote, and mark IV may sit "
+            "outside it."
+        )
