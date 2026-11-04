@@ -5,9 +5,8 @@ API. Read it before changing analytics, inputs or the dashboard.
 
 ## Plans
 
-- Each feature's spec and tickets live in `.scratch/<feature>/`. Specs marked
-  resolved, and finished plans in `.agents/history/`, hold past rationale; read
-  one only for why a feature works as it does.
+- Resolved specs and finished plans in `.agents/history/` hold past rationale;
+  read one only for why a feature works as it does.
 
 ## Project Contracts
 
