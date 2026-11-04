@@ -6,10 +6,14 @@ See `../spec.md` (Solution; Implementation Decisions: Page layout, Captions and 
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The header caption includes the index in USD for frozen, fetched and reopened snapshots.
-- [ ] Fetch latest sits in the header row; a fetch or a failed fetch behaves as today.
-- [ ] No separate index line appears in the IV section.
-- [ ] The Method notes heading and its two expanders render below Save analysis in the sidebar, and the coverage expander names the selected IV source.
-- [ ] Lint and tests pass; the dashboard has been opened and the header and sidebar checked.
+- [x] The header caption includes the index in USD for frozen, fetched and reopened snapshots.
+- [x] Fetch latest sits in the header row; a fetch or a failed fetch behaves as today.
+- [x] No separate index line appears in the IV section.
+- [x] The Method notes heading and its two expanders render below Save analysis in the sidebar, and the coverage expander names the selected IV source.
+- [x] Lint and tests pass; the dashboard has been opened and the header and sidebar checked.
+
+## Comments
+
+- 2026-11-04: Resolved on the `dashboard-layout` integration branch; code-review fixes landed at e7a8adc.

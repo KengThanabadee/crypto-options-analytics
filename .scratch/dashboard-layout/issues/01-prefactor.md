@@ -6,10 +6,14 @@ See `../spec.md` (Implementation Decisions: Page layout, IV section, Saved setti
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] No test looks up the moneyness range or heatmap values control by position.
-- [ ] Save and Reopen both read widget keys and conversions from one settings table; the settings code imports nothing from a page section.
-- [ ] Surface, smile and term structure views are separate modules called from the IV section; the page file only lays out.
-- [ ] The observed-only frame function has its own plain test without Streamlit.
-- [ ] The page, every chart and every number are unchanged; lint and the full test suite pass.
+- [x] No test looks up the moneyness range or heatmap values control by position.
+- [x] Save and Reopen both read widget keys and conversions from one settings table; the settings code imports nothing from a page section.
+- [x] Surface, smile and term structure views are separate modules called from the IV section; the page file only lays out.
+- [x] The observed-only frame function has its own plain test without Streamlit.
+- [x] The page, every chart and every number are unchanged; lint and the full test suite pass.
+
+## Comments
+
+- 2026-11-04: Resolved on the `dashboard-layout` integration branch; code-review fixes landed at e7a8adc.

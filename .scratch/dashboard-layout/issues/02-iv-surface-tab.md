@@ -6,12 +6,16 @@ Prototype reference: variant B on branch `prototype/dashboard-layout` (commit 89
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Tab labels are exactly IV surface, IV smiles, ATM term structure.
-- [ ] View defaults to Heatmap; switching to 3D shows the 3D chart and hides Heatmap values; switching back shows the earlier Heatmap values choice.
-- [ ] The chart count reflects only the chosen surface view.
-- [ ] The 3D mesh values equal the heatmap's Surface values for the same range (checked across two runs).
-- [ ] Save then Reopen restores View; a saved file without `surface_view` opens on Heatmap; an invalid value is rejected.
-- [ ] The surface view's CSS lives with the surface view, not in the page file.
-- [ ] Lint and tests pass; the dashboard has been opened and both views checked.
+- [x] Tab labels are exactly IV surface, IV smiles, ATM term structure.
+- [x] View defaults to Heatmap; switching to 3D shows the 3D chart and hides Heatmap values; switching back shows the earlier Heatmap values choice.
+- [x] The chart count reflects only the chosen surface view.
+- [x] The 3D mesh values equal the heatmap's Surface values for the same range (checked across two runs).
+- [x] Save then Reopen restores View; a saved file without `surface_view` opens on Heatmap; an invalid value is rejected.
+- [x] The surface view's CSS lives with the surface view, not in the page file.
+- [x] Lint and tests pass; the dashboard has been opened and both views checked.
+
+## Comments
+
+- 2026-11-04: Resolved on the `dashboard-layout` integration branch; code-review fixes landed at e7a8adc.

@@ -6,8 +6,12 @@ See `../spec.md` (Theme and README images).
 
 **Blocked by:** 02, 03, 04, 05
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] All README images are dark and show the new layout.
-- [ ] README describes the three IV tabs, the View control, the header, Method notes and the saved `surface_view` setting.
-- [ ] Lint and tests pass; every chart was opened and looked at.
+- [x] All README images are dark and show the new layout.
+- [x] README describes the three IV tabs, the View control, the header, Method notes and the saved `surface_view` setting.
+- [x] Lint and tests pass; every chart was opened and looked at.
+
+## Comments
+
+- 2026-11-04: Resolved on the `dashboard-layout` integration branch; code-review fixes landed at e7a8adc.

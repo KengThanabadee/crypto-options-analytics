@@ -6,8 +6,12 @@ See `../spec.md` (3D surface sizing).
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Screenshots of the 3D view, wide and compact, show the mesh filling the frame with axes and ticks unclipped.
-- [ ] The 3D figure test expects the new values and still checks the compact layout is shorter.
-- [ ] Lint and tests pass.
+- [x] Screenshots of the 3D view, wide and compact, show the mesh filling the frame with axes and ticks unclipped.
+- [x] The 3D figure test expects the new values and still checks the compact layout is shorter.
+- [x] Lint and tests pass.
+
+## Comments
+
+- 2026-11-04: Resolved on the `dashboard-layout` integration branch; code-review fixes landed at e7a8adc.

@@ -6,8 +6,12 @@ See `../spec.md` (Captions and notes) for the exact caption wording.
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Each of the three charts has its one-line caption and an expander holding today's full text.
-- [ ] The sidebar no longer holds the surface interpolation note.
-- [ ] Lint and tests pass; the dashboard has been opened and each expander checked.
+- [x] Each of the three charts has its one-line caption and an expander holding today's full text.
+- [x] The sidebar no longer holds the surface interpolation note.
+- [x] Lint and tests pass; the dashboard has been opened and each expander checked.
+
+## Comments
+
+- 2026-11-04: Resolved on the `dashboard-layout` integration branch; code-review fixes landed at e7a8adc.

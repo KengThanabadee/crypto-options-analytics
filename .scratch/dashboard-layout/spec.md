@@ -1,6 +1,6 @@
 # Dashboard layout: one IV surface view, controls beside their charts
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 Accepted 2026-11-04 after a grilling session and a layout prototype. Tickets
 go in `issues/` beside this file. The prototype lives on the local branch
