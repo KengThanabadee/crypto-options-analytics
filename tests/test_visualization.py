@@ -526,7 +526,17 @@ def test_3d_surface_uses_same_values_and_true_tau_axis_as_heatmap():
     assert surface.layout.scene.aspectratio.y == 1.2
     assert surface.layout.scene.aspectratio.z == 0.72
     assert surface.layout.scene.dragmode == "turntable"
-    assert surface.layout.height == 640
+    assert surface.layout.height == 460
+    assert compact.layout.height == 320
+    assert surface.layout.scene.camera.eye.to_plotly_json() == {
+        "x": 1.6, "y": 1.6, "z": 0.5
+    }
+    assert compact.layout.scene.camera.eye.to_plotly_json() == {
+        "x": 1.7, "y": 1.7, "z": 0.6
+    }
+    assert surface.layout.scene.camera.center.z == -0.36
+    assert (surface.layout.margin.t, surface.layout.margin.b) == (10, 10)
+    assert surface.layout.uirevision == "iv-surface-camera-v19"
     assert trace.colorbar.thickness == 18
     assert trace.colorbar.len == 0.72
     assert trace.lighting.ambient == 0.78

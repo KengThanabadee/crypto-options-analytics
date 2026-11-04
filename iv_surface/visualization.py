@@ -425,24 +425,26 @@ def make_iv_surface_figure(
                 "tickformat": ".0%",
                 **axis_style,
             },
+            # Lowering the look-at point lifts the box in the frame, so the
+            # near corner's expiry ticks clear the bottom edge.
             "camera": {
                 "eye": (
-                    {"x": 2.7, "y": 2.7, "z": 0.796}
-                    if compact_layout else {"x": 1.9, "y": 1.9, "z": 0.56}
+                    {"x": 1.7, "y": 1.7, "z": 0.6}
+                    if compact_layout else {"x": 1.6, "y": 1.6, "z": 0.5}
                 ),
-                "center": {"x": 0, "y": 0, "z": -0.06},
+                "center": {"x": 0, "y": 0, "z": -0.36},
             },
             "aspectmode": "manual",
             "aspectratio": {"x": 1.7, "y": 1.2, "z": 0.72},
             "dragmode": "turntable",
         },
         autosize=True,
-        height=430 if compact_layout else 640,
+        height=320 if compact_layout else 460,
         margin={
             "l": 40 if compact_layout else 20,
             "r": 20 if compact_layout else 12,
-            "t": 24,
-            "b": 24,
+            "t": 10,
+            "b": 10,
         },
         paper_bgcolor="rgba(0, 0, 0, 0)",
         legend={
@@ -453,7 +455,7 @@ def make_iv_surface_figure(
             "yanchor": "top",
             "bgcolor": "rgba(0, 0, 0, 0)",
         },
-        uirevision="iv-surface-camera-v18",
+        uirevision="iv-surface-camera-v19",
     )
     return figure
 
