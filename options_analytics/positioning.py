@@ -86,16 +86,44 @@ def strikes_in_range(table: pd.DataFrame, strike_range) -> pd.DataFrame:
     return table.loc[inside].reset_index(drop=True)
 
 
-def expiry_scope_label(chain: pd.DataFrame, expiries=None) -> str:
-    """Name the OI expiry scope: All expiries or the selected UTC dates."""
+TITLE_EXPIRY_DATES = 3
+
+
+def _scope_dates(chain, expiries):
+    """The selected expiry dates as UTC text, nearest first; None for All expiries."""
     if expiries is None:
+        return None
+    chosen = chain.loc[chain["tau"].isin(list(expiries))].drop_duplicates("tau")
+    if len(chosen) == chain["tau"].nunique():
+        return None
+    return [
+        pd.Timestamp(date).strftime("%Y-%m-%d")
+        for date in chosen.sort_values("tau")["expiry_dt"]
+    ]
+
+
+def expiry_scope_label(chain: pd.DataFrame, expiries=None) -> str:
+    """Name the OI expiry scope: All expiries or every selected UTC date.
+
+    Selecting every expiry is All expiries too, since the sums are the same.
+    """
+    dates = _scope_dates(chain, expiries)
+    return "All expiries" if dates is None else ", ".join(dates)
+
+
+def short_expiry_scope_label(chain: pd.DataFrame, expiries=None) -> str:
+    """The expiry scope for a chart title, kept to one line.
+
+    Up to ``TITLE_EXPIRY_DATES`` dates are listed; more show their count with
+    the nearest and farthest date, e.g. ``5 expiries · 2026-10-16 to
+    2026-12-25``.
+    """
+    dates = _scope_dates(chain, expiries)
+    if dates is None:
         return "All expiries"
-    dates = (
-        chain.loc[chain["tau"].isin(list(expiries))]
-        .drop_duplicates("tau")
-        .sort_values("tau")["expiry_dt"]
-    )
-    return ", ".join(pd.Timestamp(date).strftime("%Y-%m-%d") for date in dates)
+    if len(dates) <= TITLE_EXPIRY_DATES:
+        return ", ".join(dates)
+    return f"{len(dates)} expiries · {dates[0]} to {dates[-1]}"
 
 
 def contract_gamma(strike, tau, mark_iv, forward, index_price):

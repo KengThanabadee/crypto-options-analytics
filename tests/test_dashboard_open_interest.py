@@ -104,6 +104,28 @@ def test_oi_expiry_selection_sums_only_those_expiries_and_leaves_iv_alone(figure
     assert figures["make_smile_figure"].to_json() == smile_before
 
 
+def test_many_oi_expiries_keep_the_titles_short_and_list_every_date_on_hover(
+    figures, chain
+):
+    app = _app()
+    dates = chain.drop_duplicates("tau").sort_values("tau")
+    chosen = dates["tau"].tolist()[:5]
+    labels = [f"{d:%Y-%m-%d}" for d in dates["expiry_dt"][:5]]
+
+    set_oi_expiries(app, chosen)
+    assert not app.exception
+    figure = figures["make_positioning_figure"]
+    short = f"5 expiries · {labels[0]} to {labels[-1]}"
+    assert _oi_title(figure) == f"Open interest · {short}"
+    (gex_title,) = [a.text for a in figure.layout.annotations if a.name == "gex_title"]
+    assert gex_title.startswith(f"Net gamma exposure · {short}<br>")
+    assert f"every strike in {short})" in gex_title
+    assert ", ".join(labels) in figure.data[0].hovertemplate
+
+    set_oi_expiries(app, dates["tau"].tolist())
+    assert _oi_title(figures["make_positioning_figure"]) == "Open interest · All expiries"
+
+
 def test_strike_range_zooms_and_resets_to_near_spot(figures, chain):
     app = _app()
     near = near_spot_range(chain["index_price"].iloc[0])

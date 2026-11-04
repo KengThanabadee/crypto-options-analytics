@@ -48,7 +48,10 @@ above the chart.
 
 - **OI expiries** is a popover of expiry checkboxes, like the IV smiles'
   picker; its button names the choice. None ticked, the start, means All
-  expiries. It is separate from the IV charts' expiries.
+  expiries, and so does ticking every one. It is separate from the IV
+  charts' expiries. The OI and GEX titles list up to three dates; more show
+  the count with the nearest and farthest date, e.g. `5 expiries ·
+  2026-10-16 to 2026-10-23`. The hover lists every date.
 - **Strike range (USD)** starts at Near spot, ±10% around the index with both
   ends included, and **Near spot** resets it. Dragging across either panel
   sets the range to the dragged band, widened to whole $500 steps, so the

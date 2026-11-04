@@ -6,6 +6,7 @@ import pytest
 
 from options_analytics.positioning import (
     expiry_scope_label,
+    short_expiry_scope_label,
     near_spot_range,
     open_interest_by_strike,
     strike_range_from_selection,
@@ -75,9 +76,30 @@ def test_strike_range_is_a_display_zoom_over_the_full_table(chain):
     assert strikes_in_range(full, (81_000.0, 85_000.0)).empty
 
 
-def test_expiry_scope_names_all_expiries_or_the_selected_dates(chain):
+def _expiries_chain(days):
+    return pd.DataFrame([
+        _contract("call", day / 365, 80_000.0, 1.0, day) for day in days
+    ])
+
+
+def test_expiry_scope_names_all_expiries_or_the_selected_dates():
+    chain = _expiries_chain([16, 23, 30])
     assert expiry_scope_label(chain, None) == "All expiries"
-    assert expiry_scope_label(chain, [0.03, 0.01]) == "2026-10-16, 2026-10-23"
+    assert expiry_scope_label(chain, [23 / 365, 16 / 365]) == "2026-10-16, 2026-10-23"
+    assert expiry_scope_label(chain, [30 / 365, 16 / 365, 23 / 365]) == "All expiries"
+
+
+def test_short_expiry_scope_lists_up_to_three_dates_then_counts_nearest_to_farthest():
+    chain = _expiries_chain([16, 17, 18, 19, 23, 30])
+    tau = {day: day / 365 for day in (16, 17, 18, 19, 23, 30)}
+    assert short_expiry_scope_label(chain, None) == "All expiries"
+    assert short_expiry_scope_label(chain, list(tau.values())) == "All expiries"
+    assert short_expiry_scope_label(chain, [tau[23], tau[16], tau[19]]) == (
+        "2026-10-16, 2026-10-19, 2026-10-23"
+    )
+    assert short_expiry_scope_label(chain, [tau[30], tau[16], tau[18], tau[19]]) == (
+        "4 expiries · 2026-10-16 to 2026-10-30"
+    )
 
 
 def test_open_interest_panel_shows_calls_and_puts_in_range_with_index_line(chain):

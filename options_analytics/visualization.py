@@ -864,6 +864,7 @@ def _panel_title(name: str, text: str, yaxis) -> dict:
 def make_positioning_figure(
     oi_table: pd.DataFrame, gex_table: pd.DataFrame, index_price: float,
     strike_range, scope: str, assumption: str, oi_share: float, mode: str = "Net",
+    title_scope: str | None = None,
 ) -> go.Figure:
     """Open interest (top) and gamma exposure (bottom) by strike in one figure.
 
@@ -874,7 +875,9 @@ def make_positioning_figure(
     are Call and Put BTC. GEX bars are USD per 1% BTC move: ``mode`` picks
     ``net_gex`` (signed) or ``gross_gex`` (magnitudes), and the GEX title
     states ``assumption`` as a scenario, not observed dealer inventory. The
-    panel titles are annotations named ``oi_title`` and ``gex_title``.
+    panel titles are annotations named ``oi_title`` and ``gex_title``; they
+    name the expiries with ``title_scope`` (default ``scope``), and the hover
+    text with ``scope``.
     Dragging selects a band of strikes (``dragmode="select"``, horizontal),
     which the dashboard turns into the strike range.
     """
@@ -891,6 +894,7 @@ def make_positioning_figure(
     oi_shown = strikes_in_range(oi_table, strike_range).sort_values("strike")
     gex_shown = strikes_in_range(gex_table, strike_range).sort_values("strike")
     scenario = f"Scenario: {escape(assumption)}"
+    title_scope = escape(scope if title_scope is None else title_scope)
 
     figure = make_subplots(
         rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.16, row_heights=[0.45, 0.55],
@@ -913,14 +917,14 @@ def make_positioning_figure(
     complete = int((gex_table["status"] == "complete").sum())
     layout = figure.layout
     figure.add_annotation(_panel_title(
-        "oi_title", f"Open interest · {escape(scope)}", layout.yaxis,
+        "oi_title", f"Open interest · {title_scope}", layout.yaxis,
     ))
     figure.add_annotation(_panel_title(
         "gex_title",
-        f"{mode} gamma exposure · {escape(scope)}<br><sup>"
+        f"{mode} gamma exposure · {title_scope}<br><sup>"
         f"USD per 1% BTC move · Exchange mark IV · "
         f"{share} of OI computable · {complete} of {len(gex_table)} strikes "
-        f"complete (every strike in {escape(scope)})"
+        f"complete (every strike in {title_scope})"
         + (f"<br>{scenario}, not observed dealer inventory" if mode == "Net" else "")
         + "</sup>",
         layout.yaxis2,

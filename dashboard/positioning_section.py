@@ -8,6 +8,7 @@ from options_analytics.positioning import (
     assumption_label,
     computable_oi_share,
     expiry_scope_label,
+    short_expiry_scope_label,
     near_spot_range,
     net_gex_by_strike,
     open_interest_by_strike,
@@ -90,7 +91,8 @@ def positioning_section(chain, snapshot_id):
     st.plotly_chart(
         visualization.make_positioning_figure(
             oi_table, gex_table, index_price=index_price, strike_range=strike_range,
-            scope=scope, assumption=assumption_label(signs),
+            scope=scope, title_scope=short_expiry_scope_label(chain, expiries),
+            assumption=assumption_label(signs),
             oi_share=computable_oi_share(gex_table), mode=mode,
         ),
         width="stretch",
