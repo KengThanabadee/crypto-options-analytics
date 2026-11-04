@@ -6,8 +6,12 @@ See `../spec.md` (Package and distribution).
 
 **Blocked by:** None within this spec.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A fresh environment with a plain editable install runs the dashboard.
-- [ ] CI uses that install and passes.
-- [ ] AGENTS.md and README describe the new install.
+- [x] A fresh environment with a plain editable install runs the dashboard.
+- [x] CI uses that install and passes.
+- [x] AGENTS.md and README describe the new install.
+
+## Comments
+
+- 2026-11-04: Resolved on the `crypto-options-analytics` integration branch; code-review fixes landed at 9452a3d.

@@ -6,8 +6,12 @@ See `../spec.md` (Removal of the unused IV pipeline).
 
 **Blocked by:** None within this spec; the whole spec starts after `dashboard-layout` is done.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] No removed function remains in code, tests or README.
-- [ ] Deribit parsing assertions survive, now through the IV source build.
-- [ ] Dashboard numbers and charts are unchanged; lint and tests pass.
+- [x] No removed function remains in code, tests or README.
+- [x] Deribit parsing assertions survive, now through the IV source build.
+- [x] Dashboard numbers and charts are unchanged; lint and tests pass.
+
+## Comments
+
+- 2026-11-04: Resolved on the `crypto-options-analytics` integration branch; code-review fixes landed at 9452a3d.

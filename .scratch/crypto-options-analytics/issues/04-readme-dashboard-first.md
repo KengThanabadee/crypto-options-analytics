@@ -6,7 +6,11 @@ See `../spec.md` (README).
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The README follows the order in the spec and no longer claims downstream users.
-- [ ] Every control and chart the README describes matches the opened dashboard.
+- [x] The README follows the order in the spec and no longer claims downstream users.
+- [x] Every control and chart the README describes matches the opened dashboard.
+
+## Comments
+
+- 2026-11-04: Resolved on the `crypto-options-analytics` integration branch; code-review fixes landed at 9452a3d.

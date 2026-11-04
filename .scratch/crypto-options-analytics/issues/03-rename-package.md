@@ -6,8 +6,12 @@ See `../spec.md` (Package and distribution).
 
 **Blocked by:** 01, 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] No reference to the old package or distribution name remains outside git history and finished plans.
-- [ ] Saved files from before the rename still open.
-- [ ] Lint and tests pass; the dashboard opens and shows the same numbers.
+- [x] No reference to the old package or distribution name remains outside git history and finished plans.
+- [x] Saved files from before the rename still open.
+- [x] Lint and tests pass; the dashboard opens and shows the same numbers.
+
+## Comments
+
+- 2026-11-04: Resolved on the `crypto-options-analytics` integration branch; code-review fixes landed at 9452a3d.
