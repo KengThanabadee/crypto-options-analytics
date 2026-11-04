@@ -1,7 +1,8 @@
 # Repository Guidance
 
-`README.md` is the current reference for public behaviour, data inputs and the
-API. Read it before changing analytics, inputs or the dashboard.
+`README.md` is the current reference for the dashboard's behaviour and data
+inputs; signatures live in docstrings. Read it before changing analytics,
+inputs or the dashboard.
 
 ## Plans
 
@@ -17,9 +18,9 @@ API. Read it before changing analytics, inputs or the dashboard.
   `deribit.*`, `iv_source.*`), since dashboard tests patch them there.
 - IV root finding stays in `options_analytics/solver.py` (own Newton-Raphson with
   bisection fallback).
-- Public argument names: `option_price`, `option_price_grid`, `spot_price`,
-  `iv_surface`. Surfaces are expiry rows by strike columns; arguments take
-  `expiries` before `strikes` and `target_T` before `target_K`.
+- Public argument names: `option_price`, `spot_price`, `iv_surface`. Surfaces
+  are expiry rows by strike columns; arguments take `expiries` before
+  `strikes`.
 - IV sources: Exchange mark (Deribit `mark_iv`) is the default IV source and
   the gamma input. Quote midpoint (our solver's IV from usable bid/ask mids)
   is the comparison source.
