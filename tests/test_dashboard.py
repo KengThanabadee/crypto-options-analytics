@@ -655,3 +655,12 @@ def test_surface_chart_has_the_range_above_and_a_caption_and_interpolation_expan
     assert text.startswith("Convert observed IV to total variance (IV² × tau)")
     assert text.endswith("hover reports their original IV.")
     assert "Surface interpolation" not in [e.label for e in app.sidebar.expander]
+
+
+def test_observed_heatmap_caption_says_nothing_is_interpolated():
+    app = _app()
+    app.segmented_control(key="heatmap_view").set_value("Observed").run()
+    caption, _, _ = _notes_after_chart(_tab(app, "IV surface"), chart=-1)
+    assert caption == (
+        "Observed IV only · no interpolation · blank where no contract was solved"
+    )

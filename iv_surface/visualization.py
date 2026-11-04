@@ -398,7 +398,9 @@ def make_iv_surface_figure(
         "gridcolor": "rgba(148, 163, 184, 0.18)",
         "zeroline": False,
         "showspikes": False,
-        "tickfont": {"size": 11},
+        # WebGL draws 3D axis text thinner than 2D axes; 13px keeps the
+        # theme's grey tick colour readable on a light background.
+        "tickfont": {"size": 13},
     }
     figure.update_layout(
         scene={
@@ -406,11 +408,11 @@ def make_iv_surface_figure(
             # width; its axis labels are clipped at the scene's edges.
             "domain": {"x": [0, 0.9] if compact_layout else [0, 0.93]},
             "bgcolor": "rgba(0, 0, 0, 0)",
-            "xaxis": {"title": {"text": "K / S", "font": {"size": 12}}, **axis_style},
+            "xaxis": {"title": {"text": "K / S", "font": {"size": 14}}, **axis_style},
             "yaxis": {
                 "title": {
                     "text": "" if compact_layout else "Expiry (UTC)",
-                    "font": {"size": 12},
+                    "font": {"size": 14},
                 },
                 "tickmode": "array",
                 "tickvals": visible_taus,

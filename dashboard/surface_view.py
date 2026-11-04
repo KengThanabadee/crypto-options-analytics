@@ -37,6 +37,9 @@ SURFACE_CAPTION = (
     "2D total-variance interpolation · observed IV unchanged · "
     "blank outside the observed range"
 )
+OBSERVED_CAPTION = (
+    "Observed IV only · no interpolation · blank where no contract was solved"
+)
 
 
 def surface_view(frame, iv_source):
@@ -66,15 +69,17 @@ def surface_view(frame, iv_source):
                     "shows solved market IV without interpolation."
                 ),
             )
-        if heatmap_values == OBSERVED_VALUES:
+        observed_only = heatmap_values == OBSERVED_VALUES
+        if observed_only:
             surface_frame = observed_surface_frame(surface_frame)
         st.caption(visible_range_summary(surface_frame, moneyness))
         _heatmap_chart(surface_frame, iv_source)
     else:
+        observed_only = False
         keep_widget_values([HEATMAP_VALUES_KEY])
         st.caption(visible_range_summary(surface_frame, moneyness))
         _surface_3d_chart(surface_frame, iv_source)
-    st.caption(SURFACE_CAPTION)
+    st.caption(OBSERVED_CAPTION if observed_only else SURFACE_CAPTION)
     _interpolation_notes()
 
 
