@@ -160,8 +160,8 @@ def test_fetch_latest_keeps_every_setting_that_still_applies(figures, monkeypatc
     _control(app, "Calls").set_value("Customer buys").run()
     _control(app, "GEX view").set_value("Gross").run()
     _control(app, "IV source").set_value("Quote midpoint").run()
-    app.sidebar.radio[0].set_value("Extended (0.7–1.3)").run()
-    app.main.radio[0].set_value("Observed").run()
+    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.radio(key="heatmap_view").set_value("Observed").run()
 
     next(b for b in app.button if b.label == "Fetch latest").click().run()
     assert not app.exception and not app.error
@@ -170,8 +170,8 @@ def test_fetch_latest_keeps_every_setting_that_still_applies(figures, monkeypatc
     assert _control(app, "Puts").value == "Customer buys"
     assert _control(app, "GEX view").value == "Gross"
     assert _control(app, "IV source").value == "Quote midpoint"
-    assert app.sidebar.radio[0].value == "Extended (0.7–1.3)"
-    assert app.main.radio[0].value == "Observed"
+    assert app.radio(key="moneyness_range").value == "Extended (0.7–1.3)"
+    assert app.radio(key="heatmap_view").value == "Observed"
     assert _gex_title(figures["make_positioning_figure"]).startswith("Gross gamma exposure")
     # The strike range belongs to the old snapshot; the new one starts at its own Near spot.
     assert app.slider[0].value == near_spot_range(90000.0)

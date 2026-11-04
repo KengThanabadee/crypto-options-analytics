@@ -123,8 +123,8 @@ def test_dashboard_opens_on_exchange_mark_without_rate_inputs(monkeypatch):
     assert sum(counts) == result.iv_surface.size
     assert counts[2] == np.isnan(result.iv_surface).sum()
     assert len(app.get("plotly_chart")) == 6
-    assert app.sidebar.radio[0].value == "Core (0.8–1.2)"
-    assert app.main.radio[0].value == "Surface"
+    assert app.radio(key="moneyness_range").value == "Core (0.8–1.2)"
+    assert app.radio(key="heatmap_view").value == "Surface"
     assert [tab.label for tab in app.tabs] == ["Heatmap", "3D surface", "IV smiles", "ATM term structure"]
     assert any(
         "293 observed · 175 interpolated · 36 blank" in caption.value
@@ -132,15 +132,15 @@ def test_dashboard_opens_on_exchange_mark_without_rate_inputs(monkeypatch):
     )
     assert any("Deribit BTC · Frozen snapshot:" in caption.value for caption in app.caption)
 
-    app.main.radio[0].set_value("Observed").run()
+    app.radio(key="heatmap_view").set_value("Observed").run()
     assert not app.exception
-    assert app.main.radio[0].value == "Observed"
+    assert app.radio(key="heatmap_view").value == "Observed"
     assert any(
         "293 observed · 0 interpolated · 211 blank" in caption.value
         for caption in app.caption
     )
 
-    app.sidebar.radio[0].set_value("Extended (0.7–1.3)").run()
+    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
     assert not app.exception
     assert any(
         "355 observed · 248 interpolated · 69 blank" in caption.value
@@ -206,7 +206,7 @@ def test_smile_selection_preserves_observations_and_other_views(monkeypatch):
     for name, before in other_views.items():
         assert figures[name].to_json() == before
 
-    app.sidebar.radio[0].set_value("Extended (0.7–1.3)").run()
+    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
     assert not app.exception
     assert figures["make_smile_figure"].to_json() == smile.to_json()
     assert [tau for tau, box in zip(ordered_expiries, app.checkbox) if box.value] == [selected]
@@ -315,8 +315,8 @@ def test_atm_uses_raw_all_expiries_independent_of_view_controls(monkeypatch):
     before = figures[-1].to_json()
     for box in app.checkbox:
         box.uncheck()
-    app.sidebar.radio[0].set_value("Extended (0.7–1.3)")
-    app.main.radio[0].set_value("Observed").run()
+    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)")
+    app.radio(key="heatmap_view").set_value("Observed").run()
     assert not app.exception
     assert figures[-1].to_json() == before
 
@@ -374,8 +374,8 @@ def test_all_views_follow_the_raw_deribit_chain(monkeypatch):
     atm_before = figures["make_atm_term_structure_figure"].to_json()
     for box in app.checkbox:
         box.uncheck()
-    app.sidebar.radio[0].set_value("Extended (0.7–1.3)")
-    app.main.radio[0].set_value("Observed").run()
+    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)")
+    app.radio(key="heatmap_view").set_value("Observed").run()
     assert not app.exception
     assert figures["make_atm_term_structure_figure"].to_json() == atm_before
 
@@ -414,8 +414,8 @@ def test_fetch_latest_switches_the_whole_page_and_controls_do_not_fetch(monkeypa
     assert not any("Frozen snapshot" in c.value for c in app.caption)
     assert any("$90,000.00" in m.value for m in app.markdown)
 
-    app.sidebar.radio[0].set_value("Extended (0.7–1.3)").run()
-    app.main.radio[0].set_value("Observed").run()
+    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.radio(key="heatmap_view").set_value("Observed").run()
     app.checkbox[0].set_value(not app.checkbox[0].value).run()
     assert not app.exception
     assert len(calls) == 1
@@ -458,7 +458,7 @@ def test_a_fetched_snapshot_is_parsed_once(monkeypatch):
     app = _app()
     _fetch_button(app).click().run()
     assert not app.exception and not app.error
-    app.main.radio[0].set_value("Observed").run()
+    app.radio(key="heatmap_view").set_value("Observed").run()
     assert not app.exception
     assert parsed.count(fetched["captured_at_utc"]) == 1
 
@@ -500,7 +500,7 @@ def test_smile_checkboxes_show_what_the_chart_draws_on_every_run(monkeypatch):
         assert len(drawn) == 3
         assert sum(box.value for box in app.checkbox) == 3
         assert [box.proto.default for box in app.checkbox] == [box.value for box in app.checkbox]
-        app.main.radio[0].set_value("Observed").run()
+        app.radio(key="heatmap_view").set_value("Observed").run()
 
 
 @pytest.mark.parametrize("source", ["Exchange mark", "Quote midpoint"])

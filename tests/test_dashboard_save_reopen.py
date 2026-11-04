@@ -84,8 +84,8 @@ def _explore(app):
     _segmented(app, "Puts").set_value("Customer sells").run()
     _segmented(app, "GEX view").set_value("Gross").run()
     app.segmented_control(key="iv_source").set_value("Quote midpoint").run()
-    app.sidebar.radio[0].set_value("Extended (0.7–1.3)").run()
-    app.main.radio[0].set_value("Observed").run()
+    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.radio(key="heatmap_view").set_value("Observed").run()
     app.checkbox[0].set_value(False).run()
     app.checkbox[5].set_value(True).run()
     assert not app.exception and not app.error
@@ -100,8 +100,8 @@ def _settings_shown(app):
         "puts": _segmented(app, "Puts").value,
         "gex_view": _segmented(app, "GEX view").value,
         "iv_source": app.segmented_control(key="iv_source").value,
-        "moneyness": app.sidebar.radio[0].value,
-        "heatmap": app.main.radio[0].value,
+        "moneyness": app.radio(key="moneyness_range").value,
+        "heatmap": app.radio(key="heatmap_view").value,
         "smiles": [box.value for box in app.checkbox],
     }
 
@@ -219,8 +219,8 @@ def test_a_failed_iv_build_keeps_the_iv_view_settings_and_saves_them(
     streamlit.cache_data.clear()
     monkeypatch.setattr(iv_source, "build_iv_source_surface", build_or_fail)
     app = _app()
-    app.sidebar.radio[0].set_value("Extended (0.7–1.3)").run()
-    app.main.radio[0].set_value("Observed").run()
+    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.radio(key="heatmap_view").set_value("Observed").run()
     app.checkbox[0].set_value(False).run()
     app.checkbox[5].set_value(True).run()
     chosen = json.loads(saved_files[-1])["settings"]
