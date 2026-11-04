@@ -152,7 +152,10 @@ IV chart between two sources:
 - **Exchange mark** is the `mark_iv` Deribit reports. It is the default IV
   source and the gamma input.
 - **Quote midpoint** is this repository's solver IV from usable bid/ask
-  midpoints. It is the comparison source.
+  midpoints. It is the comparison source. A contract's midpoint IV counts
+  only when its bid and ask also solve to IV; a bid below intrinsic value has
+  no IV, so a midpoint built on it is left out. On the frozen snapshot this
+  removes 148 midpoints, all in the money.
 
 The selector changes only the IV charts, never OI or GEX, and reuses the
 loaded snapshot. Both sources follow the same Combined IV and ATM proxy rules;

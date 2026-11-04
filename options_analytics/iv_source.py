@@ -1,7 +1,8 @@
 """Per-contract IV for the dashboard's IV source selector.
 
 Exchange mark IV is Deribit's reported ``mark_iv``. Quote midpoint IV is this
-repository's solver on the bid/ask midpoint, priced with Deribit's inverse
+repository's solver on the bid/ask midpoint, used only where the bid and ask
+also solve, and priced with Deribit's inverse
 convention: the index ``X`` is spot and each contract's reported forward ``F``
 sets ``R = ln(F / X) / T``, so no rate is chosen.
 """
@@ -58,15 +59,30 @@ def solve_contract_iv(chain: pd.DataFrame, price_column: str) -> pd.Series:
     return pd.Series(iv, index=chain.index, name="iv")
 
 
-def contract_iv(chain: pd.DataFrame, iv_source: str) -> pd.Series:
-    """Return each contract's IV from one source; unusable values are ``NaN``."""
+def contract_iv(
+    chain: pd.DataFrame, iv_source: str, bid_ask_iv: pd.DataFrame | None = None,
+) -> pd.Series:
+    """Return each contract's IV from one source; unusable values are ``NaN``.
+
+    A Quote midpoint IV counts only when the contract's bid and ask both
+    solve to IV too: a bid below intrinsic value has no IV, and a midpoint
+    taken from it does not reflect a two-sided market. ``bid_ask_iv`` is
+    ``solve_bid_ask_iv(chain)``; pass it to reuse a solve already made.
+    """
     if iv_source == EXCHANGE_MARK:
         mark = _numeric(chain, "mark_iv")
         usable = np.isfinite(mark) & (mark > 0)
         return pd.Series(np.where(usable, mark, np.nan), index=chain.index, name="iv")
     if iv_source == QUOTE_MIDPOINT:
-        quoted = chain["quote_source"].eq("mid")
-        return solve_contract_iv(chain, "mid_price").where(quoted)
+        if bid_ask_iv is None:
+            bid_ask_iv = solve_bid_ask_iv(chain)
+        bid_ask_iv = bid_ask_iv.reindex(chain.index)
+        usable = (
+            chain["quote_source"].eq("mid")
+            & np.isfinite(bid_ask_iv["bid"])
+            & np.isfinite(bid_ask_iv["ask"])
+        )
+        return solve_contract_iv(chain, "mid_price").where(usable)
     raise ValueError(f"iv_source must be one of {IV_SOURCES}, got {iv_source!r}")
 
 
@@ -216,13 +232,13 @@ def build_iv_source_surface(
     to reuse one bid/ask solve across sources, or leave it out to solve here.
     """
     data, expiries, strikes, spot_price = _chain_axes(chain)
-    iv = contract_iv(data, iv_source)
+    if bid_ask_iv is None:
+        bid_ask_iv = solve_bid_ask_iv(data)
+    iv = contract_iv(data, iv_source, bid_ask_iv=bid_ask_iv)
     call_iv = _contract_grid(data, iv, "call", expiries, strikes)
     put_iv = _contract_grid(data, iv, "put", expiries, strikes)
     combined, source_grid = combine_call_put_iv(call_iv, put_iv, strikes, spot_price)
     # The bid-ask band is a display band from our solver in both modes.
-    if bid_ask_iv is None:
-        bid_ask_iv = solve_bid_ask_iv(data)
     band = {}
     for side in ("bid", "ask"):
         side_iv = bid_ask_iv[side].reindex(data.index)

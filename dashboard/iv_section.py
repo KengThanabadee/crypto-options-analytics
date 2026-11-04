@@ -128,5 +128,6 @@ def _iv_method_notes(frame, iv_source):
             "BTC/USD index X. Quote midpoint IV and the bid–ask band use our "
             "Black-Scholes solver with each contract's reported forward F, so "
             "R = ln(F / X) / T and no rate is chosen. A solve must reprice "
-            "within $0.01 or it is missing. Exchange mark IV is Deribit's own."
+            "within $0.01 or it is missing, and a midpoint IV counts only when "
+            "the bid and ask both solve too. Exchange mark IV is Deribit's own."
         )

@@ -31,8 +31,9 @@ def test_quote_midpoint_iv_prices_back_to_the_midpoint_within_one_cent(chain):
 
     assert iv.index.equals(chain.index)
     solved = chain[np.isfinite(iv)]
-    # The 2026-10-15 snapshot: 900 two-sided midpoints, 882 solve (research).
-    assert len(solved) == 882
+    # The 2026-10-15 snapshot: 900 two-sided midpoints, 882 solve (research);
+    # 148 of those, all in the money, have a bid that does not solve.
+    assert len(solved) == 734
     residuals = [
         abs(_reprice(row, sigma) - row.mid_price)
         for row, sigma in zip(solved.itertuples(), iv[np.isfinite(iv)])
@@ -45,7 +46,33 @@ def test_unsolved_or_unquoted_midpoints_count_as_missing(chain):
 
     no_quote = chain["quote_source"] != "mid"
     assert iv[no_quote].isna().all()
-    assert np.isfinite(chain["mid_price"]).sum() - np.isfinite(iv).sum() == 18
+    assert np.isfinite(chain["mid_price"]).sum() - np.isfinite(iv).sum() == 18 + 148
+
+
+def test_quote_midpoint_iv_needs_both_bid_and_ask_iv(chain):
+    from options_analytics.iv_source import solve_bid_ask_iv
+
+    iv = contract_iv(chain, "Quote midpoint")
+    bid_ask = solve_bid_ask_iv(chain)
+    used = np.isfinite(iv)
+    assert np.isfinite(bid_ask.loc[used, "bid"]).all()
+    assert np.isfinite(bid_ask.loc[used, "ask"]).all()
+    # The 0.7-day 83,500 Put bids below intrinsic: its midpoint still solves
+    # on its own, but it is not used, so that near-spot cell is Call only.
+    put = chain[
+        (chain["symbol"] == "BTC-16OCT26-83500-P")
+    ].index[0]
+    assert np.isnan(bid_ask.loc[put, "bid"]) and np.isnan(iv[put])
+    result = build_iv_source_surface(chain, "Quote midpoint")
+    row = chain.loc[put]
+    assert result.source_grid[_cell(result, row)] == "near_atm_call_only"
+
+
+def test_every_quote_midpoint_line_point_has_a_band(chain):
+    result = build_iv_source_surface(chain, "Quote midpoint")
+    line = np.isfinite(result.iv_surface)
+    assert np.isfinite(result.band_low[line]).all()
+    assert np.isfinite(result.band_high[line]).all()
 
 
 def _cell(result, row):

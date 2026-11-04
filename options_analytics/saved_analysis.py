@@ -21,7 +21,7 @@ FILE_FORMAT = "btc-options-analysis"
 FORMAT_VERSION = 1
 # Raise when a change alters any number computed from the same snapshot and
 # settings, so reopening an older file shows a recompute notice.
-CALCULATION_VERSION = 2
+CALCULATION_VERSION = 3
 SETTING_NAMES = (
     "oi_expiries", "strike_range", "signs", "gex_view", "iv_source",
     "moneyness_range", "heatmap_values", "smile_expiries", "surface_view",
