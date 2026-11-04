@@ -6,8 +6,9 @@ inputs or the dashboard.
 
 ## Plans
 
-- Resolved specs and finished plans in `.agents/history/` hold past rationale;
-  read one only for why a feature works as it does.
+- Resolved specs (`.scratch/<feature>/spec.md` with `Status: resolved`) and
+  local finished plans in `.agents/history/` hold past rationale; read one
+  only for why a feature works as it does.
 
 ## Project Contracts
 
