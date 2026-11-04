@@ -19,8 +19,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from iv_surface import deribit, iv_source
-from iv_surface.surface_transforms import interpolate_surface_2d
+from options_analytics import deribit, iv_source
+from options_analytics.surface_transforms import interpolate_surface_2d
 
 SNAPSHOT = Path(__file__).resolve().parents[1] / "data" / "deribit_btc_options_snapshot.json"
 BUCKETS = [0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5, 2.0, 3.0, np.inf]

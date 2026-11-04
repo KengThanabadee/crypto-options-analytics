@@ -1,8 +1,8 @@
-# implied-vol-surface
+# crypto-options-analytics
 
 A small personal quant library for learning and building implied-volatility tooling from first principles.
 
-`implied-vol-surface` provides Black-Scholes pricing helpers, implied-volatility root finding, Combined IV surfaces, interpolation, and a Deribit BTC option-chain input.
+`crypto-options-analytics` provides Black-Scholes pricing helpers, implied-volatility root finding, Combined IV surfaces, interpolation, and a Deribit BTC option-chain input.
 
 The implied-volatility root-finding logic is implemented without `scipy.optimize`.
 
@@ -142,18 +142,18 @@ spaced by numerical maturity; expiries without an eligible proxy remain gaps.
 
 ## Module Boundaries
 
-- `iv_surface.deribit` validates frozen BTC inverse-option snapshots and adapts
+- `options_analytics.deribit` validates frozen BTC inverse-option snapshots and adapts
   their metadata, BTC quotes and index to the canonical option-chain DataFrame.
-- `iv_surface.chain` holds the shared parsing helpers: time to expiry, number
+- `options_analytics.chain` holds the shared parsing helpers: time to expiry, number
   parsing, bid/ask mid price and UTC timestamps.
-- `iv_surface.iv_source` builds per-contract IV from the selected IV source
+- `options_analytics.iv_source` builds per-contract IV from the selected IV source
   and combines Call and Put IV into the Combined IV surface.
-- `iv_surface.solver` owns Black-Scholes pricing and IV root finding.
-- `iv_surface.surface_transforms` reshapes IV surfaces and selects the bounded
+- `options_analytics.solver` owns Black-Scholes pricing and IV root finding.
+- `options_analytics.surface_transforms` reshapes IV surfaces and selects the bounded
   ATM proxy without requiring Plotly.
-- `iv_surface.positioning` sums open interest and net gamma exposure by
+- `options_analytics.positioning` sums open interest and net gamma exposure by
   strike and holds the Near spot strike range, without requiring Plotly.
-- `iv_surface.visualization` constructs Plotly figures from prepared frames.
+- `options_analytics.visualization` constructs Plotly figures from prepared frames.
 
 ## Core Data Shape
 
@@ -353,7 +353,7 @@ not equal Exchange mark IV.
 ## Quick Example
 
 ```python
-from iv_surface.solver import bs_price, solve_iv
+from options_analytics.solver import bs_price, solve_iv
 
 spot_price, K, T, r, sigma = 100, 105, 0.25, 0.03, 0.20
 
@@ -395,7 +395,7 @@ timeout. Network, HTTP, JSON-RPC and validation failures raise
 
 ### `build_iv_source_surface(chain, iv_source, bid_ask_iv=None)`
 
-In `iv_surface/iv_source.py`. `iv_source` is `"Exchange mark"` or
+In `options_analytics/iv_source.py`. `iv_source` is `"Exchange mark"` or
 `"Quote midpoint"`. Returns the Combined IV surface (`iv_surface`,
 `source_grid`, the side surfaces `call_iv_surface` and `put_iv_surface`) for
 that source only, plus the bid–ask display band as `band_low` and `band_high`,
@@ -409,7 +409,7 @@ name it in hover.
 
 ### `combine_call_put_iv(call_iv, put_iv, strikes, spot_price)`
 
-In `iv_surface/iv_source.py`. Takes aligned Call and Put IV grids and returns
+In `options_analytics/iv_source.py`. Takes aligned Call and Put IV grids and returns
 one Combined IV per expiry/strike with a same-shaped `source_grid` of source
 codes. Selection is spot-based:
 
@@ -424,7 +424,7 @@ solved Call and Put IVs at the same expiry and strike when both are available.
 
 ### `interpolate_surface_2d(long_frame, min_moneyness=0.8, max_moneyness=1.2)` and `observed_surface_frame(surface_frame)`
 
-In `iv_surface/surface_transforms.py`. `interpolate_surface_2d` fills the
+In `options_analytics/surface_transforms.py`. `interpolate_surface_2d` fills the
 missing cells inside `min_moneyness <= K / S <= max_moneyness` by 2D
 total-variance interpolation, as described under Offline dashboard, and keeps
 the original IV in `observed_iv`. `observed_surface_frame` takes that result

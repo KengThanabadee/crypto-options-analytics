@@ -11,8 +11,8 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from iv_surface.solver import bs_price, solve_iv
-from iv_surface.surface_transforms import surface_to_long_frame
+from options_analytics.solver import bs_price, solve_iv
+from options_analytics.surface_transforms import surface_to_long_frame
 
 
 EXCHANGE_MARK = "Exchange mark"

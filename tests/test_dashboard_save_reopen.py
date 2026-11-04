@@ -9,8 +9,8 @@ import requests
 import streamlit
 from streamlit.testing.v1 import AppTest
 
-from iv_surface import iv_source, saved_analysis
-from iv_surface.deribit import load_deribit_snapshot, parse_deribit_snapshot
+from options_analytics import iv_source, saved_analysis
+from options_analytics.deribit import load_deribit_snapshot, parse_deribit_snapshot
 
 from dashboard import settings
 

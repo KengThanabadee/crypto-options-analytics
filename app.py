@@ -8,7 +8,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from iv_surface import deribit, visualization
+from options_analytics import deribit, visualization
 
 from dashboard.iv_section import iv_section
 from dashboard.positioning_section import positioning_section

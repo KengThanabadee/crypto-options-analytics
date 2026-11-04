@@ -7,7 +7,7 @@ from streamlit.testing.v1 import AppTest
 
 import requests
 
-from iv_surface import deribit, iv_source, visualization
+from options_analytics import deribit, iv_source, visualization
 
 
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
@@ -58,8 +58,8 @@ def _line_traces(figure):
 
 
 def test_iv_charts_open_on_exchange_mark_and_switch_to_quote_midpoint(monkeypatch):
-    from iv_surface.iv_source import build_iv_source_surface
-    from iv_surface.surface_transforms import atm_term_structure_frame, surface_to_long_frame
+    from options_analytics.iv_source import build_iv_source_surface
+    from options_analytics.surface_transforms import atm_term_structure_frame, surface_to_long_frame
 
     figures = _record_figures(monkeypatch, [
         "make_iv_heatmap", "make_iv_surface_figure", "make_smile_figure",
@@ -300,7 +300,7 @@ def test_without_quotes_exchange_mark_still_charts_and_quote_midpoint_stays_miss
 
 
 def test_atm_uses_raw_all_expiries_independent_of_view_controls(monkeypatch):
-    from iv_surface.surface_transforms import atm_term_structure_frame, surface_to_long_frame
+    from options_analytics.surface_transforms import atm_term_structure_frame, surface_to_long_frame
 
     figures = []
     build_figure = visualization.make_atm_term_structure_figure
@@ -353,7 +353,7 @@ def test_atm_rejected_expiries_remain_gaps_and_have_visible_status(monkeypatch):
 
 
 def test_all_views_follow_the_raw_deribit_chain(monkeypatch):
-    from iv_surface.surface_transforms import atm_term_structure_frame, surface_to_long_frame
+    from options_analytics.surface_transforms import atm_term_structure_frame, surface_to_long_frame
 
     figures = {}
     for name in ["make_iv_heatmap", "make_iv_surface_figure", "make_smile_figure", "make_atm_term_structure_figure"]:

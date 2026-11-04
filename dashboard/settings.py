@@ -11,9 +11,9 @@ Each widget's default is in ``WIDGET_DEFAULTS``, which the page widgets use too.
 from dataclasses import dataclass
 from typing import Callable
 
-from iv_surface.iv_source import DEFAULT_IV_SOURCE
-from iv_surface.positioning import DEFAULT_SIGNS, GEX_MODES, near_spot_range
-from iv_surface.surface_transforms import HEATMAP_VALUES, MONEYNESS_RANGES, SURFACE_VIEWS
+from options_analytics.iv_source import DEFAULT_IV_SOURCE
+from options_analytics.positioning import DEFAULT_SIGNS, GEX_MODES, near_spot_range
+from options_analytics.surface_transforms import HEATMAP_VALUES, MONEYNESS_RANGES, SURFACE_VIEWS
 
 
 CUSTOMER_SIDES = {"Customer sells": 1, "Customer buys": -1}

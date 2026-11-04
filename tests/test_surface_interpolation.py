@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from iv_surface.surface_transforms import (
+from options_analytics.surface_transforms import (
     interpolate_surface_2d,
     observed_surface_frame,
     surface_to_long_frame,
@@ -131,7 +131,7 @@ def test_2d_rejects_duplicate_cells_and_missing_columns():
 
 @pytest.mark.parametrize("with_source", [True, False])
 def test_2d_shows_correct_method_in_both_figures(with_source):
-    from iv_surface.visualization import make_iv_heatmap, make_iv_surface_figure
+    from options_analytics.visualization import make_iv_heatmap, make_iv_surface_figure
 
     frame = interpolate_surface_2d(_frame())
     if not with_source:

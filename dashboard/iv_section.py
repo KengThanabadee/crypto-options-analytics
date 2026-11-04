@@ -6,8 +6,8 @@ Each tab is drawn by its own view module: surface, smiles, term structure.
 import numpy as np
 import streamlit as st
 
-from iv_surface import iv_source as iv_sources
-from iv_surface.iv_source import IV_SOURCES, iv_source_long_frame
+from options_analytics import iv_source as iv_sources
+from options_analytics.iv_source import IV_SOURCES, iv_source_long_frame
 
 from dashboard import smile_view, surface_view, term_structure_view
 from dashboard.settings import (

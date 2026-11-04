@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from iv_surface.solver import bs_price, solve_iv
+from options_analytics.solver import bs_price, solve_iv
 
 def test_solve_iv_round_trip():
     spot_price = 100

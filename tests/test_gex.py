@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from iv_surface.positioning import contract_gamma
+from options_analytics.positioning import contract_gamma
 
 
 DATA = Path(__file__).resolve().parents[1] / "data"
@@ -89,13 +89,13 @@ SNAPSHOT_PATH = DATA / "deribit_btc_options_snapshot.json"
 
 @pytest.fixture
 def chain():
-    from iv_surface.deribit import load_deribit_snapshot, parse_deribit_snapshot
+    from options_analytics.deribit import load_deribit_snapshot, parse_deribit_snapshot
 
     return parse_deribit_snapshot(load_deribit_snapshot(SNAPSHOT_PATH))
 
 
 def test_one_real_contract_contribution_by_hand(chain):
-    from iv_surface.positioning import gex_contributions
+    from options_analytics.positioning import gex_contributions
 
     raw = json.loads(SNAPSHOT_PATH.read_text())
     results = [request["response"]["result"] for request in raw["requests"]]
@@ -124,7 +124,7 @@ def test_one_real_contract_contribution_by_hand(chain):
 
 
 def test_each_strike_bar_is_the_sum_of_its_contracts(chain):
-    from iv_surface.positioning import gex_contributions, net_gex_by_strike
+    from options_analytics.positioning import gex_contributions, net_gex_by_strike
 
     taus = sorted(chain["tau"].unique())
     chosen = [taus[4], taus[5]]
@@ -145,7 +145,7 @@ def test_each_strike_bar_is_the_sum_of_its_contracts(chain):
 def test_net_lets_calls_and_puts_cancel():
     import pandas as pd
 
-    from iv_surface.positioning import net_gex_by_strike
+    from options_analytics.positioning import net_gex_by_strike
 
     contract = dict(strike=80_000.0, tau=0.05, mark_iv=0.5, underlying_price=80_100.0,
                     index_price=80_000.0, open_interest=10.0)
@@ -159,7 +159,7 @@ def test_net_lets_calls_and_puts_cancel():
 
 
 def test_computable_oi_share_counts_oi_with_a_gamma(chain):
-    from iv_surface.positioning import computable_oi_share, net_gex_by_strike
+    from options_analytics.positioning import computable_oi_share, net_gex_by_strike
 
     assert computable_oi_share(net_gex_by_strike(chain)) == 1.0
     damaged = chain.copy()
@@ -176,7 +176,7 @@ def _title(figure, name):
 
 
 def test_gex_panel_labels_source_unit_and_assumption(chain):
-    from iv_surface.positioning import net_gex_by_strike
+    from options_analytics.positioning import net_gex_by_strike
 
     table = net_gex_by_strike(chain)
     figure = _positioning_figure(chain, table)
@@ -207,7 +207,7 @@ def test_gex_panel_labels_source_unit_and_assumption(chain):
 
 
 def test_net_states_the_assumption_as_a_scenario_and_gross_leaves_it_out(chain):
-    from iv_surface.positioning import assumption_label, net_gex_by_strike
+    from options_analytics.positioning import assumption_label, net_gex_by_strike
 
     table = net_gex_by_strike(chain)
     label = assumption_label({"call": -1, "put": -1})
@@ -231,7 +231,7 @@ def test_net_states_the_assumption_as_a_scenario_and_gross_leaves_it_out(chain):
 
 
 def test_gross_bars_have_their_own_colour(chain):
-    from iv_surface.positioning import net_gex_by_strike
+    from options_analytics.positioning import net_gex_by_strike
 
     figure = _positioning_figure(chain, net_gex_by_strike(chain), mode="Gross")
     oi_colours = {figure.data[0].marker.color, figure.data[1].marker.color}
@@ -242,7 +242,7 @@ def test_gross_bars_have_their_own_colour(chain):
 
 
 def test_index_label_sits_inside_the_oi_panel_below_its_title(chain):
-    from iv_surface.positioning import net_gex_by_strike
+    from options_analytics.positioning import net_gex_by_strike
 
     figure = _positioning_figure(chain, net_gex_by_strike(chain))
     (label,) = [a for a in figure.layout.annotations if a.text.startswith("Index")]
@@ -261,7 +261,7 @@ ALL_SIGNS = [
 
 
 def test_customer_buys_gives_dealer_negative_gamma_on_every_expiry(chain):
-    from iv_surface.positioning import gex_contributions
+    from options_analytics.positioning import gex_contributions
 
     rows = gex_contributions(chain, signs={"call": -1, "put": 1})
     calls, puts = rows[rows.flag == "call"], rows[rows.flag == "put"]
@@ -276,7 +276,7 @@ def test_customer_buys_gives_dealer_negative_gamma_on_every_expiry(chain):
 def test_gross_adds_magnitudes_so_calls_and_puts_do_not_cancel():
     import pandas as pd
 
-    from iv_surface.positioning import net_gex_by_strike
+    from options_analytics.positioning import net_gex_by_strike
 
     contract = dict(strike=80_000.0, tau=0.05, mark_iv=0.5, underlying_price=80_100.0,
                     index_price=80_000.0, open_interest=10.0)
@@ -294,7 +294,7 @@ def test_gross_adds_magnitudes_so_calls_and_puts_do_not_cancel():
 def test_gross_keeps_the_net_computability_rule():
     import pandas as pd
 
-    from iv_surface.positioning import net_gex_by_strike
+    from options_analytics.positioning import net_gex_by_strike
 
     contract = dict(strike=80_000.0, tau=0.05, underlying_price=80_100.0,
                     index_price=80_000.0, open_interest=10.0)
@@ -308,7 +308,7 @@ def test_gross_keeps_the_net_computability_rule():
 
 def test_flipping_an_assumption_changes_only_signs(chain):
     """Spec check 3: Gross >= |Net| per strike; flips leave Gross unchanged."""
-    from iv_surface.positioning import gex_contributions, net_gex_by_strike
+    from options_analytics.positioning import gex_contributions, net_gex_by_strike
 
     taus = sorted(chain["tau"].unique())
     base_rows = gex_contributions(chain)
@@ -342,7 +342,7 @@ def _strike_chain(**overrides):
 
 
 def test_known_zero_oi_contributes_zero_even_without_iv():
-    from iv_surface.positioning import gex_contributions, net_gex_by_strike
+    from options_analytics.positioning import gex_contributions, net_gex_by_strike
 
     chain = _strike_chain(P1=dict(open_interest=0.0, mark_iv=np.nan))
     rows = gex_contributions(chain).set_index("symbol")
@@ -353,7 +353,7 @@ def test_known_zero_oi_contributes_zero_even_without_iv():
 
 
 def test_removing_one_contracts_iv_gives_incomplete_data_with_details():
-    from iv_surface.positioning import gex_contributions, net_gex_by_strike
+    from options_analytics.positioning import gex_contributions, net_gex_by_strike
 
     full = gex_contributions(_strike_chain()).set_index("symbol")["contribution"]
     row = net_gex_by_strike(_strike_chain(P1=dict(mark_iv=np.nan))).iloc[0]
@@ -366,7 +366,7 @@ def test_removing_one_contracts_iv_gives_incomplete_data_with_details():
 
 
 def test_missing_oi_is_not_zero_and_leaves_the_oi_share_unknown():
-    from iv_surface.positioning import net_gex_by_strike
+    from options_analytics.positioning import net_gex_by_strike
 
     row = net_gex_by_strike(_strike_chain(C2=dict(open_interest=np.nan))).iloc[0]
     assert row["status"] == "incomplete"
@@ -375,7 +375,7 @@ def test_missing_oi_is_not_zero_and_leaves_the_oi_share_unknown():
 
 
 def test_removing_every_contracts_input_gives_insufficient_data():
-    from iv_surface.positioning import net_gex_by_strike
+    from options_analytics.positioning import net_gex_by_strike
 
     chain = _strike_chain(C1=dict(mark_iv=np.nan), P1=dict(open_interest=np.nan),
                           C2=dict(mark_iv=np.nan))
@@ -387,7 +387,7 @@ def test_removing_every_contracts_input_gives_insufficient_data():
 
 
 def test_partial_subtotal_adds_magnitudes_for_gross():
-    from iv_surface.positioning import gex_contributions, strike_coverage
+    from options_analytics.positioning import gex_contributions, strike_coverage
 
     rows = gex_contributions(_strike_chain(C2=dict(mark_iv=np.nan)))
     rows["mark_iv"] = [0.5, 0.5, np.nan]
@@ -398,7 +398,7 @@ def test_partial_subtotal_adds_magnitudes_for_gross():
 
 
 def test_incomplete_strike_shows_the_partial_subtotal_of_the_selected_mode():
-    from iv_surface.positioning import gex_contributions, net_gex_by_strike
+    from options_analytics.positioning import gex_contributions, net_gex_by_strike
 
     full = gex_contributions(_strike_chain()).set_index("symbol")["contribution"]
     chain = _strike_chain(C2=dict(mark_iv=np.nan))
@@ -418,7 +418,7 @@ def test_incomplete_strike_shows_the_partial_subtotal_of_the_selected_mode():
 
 
 def test_real_snapshot_damage_marks_only_the_damaged_strike(chain):
-    from iv_surface.positioning import net_gex_by_strike
+    from options_analytics.positioning import net_gex_by_strike
 
     clean = net_gex_by_strike(chain).set_index("strike")
     assert set(clean["status"]) == {"complete"}
@@ -436,7 +436,7 @@ def test_real_snapshot_damage_marks_only_the_damaged_strike(chain):
 
 
 def test_gex_figure_marks_incomplete_and_insufficient_strikes_without_bars(chain):
-    from iv_surface.positioning import net_gex_by_strike
+    from options_analytics.positioning import net_gex_by_strike
 
     damaged = chain.copy()
     damaged.loc[damaged.symbol == "BTC-30OCT26-82000-C", "mark_iv"] = np.nan
@@ -473,8 +473,8 @@ def test_gex_figure_marks_incomplete_and_insufficient_strikes_without_bars(chain
 
 
 def _positioning_figure(chain, gex_table=None, strike_range=(75_000.0, 90_000.0), **kwargs):
-    from iv_surface.positioning import net_gex_by_strike, open_interest_by_strike
-    from iv_surface.visualization import make_positioning_figure
+    from options_analytics.positioning import net_gex_by_strike, open_interest_by_strike
+    from options_analytics.visualization import make_positioning_figure
 
     options = dict(scope="All expiries", assumption="Call+ / Put−", oi_share=1.0)
     options.update(kwargs)

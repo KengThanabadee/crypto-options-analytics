@@ -6,10 +6,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from iv_surface.deribit import load_deribit_snapshot, parse_deribit_snapshot
-from iv_surface.chain import compute_tau
-from iv_surface.solver import bs_price
-from iv_surface.iv_source import QUOTE_MIDPOINT, build_iv_source_surface
+from options_analytics.deribit import load_deribit_snapshot, parse_deribit_snapshot
+from options_analytics.chain import compute_tau
+from options_analytics.solver import bs_price
+from options_analytics.iv_source import QUOTE_MIDPOINT, build_iv_source_surface
 
 
 FIXTURE = Path(__file__).resolve().parents[1] / "data/deribit_btc_options_snapshot.json"
@@ -199,7 +199,7 @@ class _ReplaySession:
 
 
 def test_fetched_snapshot_has_the_frozen_shape_and_parses_like_it():
-    from iv_surface.deribit import fetch_deribit_snapshot
+    from options_analytics.deribit import fetch_deribit_snapshot
 
     raw = snapshot()
     session = _ReplaySession(raw)
@@ -229,7 +229,7 @@ def test_fetched_snapshot_has_the_frozen_shape_and_parses_like_it():
 @pytest.mark.parametrize("case", ["network", "rpc_error", "invalid_index"])
 def test_fetch_failures_raise_one_error_type_with_the_reason(case):
     import requests
-    from iv_surface.deribit import DeribitFetchError, fetch_deribit_snapshot
+    from options_analytics.deribit import DeribitFetchError, fetch_deribit_snapshot
 
     raw = snapshot()
     index = "/api/v2/public/get_index_price"

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import numpy as np
 import pytest
 
-from iv_surface.chain import (
+from options_analytics.chain import (
     _compute_mid_price,
     _parse_utc_timestamp,
     _to_float,

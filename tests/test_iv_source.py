@@ -3,13 +3,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from iv_surface import deribit
-from iv_surface.iv_source import (
+from options_analytics import deribit
+from options_analytics.iv_source import (
     build_iv_source_surface,
     combine_call_put_iv,
     contract_iv,
 )
-from iv_surface.solver import bs_price
+from options_analytics.solver import bs_price
 
 
 SNAPSHOT_PATH = Path(__file__).resolve().parents[1] / "data/deribit_btc_options_snapshot.json"
@@ -118,7 +118,7 @@ def test_unusable_selected_source_iv_is_missing_and_never_filled_from_the_other(
 
 
 def _side_iv(row, price):
-    from iv_surface.solver import solve_iv
+    from options_analytics.solver import solve_iv
 
     rate = np.log(row.underlying_price / row.index_price) / row.tau
     return solve_iv(price, row.index_price, row.strike, row.tau, rate, row.flag)
@@ -176,7 +176,7 @@ def test_band_is_missing_where_a_weighted_side_has_no_quote(chain):
 
 @pytest.fixture(scope="module")
 def midpoint_frame(chain):
-    from iv_surface.iv_source import iv_source_long_frame
+    from options_analytics.iv_source import iv_source_long_frame
 
     result = build_iv_source_surface(chain, "Quote midpoint")
     dates = chain.drop_duplicates("tau").set_index("tau")["expiry_dt"]
@@ -195,7 +195,7 @@ def test_long_frame_carries_line_band_and_source(midpoint_frame):
 
 
 def test_smile_draws_a_labelled_display_band_and_names_the_source(midpoint_frame):
-    from iv_surface.visualization import make_smile_figure
+    from options_analytics.visualization import make_smile_figure
 
     result, frame = midpoint_frame
     tau = result.expiries[-1]
@@ -222,7 +222,7 @@ def test_smile_draws_a_labelled_display_band_and_names_the_source(midpoint_frame
 
 @pytest.mark.parametrize("builder", ["make_iv_heatmap", "make_iv_surface_figure"])
 def test_surface_hover_names_the_iv_source(midpoint_frame, builder):
-    from iv_surface import visualization
+    from options_analytics import visualization
 
     _, frame = midpoint_frame
     figure = getattr(visualization, builder)(frame, iv_source="Exchange mark")
@@ -232,8 +232,8 @@ def test_surface_hover_names_the_iv_source(midpoint_frame, builder):
 
 
 def test_atm_hover_names_the_iv_source(midpoint_frame):
-    from iv_surface.surface_transforms import atm_term_structure_frame
-    from iv_surface.visualization import make_atm_term_structure_figure
+    from options_analytics.surface_transforms import atm_term_structure_frame
+    from options_analytics.visualization import make_atm_term_structure_figure
 
     _, frame = midpoint_frame
     figure = make_atm_term_structure_figure(
@@ -244,7 +244,7 @@ def test_atm_hover_names_the_iv_source(midpoint_frame):
 
 @pytest.mark.parametrize("source", ["Exchange mark", "Quote midpoint"])
 def test_a_shared_bid_ask_solve_gives_the_same_surface(chain, source):
-    from iv_surface.iv_source import solve_bid_ask_iv
+    from options_analytics.iv_source import solve_bid_ask_iv
 
     shared = build_iv_source_surface(chain, source, bid_ask_iv=solve_bid_ask_iv(chain))
     own = build_iv_source_surface(chain, source)

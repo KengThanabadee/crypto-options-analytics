@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from iv_surface.positioning import (
+from options_analytics.positioning import (
     expiry_scope_label,
     near_spot_range,
     open_interest_by_strike,
@@ -81,8 +81,8 @@ def test_expiry_scope_names_all_expiries_or_the_selected_dates(chain):
 
 
 def test_open_interest_panel_shows_calls_and_puts_in_range_with_index_line(chain):
-    from iv_surface.positioning import net_gex_by_strike
-    from iv_surface.visualization import make_positioning_figure
+    from options_analytics.positioning import net_gex_by_strike
+    from options_analytics.visualization import make_positioning_figure
 
     table = open_interest_by_strike(chain)
     figure = make_positioning_figure(

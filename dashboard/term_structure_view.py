@@ -2,8 +2,8 @@
 
 import streamlit as st
 
-from iv_surface import visualization
-from iv_surface.surface_transforms import atm_term_structure_frame
+from options_analytics import visualization
+from options_analytics.surface_transforms import atm_term_structure_frame
 
 
 def term_structure_view(frame, iv_source):

@@ -2,8 +2,8 @@
 
 import streamlit as st
 
-from iv_surface import visualization
-from iv_surface.surface_transforms import (
+from options_analytics import visualization
+from options_analytics.surface_transforms import (
     HEATMAP_VALUES,
     MONEYNESS_RANGES,
     SURFACE_VIEWS,

@@ -5,8 +5,8 @@ import pytest
 import requests
 from streamlit.testing.v1 import AppTest
 
-from iv_surface import deribit, visualization
-from iv_surface.positioning import near_spot_range, open_interest_by_strike
+from options_analytics import deribit, visualization
+from options_analytics.positioning import near_spot_range, open_interest_by_strike
 
 
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"

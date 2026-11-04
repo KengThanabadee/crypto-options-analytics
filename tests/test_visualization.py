@@ -8,11 +8,11 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from iv_surface.surface_transforms import (
+from options_analytics.surface_transforms import (
     atm_term_structure_frame,
     surface_to_long_frame,
 )
-from iv_surface.visualization import (
+from options_analytics.visualization import (
     make_iv_heatmap,
     make_iv_surface_figure,
     make_smile_figure,
@@ -51,7 +51,7 @@ class BlockPlotly(importlib.abc.MetaPathFinder):
         return None
 
 sys.meta_path.insert(0, BlockPlotly())
-from iv_surface.surface_transforms import (
+from options_analytics.surface_transforms import (
     atm_term_structure_frame,
     interpolate_surface_2d,
     surface_to_long_frame,

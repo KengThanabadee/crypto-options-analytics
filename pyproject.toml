@@ -3,9 +3,9 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "implied-vol-surface"
+name = "crypto-options-analytics"
 version = "0.1.0"
-description = "Black-Scholes implied-volatility solving and simple IV surface interpolation."
+description = "Deribit options dashboard with open interest, gamma exposure (GEX) and implied volatility (IV)."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -28,7 +28,7 @@ dev = [
 addopts = "-n auto"
 
 [tool.setuptools.packages.find]
-include = ["iv_surface*"]
+include = ["options_analytics*"]
 
 [tool.ruff.lint]
 # Pyflakes and syntax errors only: undefined names, unused imports and

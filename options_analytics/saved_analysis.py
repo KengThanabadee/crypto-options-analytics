@@ -11,10 +11,10 @@ import math
 
 import pandas as pd
 
-from iv_surface.deribit import parse_deribit_snapshot
-from iv_surface.iv_source import IV_SOURCES
-from iv_surface.positioning import GEX_MODES, strike_zoom_bounds
-from iv_surface.surface_transforms import HEATMAP_VALUES, MONEYNESS_RANGES, SURFACE_VIEWS
+from options_analytics.deribit import parse_deribit_snapshot
+from options_analytics.iv_source import IV_SOURCES
+from options_analytics.positioning import GEX_MODES, strike_zoom_bounds
+from options_analytics.surface_transforms import HEATMAP_VALUES, MONEYNESS_RANGES, SURFACE_VIEWS
 
 
 FILE_FORMAT = "btc-options-analysis"

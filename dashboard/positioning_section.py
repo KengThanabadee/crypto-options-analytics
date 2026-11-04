@@ -2,8 +2,8 @@
 
 import streamlit as st
 
-from iv_surface import visualization
-from iv_surface.positioning import (
+from options_analytics import visualization
+from options_analytics.positioning import (
     GEX_MODES,
     assumption_label,
     computable_oi_share,

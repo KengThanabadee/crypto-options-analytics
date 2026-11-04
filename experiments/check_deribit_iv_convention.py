@@ -18,7 +18,7 @@ from scipy.special import ndtr
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from iv_surface.solver import bs_price, solve_iv
+from options_analytics.solver import bs_price, solve_iv
 
 
 def inverse_price_btc(forward, strike, tau, sigma, flag):

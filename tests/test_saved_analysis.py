@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from iv_surface import saved_analysis
-from iv_surface.deribit import load_deribit_snapshot, parse_deribit_snapshot
-from iv_surface.iv_source import build_iv_source_surface
-from iv_surface.positioning import net_gex_by_strike, open_interest_by_strike
+from options_analytics import saved_analysis
+from options_analytics.deribit import load_deribit_snapshot, parse_deribit_snapshot
+from options_analytics.iv_source import build_iv_source_surface
+from options_analytics.positioning import net_gex_by_strike, open_interest_by_strike
 
 
 SNAPSHOT_PATH = Path(__file__).resolve().parents[1] / "data/deribit_btc_options_snapshot.json"

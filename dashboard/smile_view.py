@@ -3,7 +3,7 @@
 import numpy as np
 import streamlit as st
 
-from iv_surface import visualization
+from options_analytics import visualization
 
 from dashboard.settings import smile_key
 from dashboard.state import widget_default

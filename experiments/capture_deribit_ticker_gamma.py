@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 import requests
 
-from iv_surface.deribit import (
+from options_analytics.deribit import (
     BASE_URL,
     _get_json,
     _utc_now_text,

@@ -2,8 +2,8 @@
 
 import streamlit as st
 
-from iv_surface import deribit
-from iv_surface.saved_analysis import open_analysis, save_analysis
+from options_analytics import deribit
+from options_analytics.saved_analysis import open_analysis, save_analysis
 
 from dashboard.settings import settings_from_widgets, widgets_from_settings
 from dashboard.state import set_widget_values, use_snapshot

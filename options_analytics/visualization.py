@@ -5,8 +5,8 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from iv_surface.chain import DAYS_PER_YEAR
-from iv_surface.positioning import GEX_MODES, strikes_in_range
+from options_analytics.chain import DAYS_PER_YEAR
+from options_analytics.positioning import GEX_MODES, strikes_in_range
 
 
 _LONG_FRAME_COLUMNS = {"tau", "strike", "iv", "moneyness"}
