@@ -4,7 +4,11 @@ import numpy as np
 import pytest
 
 from iv_surface import deribit
-from iv_surface.iv_source import build_iv_source_surface, contract_iv
+from iv_surface.iv_source import (
+    build_iv_source_surface,
+    combine_call_put_iv,
+    contract_iv,
+)
 from iv_surface.solver import bs_price
 
 
@@ -247,3 +251,29 @@ def test_a_shared_bid_ask_solve_gives_the_same_surface(chain, source):
     np.testing.assert_array_equal(shared.band_low, own.band_low)
     np.testing.assert_array_equal(shared.band_high, own.band_high)
     np.testing.assert_array_equal(shared.iv_surface, own.iv_surface)
+
+
+def test_combined_iv_blends_near_atm_and_prefers_otm_wings():
+    strikes = [95, 98, 100, 102, 105]
+    call_iv = [[0.21, 0.22, 0.24, 0.26, 0.28]]
+    put_iv = [[0.31, 0.32, 0.34, 0.36, 0.38]]
+
+    combined, source_grid = combine_call_put_iv(call_iv, put_iv, strikes, 100)
+
+    assert source_grid.tolist() == [[
+        "put", "near_atm_average", "near_atm_average", "near_atm_average", "call",
+    ]]
+    np.testing.assert_allclose(combined[0], [0.31, 0.27, 0.29, 0.31, 0.28])
+
+
+def test_combined_iv_uses_labelled_opposite_side_fallbacks_and_gaps():
+    strikes = [95, 100, 105, 110]
+    call_iv = [[0.20, np.nan, np.nan, np.nan]]
+    put_iv = [[np.nan, 0.30, 0.40, np.nan]]
+
+    combined, source_grid = combine_call_put_iv(call_iv, put_iv, strikes, 100)
+
+    assert source_grid.tolist() == [[
+        "call_fallback", "near_atm_put_only", "put_fallback", "missing",
+    ]]
+    np.testing.assert_allclose(combined[0], [0.20, 0.30, 0.40, np.nan])

@@ -12,7 +12,6 @@ import numpy as np
 import pandas as pd
 
 from iv_surface.solver import bs_price, solve_iv
-from iv_surface.surface_builder import combine_call_put_iv
 from iv_surface.surface_transforms import surface_to_long_frame
 
 
@@ -69,6 +68,51 @@ def contract_iv(chain: pd.DataFrame, iv_source: str) -> pd.Series:
         quoted = chain["quote_source"].eq("mid")
         return solve_contract_iv(chain, "mid_price").where(quoted)
     raise ValueError(f"iv_source must be one of {IV_SOURCES}, got {iv_source!r}")
+
+
+def combine_call_put_iv(call_iv, put_iv, strikes, spot_price):
+    """Apply the spot-based Combined IV rule to aligned Call and Put IV grids.
+
+    Returns the Combined IV grid and a same-shaped grid of source labels.
+    """
+    call_iv = np.asarray(call_iv, dtype=float)
+    put_iv = np.asarray(put_iv, dtype=float)
+    combined_iv = np.full(call_iv.shape, np.nan)
+    source_grid = np.full(call_iv.shape, "missing", dtype=object)
+    for i in range(call_iv.shape[0]):
+        for j, strike in enumerate(strikes):
+            call_value = call_iv[i, j]
+            put_value = put_iv[i, j]
+            call_finite = np.isfinite(call_value)
+            put_finite = np.isfinite(put_value)
+            moneyness = strike / spot_price
+
+            if 0.98 <= moneyness <= 1.02:
+                if call_finite and put_finite:
+                    combined_iv[i, j] = (call_value + put_value) / 2
+                    source_grid[i, j] = "near_atm_average"
+                elif call_finite:
+                    combined_iv[i, j] = call_value
+                    source_grid[i, j] = "near_atm_call_only"
+                elif put_finite:
+                    combined_iv[i, j] = put_value
+                    source_grid[i, j] = "near_atm_put_only"
+            elif moneyness < 0.98:
+                if put_finite:
+                    combined_iv[i, j] = put_value
+                    source_grid[i, j] = "put"
+                elif call_finite:
+                    combined_iv[i, j] = call_value
+                    source_grid[i, j] = "call_fallback"
+            else:
+                if call_finite:
+                    combined_iv[i, j] = call_value
+                    source_grid[i, j] = "call"
+                elif put_finite:
+                    combined_iv[i, j] = put_value
+                    source_grid[i, j] = "put_fallback"
+
+    return combined_iv, source_grid
 
 
 @dataclass(frozen=True)

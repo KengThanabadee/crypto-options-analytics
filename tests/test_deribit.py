@@ -9,7 +9,7 @@ import pytest
 from iv_surface.deribit import load_deribit_snapshot, parse_deribit_snapshot
 from iv_surface.chain import compute_tau
 from iv_surface.solver import bs_price
-from iv_surface.surface_builder import build_combined_surface_from_chain
+from iv_surface.iv_source import QUOTE_MIDPOINT, build_iv_source_surface
 
 
 FIXTURE = Path(__file__).resolve().parents[1] / "data/deribit_btc_options_snapshot.json"
@@ -68,11 +68,11 @@ def test_usd_conversion_recovers_known_iv_with_own_solver(flag):
     tau = compute_tau(datetime(2027, 3, 26, 8, tzinfo=timezone.utc), captured)
     price = bs_price(spot, strike, tau, rate, sigma, flag)
     book.update(bid_price=price / spot * .99, ask_price=price / spot * 1.01,
-                mark_price=999, mark_iv=99, underlying_price=spot * 1.2)
+                mark_price=999, mark_iv=99, underlying_price=spot * np.exp(rate * tau))
     chain = parse_deribit_snapshot(raw)
     assert chain.iloc[0].mid_price == pytest.approx(price)
     assert chain.iloc[0].mark_iv == .99
-    result = build_combined_surface_from_chain(chain, r=rate)
+    result = build_iv_source_surface(chain, QUOTE_MIDPOINT)
     assert result.spot_price == spot
     assert result.iv_surface[0, 0] == pytest.approx(sigma, abs=1e-6)
 

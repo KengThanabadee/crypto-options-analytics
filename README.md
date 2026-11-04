@@ -2,7 +2,7 @@
 
 A small personal quant library for learning and building implied-volatility tooling from first principles.
 
-`implied-vol-surface` provides Black-Scholes pricing helpers, implied-volatility root finding, surface construction, interpolation, and a Deribit BTC option-chain input.
+`implied-vol-surface` provides Black-Scholes pricing helpers, implied-volatility root finding, Combined IV surfaces, interpolation, and a Deribit BTC option-chain input.
 
 The implied-volatility root-finding logic is implemented without `scipy.optimize`.
 
@@ -50,10 +50,7 @@ sit outside it.
 
 - Prices European calls and puts with Black-Scholes.
 - Solves implied volatility with Newton-Raphson and bisection fallback.
-- Builds a 2D IV surface from a grid of option prices.
-- Interpolates IV inside an expiry/strike grid with bilinear interpolation.
 - Adapts frozen Deribit BTC inverse-option snapshots to a chain DataFrame with USD premiums, using the captured BTC/USD index and keeping market quotes separate from exchange mark values.
-- Converts usable option-chain mid prices into the expiry/strike grid used by the surface builder.
 - Combines aligned Call and Put surfaces with a spot-based, auditable selection rule.
 
 ## Dashboard preview
@@ -149,10 +146,9 @@ spaced by numerical maturity; expiries without an eligible proxy remain gaps.
   their metadata, BTC quotes and index to the canonical option-chain DataFrame.
 - `iv_surface.chain` holds the shared parsing helpers: time to expiry, number
   parsing, bid/ask mid price and UTC timestamps.
-- `iv_surface.surface_builder` converts that canonical chain into option-price
-  grids and side-specific or Combined IV surfaces.
-- `iv_surface.solver` owns Black-Scholes pricing, IV root finding, grid solving,
-  and interpolation.
+- `iv_surface.iv_source` builds per-contract IV from the selected IV source
+  and combines Call and Put IV into the Combined IV surface.
+- `iv_surface.solver` owns Black-Scholes pricing and IV root finding.
 - `iv_surface.surface_transforms` reshapes IV surfaces and selects the bounded
   ATM proxy without requiring Plotly.
 - `iv_surface.positioning` sums open interest and net gamma exposure by
@@ -177,7 +173,7 @@ T=0.25        0.19    0.21    0.23
 T=0.50        0.20    0.22    0.24
 ```
 
-Accordingly, the surface APIs take `expiries` before `strikes`, and interpolation uses `target_T` and `target_K`.
+Accordingly, the surface APIs take `expiries` before `strikes`.
 
 ## Installation
 
@@ -356,29 +352,14 @@ not equal Exchange mark IV.
 ## Quick Example
 
 ```python
-import numpy as np
+from iv_surface.solver import bs_price, solve_iv
 
-from iv_surface.solver import bs_price, build_surface, interpolate_iv
+spot_price, K, T, r, sigma = 100, 105, 0.25, 0.03, 0.20
 
-spot_price = 100
-r = 0.03
-sigma = 0.20
+option_price = bs_price(spot_price, K, T, r, sigma, "call")
+iv = solve_iv(option_price, spot_price, K, T, r, "call")
 
-expiries = [0.10, 0.25, 0.50]
-strikes = [90, 100, 110]
-
-option_price_grid = np.array([
-    [bs_price(spot_price, K, T, r, sigma, "call") for K in strikes]
-    for T in expiries
-])
-
-iv_surface = build_surface(
-    option_price_grid, spot_price, expiries, strikes, r, flag="call"
-)
-iv = interpolate_iv(iv_surface, expiries, strikes, target_T=0.18, target_K=97)
-
-print(iv_surface)
-print(iv)
+print(option_price, iv)
 ```
 
 ## API
@@ -390,14 +371,6 @@ Returns the Black-Scholes price for a European call or put.
 ### `solve_iv(option_price, spot_price, K, T, r, flag, sigma_low=1e-6, sigma_high=10.0)`
 
 Returns implied volatility for a single option price. Raises `ValueError` for invalid inputs, expired options, or prices outside the bracket implied by the sigma bounds.
-
-### `build_surface(option_price_grid, spot_price, expiries, strikes, r=0, flag="call")`
-
-Returns a 2D NumPy array of implied volatilities with shape `(n_expiries, n_strikes)`. Cells that cannot be solved are filled with `NaN`.
-
-### `interpolate_iv(iv_surface, expiries, strikes, target_T, target_K)`
-
-Returns bilinearly interpolated IV at the target `(T, K)`. Raises `ValueError` if the target point is outside the grid or if the grid is not valid.
 
 ### `load_deribit_snapshot(path)` and `parse_deribit_snapshot(snapshot)`
 
@@ -419,19 +392,6 @@ timeout. Network, HTTP, JSON-RPC and validation failures raise
 
 `mid_price` is computed only from valid positive bid/ask quotes. If the bid/ask quote is not usable, `mid_price` is `NaN` and `quote_source` is `"none"`; the adapter does not fall back to `mark_price`.
 
-### `prepare_surface_inputs(chain, flag="call")`
-
-Filters a parsed option-chain DataFrame to usable bid/ask mid prices and returns `option_price_grid`, `spot_price`, `expiries`, and `strikes` for `build_surface`.
-
-`spot_price` is the median `index_price` across usable rows. If usable rows have different `index_price` values, a warning is emitted.
-
-### `build_surface_from_chain(chain, flag="call", r=0)`
-
-Convenience wrapper for `prepare_surface_inputs()` followed by
-`build_surface()`. The chain comes from a parsed snapshot.
-
-Returns the IV surface together with the option price grid, spot price, expiries, and strikes. Missing usable quotes remain `NaN` in the price grid and IV surface.
-
 ### `build_iv_source_surface(chain, iv_source, bid_ask_iv=None)`
 
 In `iv_surface/iv_source.py`. `iv_source` is `"Exchange mark"` or
@@ -446,11 +406,11 @@ expiry_datetimes=None)` returns the chart frame with `band_low`, `band_high`
 and `iv_source` columns. The figure builders take an optional `iv_source` to
 name it in hover.
 
-### `build_combined_surface_from_chain(chain, r=0)`
+### `combine_call_put_iv(call_iv, put_iv, strikes, spot_price)`
 
-Builds aligned Call and Put surfaces with one shared median `spot_price`, then
-returns one Combined IV per expiry/strike together with the separate Call/Put
-inputs and IVs. Selection is spot-based:
+In `iv_surface/iv_source.py`. Takes aligned Call and Put IV grids and returns
+one Combined IV per expiry/strike with a same-shaped `source_grid` of source
+codes. Selection is spot-based:
 
 - below `K / S = 0.98`, prefer Put IV;
 - from `0.98` through `1.02`, average same-strike Call/Put IV when both solve;
@@ -538,11 +498,10 @@ settings.
 - Time to expiry is measured in years of 365 days.
 - No dividend yield parameter yet.
 - IV solving requires `T > 0`; implied volatility is undefined at expiry.
-- `build_surface` fills failed IV solves with `NaN`.
+- Failed IV solves stay `NaN`.
 - Quote midpoint IV surfaces are built from usable bid/ask mid prices; Exchange mark IV (`mark_iv`) is the default IV source.
 - The ATM term-structure proxy accepts only the nearest finite IV within 2% of
   spot; equally near listed strikes are averaged.
-- Interpolation requires at least two strictly increasing expiries and strikes.
 - Interpolation is in-grid only; no extrapolation.
 - The surface is a raw interpolated grid, not an arbitrage-free fitted surface.
 

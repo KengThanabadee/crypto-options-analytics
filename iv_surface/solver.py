@@ -1,10 +1,5 @@
-import bisect
 import numpy as np
 from scipy.stats import norm
-
-
-def _is_strictly_increasing(values):
-    return all(values[i] < values[i + 1] for i in range(len(values) - 1))
 
 
 def _compute_d1_d2(spot_price, K, T, t, r, sigma):
@@ -126,65 +121,3 @@ def solve_iv(option_price, spot_price, K, T, r, flag, sigma_low=1e-6, sigma_high
         interval = sigma_high - sigma_low
 
     return (sigma_low + sigma_high) / 2
-
-def build_surface(option_price_grid, spot_price, expiries, strikes, r=0, flag="call"):
-    # option_price_grid: 2D array shape (n_expiries, n_strikes)
-    # returns: 2D array same shape, IV at each (expiry, strike)
-    expected_shape = (len(expiries), len(strikes))
-    if option_price_grid.shape != expected_shape:
-        raise ValueError(
-            f"option_price_grid shape must be {expected_shape}, got {option_price_grid.shape}"
-        )
-
-    iv_surface = np.full((len(expiries), len(strikes)), np.nan)
-    for i, T in enumerate(expiries):
-        for j, K in enumerate(strikes):
-            try:
-                iv_surface[i, j] = solve_iv(
-                    option_price_grid[i, j], spot_price, K, T, r, flag
-                )
-            except ValueError:
-                pass
-    return iv_surface
-
-def interpolate_iv(iv_surface, expiries, strikes, target_T, target_K):
-    expected_shape = (len(expiries), len(strikes))
-    if iv_surface.shape != expected_shape:
-        raise ValueError(f"iv_surface shape must be {expected_shape}, got {iv_surface.shape}")
-    if len(expiries) < 2 or len(strikes) < 2:
-        raise ValueError("bilinear interpolation requires at least two expiries and two strikes")
-    if not _is_strictly_increasing(expiries):
-        raise ValueError("expiries must be strictly increasing")
-    if not _is_strictly_increasing(strikes):
-        raise ValueError("strikes must be strictly increasing")
-
-    # Step 1: validate target point is inside the grid
-    if target_T < expiries[0] or target_T > expiries[-1]:
-        raise ValueError("target_T is outside the bound")
-    if target_K < strikes[0] or target_K > strikes[-1]:
-        raise ValueError("target_K is outside the bound")
-
-    # Step 2: find bracketing indices for target_T and target_K
-    i_high = bisect.bisect_right(expiries, target_T)
-    i_high = min(i_high, len(expiries) - 1)
-    i_low = i_high - 1
-
-    j_high = bisect.bisect_right(strikes, target_K)
-    j_high = min(j_high, len(strikes) - 1)
-    j_low = j_high - 1
-
-    # Step 3: compute weights
-    w_T = (target_T - expiries[i_low]) / (expiries[i_high] - expiries[i_low])
-    w_K = (target_K - strikes[j_low]) / (strikes[j_high] - strikes[j_low])
-
-    # Step 4: interpolate along K at T_low and T_high, then interpolate along T
-    iv_at_T_low = (
-        iv_surface[i_low, j_low]
-        + (iv_surface[i_low, j_high] - iv_surface[i_low, j_low]) * w_K
-    )
-    iv_at_T_high = (
-        iv_surface[i_high, j_low]
-        + (iv_surface[i_high, j_high] - iv_surface[i_high, j_low]) * w_K
-    )
-
-    return iv_at_T_low + (iv_at_T_high - iv_at_T_low) * w_T
