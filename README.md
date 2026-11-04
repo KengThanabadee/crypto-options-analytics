@@ -16,8 +16,8 @@ library. It shows three sections for one Deribit snapshot, top to bottom:
 1. **Open interest** by strike, in BTC.
 2. **Gamma exposure (GEX)** by strike, in USD per 1% BTC move, under a stated
    customer/dealer assumption.
-3. **Implied volatility**: heatmap, 3D surface, smiles and ATM term structure,
-   from either of two [IV sources](#iv-sources).
+3. **Implied volatility**: tabs for the IV surface (Heatmap or 3D), IV smiles
+   and ATM term structure, from either of two [IV sources](#iv-sources).
 
 See the [Dashboard preview](#dashboard-preview) for images and
 [Offline dashboard](#offline-dashboard) for every control.
@@ -61,9 +61,9 @@ sit outside it.
 These images are screenshots of the running dashboard on the checked-in
 Deribit BTC snapshot captured on **2026-10-15 at 15:18:14 UTC** (index
 $82,227.73), at the page defaults: All expiries, Near spot strike range,
-Call+ / Put−, Net, Exchange mark IV and the Core moneyness range.
-`scripts/capture_readme_images.py` retakes them from a dashboard started on
-that snapshot. Open the [offline dashboard](#offline-dashboard) to explore the
+Call+ / Put−, Net, Exchange mark IV and the Core moneyness range, in the dark
+colour scheme. `scripts/capture_readme_images.py` retakes them from a
+dashboard started on that snapshot. Open the [offline dashboard](#offline-dashboard) to explore the
 charts and their tooltips interactively.
 
 ### Open interest and gamma exposure
@@ -99,27 +99,31 @@ partial subtotal, the usable/total contract count and what is missing; when
 none do, it shows **Insufficient data**. Neither is drawn as a zero bar. The
 title counts complete strikes; on this snapshot all 91 strikes are complete.
 
-### Combined IV heatmap
+### IV surface: Heatmap
 
-![Implied volatility section with the IV source selector on Exchange mark, above the Combined IV heatmap across moneyness and UTC expiry.](docs/images/heatmap.jpg)
+![Implied volatility section with the IV source selector on Exchange mark, the IV surface, IV smiles and ATM term structure tabs, and the IV surface tab's View, Moneyness range and Heatmap values controls above the Combined IV heatmap across moneyness and UTC expiry.](docs/images/heatmap.jpg)
 
 The **IV source** selector at the top of the section switches every IV chart
 between **Exchange mark** (Deribit's `mark_iv`, the default and the GEX input)
 and **Quote midpoint** (this repository's solver on bid/ask midpoints); see
-[IV sources](#iv-sources). It never changes OI or GEX.
+[IV sources](#iv-sources). It never changes OI or GEX. Below it, three tabs
+hold the IV charts: **IV surface**, **IV smiles** and **ATM term structure**.
 
-Color shows IV across spot moneyness (`K / S`) and expiry. This is Surface mode
-in the Core range (`0.8–1.2`): observed values are preserved, supported gaps are
-filled by 2D total-variance interpolation, and unsupported cells remain blank.
-Expiry rows have equal height and are ordered by maturity.
+The IV surface tab's **View** control shows the surface as a **Heatmap** (the
+default) or in **3D**. Color shows IV across spot moneyness (`K / S`) and
+expiry. This is Surface mode in the Core range (`0.8–1.2`): observed values
+are preserved, supported gaps are filled by 2D total-variance interpolation,
+and unsupported cells remain blank. Expiry rows have equal height and are
+ordered by maturity.
 
-### 3D surface
+### IV surface: 3D
 
-The same interpolated values are shown in 3D, with numerical time to expiry
-controlling maturity spacing. Orange points show the original observed Combined
-IV; the surface is an interpolated display rather than an arbitrage-free fit.
+With View on 3D, the same interpolated values are shown in 3D, with numerical
+time to expiry controlling maturity spacing. Orange points show the original
+observed Combined IV; the surface is an interpolated display rather than an
+arbitrage-free fit.
 
-![3D Combined IV surface with observed values overlaid as orange points.](docs/images/surface.jpg)
+![IV surface tab with View on 3D: the 3D Combined IV surface with observed values overlaid as orange points.](docs/images/surface.jpg)
 
 ### IV smiles
 
@@ -205,24 +209,33 @@ browser. A typical session:
    one to work offline.
 2. **Explore** the three sections: pick OI expiries and a strike range, set
    the Calls/Puts assumption and Net/Gross for GEX, then switch the IV source
-   and IV views below.
+   and the IV tabs below.
 3. **Save analysis** in the sidebar to download one JSON file with the raw
    snapshot and every setting.
 4. **Reopen analysis** with that file later: the page returns to the same
    snapshot and settings and recomputes the same numbers.
 
-The dashboard opens on the checked-in Deribit BTC snapshot and runs offline;
-the header shows the capture time. **Fetch latest** pulls a new snapshot from
+The dashboard follows the browser's light or dark colour scheme; Streamlit's
+⋮ menu switches it. It opens on the checked-in Deribit BTC snapshot and runs
+offline. Under the title, one header row reads
+`Deribit BTC · Frozen snapshot: <capture time> UTC · Index $<index>`, with
+**Fetch latest** on the right. **Fetch latest** pulls a new snapshot from
 Deribit's public API and the whole page switches to it, with its capture time.
 Every setting carries over except the OI expiries, strike range and smile
 expiries, which belong to the old snapshot and start at the new one's defaults.
 A failed fetch keeps the current snapshot and shows the error. Only that button
 fetches; every other control reuses the current snapshot.
 
-**Save analysis** in the sidebar downloads one JSON file with the raw snapshot
+The sidebar has two parts. **Saved analysis** holds Reopen analysis and Save
+analysis. **Method notes** holds two expanders: **Combined IV coverage** for
+the selected IV source and **Deribit pricing**.
+
+**Save analysis** downloads one JSON file with the raw snapshot
 (every API response with its capture times) and the settings: OI/GEX expiries,
 strike range, Call/Put customer sides, Net/Gross, IV source, moneyness range,
-heatmap values, smile expiries and the IV surface view. **Reopen analysis** loads such a file,
+heatmap values, smile expiries and the IV surface view (`surface_view`,
+Heatmap or 3D). A file without `surface_view` opens as Heatmap.
+**Reopen analysis** loads such a file,
 restores every setting and recomputes every number from the raw snapshot; the
 header then reads "Reopened snapshot". A file saved with a different
 calculation version opens with a short recompute notice. An invalid file shows
@@ -264,19 +277,28 @@ computable shows an Incomplete data marker instead of a bar, with the labelled
 partial subtotal in the selected Net/Gross view, usable/total contracts, the
 computable OI share (when all OI is known) and the reason; a strike with none
 shows Insufficient data and the reason. Markers sit in a strip near the top of
-the GEX panel, away from zero.
+the GEX panel, away from zero. Below the chart, a caption gives the GEX
+formula and the **How GEX is calculated** expander explains it.
 
-Below it, the dashboard shows a Combined IV heatmap, 3D surface, IV smiles, and ATM term
-structure. IV smiles use original observed
-values across all strikes, with an independent expiry checklist. The ATM view
+Below it, **Implied volatility** has the IV source selector and three tabs.
+**IV surface** has three controls in a row above its chart: **View** (Heatmap
+or 3D), **Moneyness range** (Core or Extended, for both views) and **Heatmap
+values** (Surface or Observed, shown only in the Heatmap view, which keeps its
+value while 3D is shown). A caption counts the observed, interpolated and blank
+cells in the visible range, and the **Surface interpolation** expander under
+the chart explains the fill. **IV smiles** use original observed
+values across all strikes, with an independent expiry checklist under
+**Select expiries**; the caption and the **Smile shading** expander sit under
+the chart. **ATM term structure**
 uses every expiry and selects the nearest finite Combined IV within 2% of spot,
 averaging equally near strikes. Expiries without an eligible proxy remain gaps;
-selection details show their status. Numerical maturity (`tau`) controls spacing.
+the **ATM selection details** expander under the chart shows their status.
+Numerical maturity (`tau`) controls spacing.
 All IV tooltips show the source expiry date in UTC and time to expiry in days
 (`tau × 365`) at the snapshot time, the strike in USD with thousands
 separators, and which side the Combined IV came from in plain words (for
-example "Average of Call and Put" or "Call (no Put IV)"). The sidebar's
-Combined IV coverage counts cells for the selected IV source. The 3D
+example "Average of Call and Put" or "Call (no Put IV)"). Combined IV
+coverage under Method notes counts cells for the selected IV source. The 3D
 view switches to a compact layout when its available width is below 700px.
 
 The default `0.80 <= K / S <= 1.20` surface fills missing
