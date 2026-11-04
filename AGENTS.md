@@ -1,8 +1,9 @@
 # Repository Guidance
 
-`README.md` is the current reference for the dashboard's behaviour and data
-inputs; signatures live in docstrings. Read it before changing analytics,
-inputs or the dashboard.
+`docs/dashboard-guide.md` is the current reference for the dashboard's
+behaviour and data inputs; signatures live in docstrings. Read it before
+changing analytics, inputs or the dashboard. `README.md` is the short
+overview for readers of the repository; keep its highlights in step.
 
 ## Plans
 
@@ -34,7 +35,7 @@ inputs or the dashboard.
   `connectgaps=False`; interpolation is a separate explicit operation.
 - Moneyness is spot-based `K / S`. Numerical `tau` drives calculations, expiry
   ordering and maturity axes; expiry datetimes come from source metadata.
-- Combined IV and the ATM proxy follow the rules in `README.md`.
+- Combined IV and the ATM proxy follow the rules in `docs/dashboard-guide.md`.
 - When a change picks a convention, tolerance or default that affects the
   numbers, name it and say why in the summary.
 - The project is Deribit only: snapshots go through
