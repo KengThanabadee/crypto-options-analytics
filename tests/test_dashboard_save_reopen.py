@@ -12,6 +12,8 @@ from streamlit.testing.v1 import AppTest
 from iv_surface import iv_source, saved_analysis
 from iv_surface.deribit import load_deribit_snapshot, parse_deribit_snapshot
 
+from dashboard import settings
+
 
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
 SNAPSHOT_PATH = APP_PATH.parent / "data/deribit_btc_options_snapshot.json"
@@ -271,3 +273,8 @@ def test_an_empty_strike_range_keeps_the_gex_scenario_and_saves_it(saved_files):
     assert settings["signs"] == {"call": -1, "put": -1}
     assert settings["gex_view"] == "Gross"
     assert settings["strike_range"] == [81_100.0, 81_400.0]
+
+
+def test_the_dashboard_saves_and_reopens_exactly_the_saved_analysis_settings():
+    names = tuple(setting.name for setting in settings.SETTINGS)
+    assert names == saved_analysis.SETTING_NAMES

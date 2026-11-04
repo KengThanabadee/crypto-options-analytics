@@ -284,9 +284,9 @@ Below it, **Implied volatility** has the IV source selector and three tabs.
 **IV surface** has three controls in a row above its chart: **View** (Heatmap
 or 3D), **Moneyness range** (Core or Extended, for both views) and **Heatmap
 values** (Surface or Observed, shown only in the Heatmap view, which keeps its
-value while 3D is shown). A caption counts the observed, interpolated and blank
-cells in the visible range, and the **Surface interpolation** expander under
-the chart explains the fill. **IV smiles** use original observed
+value while 3D is shown). A caption above the chart counts the observed,
+interpolated and blank cells in the visible range; under the chart, a one-line
+caption names the fill and the **Surface interpolation** expander explains it. **IV smiles** use original observed
 values across all strikes, with an independent expiry checklist under
 **Select expiries**; the caption and the **Smile shading** expander sit under
 the chart. **ATM term structure**
@@ -460,6 +460,19 @@ If the preferred side is unavailable, the other side may be used with an
 explicit value in `source_grid`; if neither side solves, the Combined IV stays
 `NaN`. Within the near-ATM band, the blend is the arithmetic mean of separately
 solved Call and Put IVs at the same expiry and strike when both are available.
+
+### `interpolate_surface_2d(long_frame, min_moneyness=0.8, max_moneyness=1.2)` and `observed_surface_frame(surface_frame)`
+
+In `iv_surface/surface_transforms.py`. `interpolate_surface_2d` fills the
+missing cells inside `min_moneyness <= K / S <= max_moneyness` by 2D
+total-variance interpolation, as described under Offline dashboard, and keeps
+the original IV in `observed_iv`. `observed_surface_frame` takes that result
+and returns the observed-only frame: `iv` becomes `observed_iv` and
+`surface_value_type` is `Observed` or `Missing`; every other column is kept and
+the input is not changed. The dashboard's choices live beside them:
+`MONEYNESS_RANGES` (name → `(low, high)`), `HEATMAP_VALUES`
+(`Surface`/`Observed`) and `SURFACE_VIEWS` (`Heatmap`/`3D`). The first of each
+is the dashboard default, and saved analyses accept only these values.
 
 ### `open_interest_by_strike(chain, expiries=None)`
 

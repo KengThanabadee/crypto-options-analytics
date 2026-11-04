@@ -17,6 +17,18 @@ def set_widget_values(values):
     st.session_state.setdefault(_WRITTEN_KEYS, set()).update(values)
 
 
+def keep_widget_values(keys):
+    """Hold the values of widgets not drawn on this run.
+
+    Streamlit drops a widget's value on any run that does not draw it;
+    writing the value back as session state keeps it.
+    """
+    state = st.session_state
+    for key in keys:
+        if key in state:
+            state[key] = state[key]
+
+
 def widget_default(key, default):
     """The default to send with a widget: the value it holds, else ``default``.
 

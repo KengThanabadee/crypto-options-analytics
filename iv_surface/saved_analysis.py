@@ -139,12 +139,22 @@ def _read_choice(value, choices, name):
     return value
 
 
+def _names(names):
+    return ", ".join(names[:-1]) + " and " + names[-1] if len(names) > 1 else names[0]
+
+
+_REQUIRED_SETTINGS = [name for name in SETTING_NAMES if name not in OPTIONAL_SETTINGS]
+_SETTING_NAMES_ERROR = (
+    f"Saved settings must have {_names(_REQUIRED_SETTINGS)}, and may have "
+    f"{_names(list(OPTIONAL_SETTINGS))}, with no other settings"
+)
+
+
 def _read_settings(stored, chain) -> dict:
-    if not isinstance(stored, dict):
-        raise ValueError("Saved settings must list exactly: " + ", ".join(SETTING_NAMES))
-    stored = {**OPTIONAL_SETTINGS, **stored}
-    if set(stored) != set(SETTING_NAMES):
-        raise ValueError("Saved settings must list exactly: " + ", ".join(SETTING_NAMES))
+    if isinstance(stored, dict):
+        stored = {**OPTIONAL_SETTINGS, **stored}
+    if not isinstance(stored, dict) or set(stored) != set(SETTING_NAMES):
+        raise ValueError(_SETTING_NAMES_ERROR)
     strike_range = _read_pair(stored["strike_range"], "strike_range")
     low, high = strike_zoom_bounds(chain)
     if strike_range[0] < low or strike_range[1] > high:

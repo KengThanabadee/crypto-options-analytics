@@ -4,7 +4,6 @@ import streamlit as st
 
 from iv_surface import visualization
 from iv_surface.positioning import (
-    DEFAULT_SIGNS,
     GEX_MODES,
     assumption_label,
     computable_oi_share,
@@ -21,7 +20,7 @@ from iv_surface.positioning import (
 from dashboard.settings import (
     CUSTOMER_SIDES,
     GEX_VIEW_KEY,
-    SIDE_OF_SIGN,
+    WIDGET_DEFAULTS,
     customer_side_key,
     oi_expiries_key,
     strike_range_key,
@@ -122,15 +121,15 @@ def positioning_section(chain, snapshot_id):
 
 def gex_scenario_controls():
     """Customer side per option type and Net/Gross; a new snapshot keeps them."""
-    defaults = {flag: SIDE_OF_SIGN[sign] for flag, sign in DEFAULT_SIGNS.items()}
     columns = st.columns(3)
     signs = {}
     for column, flag in zip(columns, ("call", "put")):
         with column:
+            default = WIDGET_DEFAULTS[customer_side_key(flag)]
             side = st.segmented_control(
                 f"{flag.capitalize()}s",
                 list(CUSTOMER_SIDES),
-                default=widget_default(customer_side_key(flag), defaults[flag]),
+                default=widget_default(customer_side_key(flag), default),
                 required=True,
                 key=customer_side_key(flag),
                 help=(
@@ -138,15 +137,16 @@ def gex_scenario_controls():
                     "as counterparty: customer sells → dealer long gamma (+); "
                     "customer buys → dealer short gamma (−)."
                 ),
-            ) or defaults[flag]
+            ) or default
         signs[flag] = CUSTOMER_SIDES[side]
     with columns[2]:
+        default = WIDGET_DEFAULTS[GEX_VIEW_KEY]
         mode = st.segmented_control(
             "GEX view",
             GEX_MODES,
-            default=widget_default(GEX_VIEW_KEY, "Net"),
+            default=widget_default(GEX_VIEW_KEY, default),
             required=True,
             key=GEX_VIEW_KEY,
             help="Net lets Calls and Puts cancel. Gross adds magnitudes and ignores the scenario.",
-        ) or "Net"
+        ) or default
     return signs, mode

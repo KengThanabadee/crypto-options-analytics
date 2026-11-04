@@ -11,8 +11,13 @@ from iv_surface.surface_transforms import (
     observed_surface_frame,
 )
 
-from dashboard.settings import HEATMAP_VALUES_KEY, MONEYNESS_RANGE_KEY, SURFACE_VIEW_KEY
-from dashboard.state import widget_default
+from dashboard.settings import (
+    HEATMAP_VALUES_KEY,
+    MONEYNESS_RANGE_KEY,
+    SURFACE_VIEW_KEY,
+    WIDGET_DEFAULTS,
+)
+from dashboard.state import keep_widget_values, widget_default
 
 
 # The 3D chart is drawn twice, wide and compact; a container query on the
@@ -24,6 +29,14 @@ _SURFACE_LAYOUT_CSS = """<style>
             .st-key-surface-wide {display: none;}
             .st-key-surface-narrow {display: block;}
         }</style>"""
+
+
+HEATMAP, VIEW_3D = SURFACE_VIEWS
+SURFACE_VALUES, OBSERVED_VALUES = HEATMAP_VALUES
+SURFACE_CAPTION = (
+    "2D total-variance interpolation · observed IV unchanged · "
+    "blank outside the observed range"
+)
 
 
 def surface_view(frame, iv_source):
@@ -39,7 +52,12 @@ def surface_view(frame, iv_source):
             "Moneyness range", list(MONEYNESS_RANGES), MONEYNESS_RANGE_KEY,
             help="Applies to both views. IV smiles show all observed strikes.",
         )
-    if view == "Heatmap":
+    moneyness = MONEYNESS_RANGES[range_name]
+    surface_frame = interpolate_surface_2d(
+        frame, min_moneyness=moneyness[0], max_moneyness=moneyness[1]
+    )
+
+    if view == HEATMAP:
         with values_column:
             heatmap_values = _choice(
                 "Heatmap values", HEATMAP_VALUES, HEATMAP_VALUES_KEY,
@@ -48,42 +66,33 @@ def surface_view(frame, iv_source):
                     "shows solved market IV without interpolation."
                 ),
             )
-    else:
-        _keep_heatmap_values()
-
-    moneyness = MONEYNESS_RANGES[range_name]
-    surface_frame = interpolate_surface_2d(
-        frame, min_moneyness=moneyness[0], max_moneyness=moneyness[1]
-    )
-    if view == "Heatmap":
-        shown = (
-            surface_frame if heatmap_values == "Surface"
-            else observed_surface_frame(surface_frame)
-        )
-        st.caption(visible_range_summary(shown, moneyness))
-        _heatmap_chart(shown, iv_source)
-    else:
+        if heatmap_values == OBSERVED_VALUES:
+            surface_frame = observed_surface_frame(surface_frame)
         st.caption(visible_range_summary(surface_frame, moneyness))
-        st.caption("2D total-variance interpolation · observed IV overlaid as points.")
+        _heatmap_chart(surface_frame, iv_source)
+    else:
+        keep_widget_values([HEATMAP_VALUES_KEY])
+        st.caption(visible_range_summary(surface_frame, moneyness))
         _surface_3d_chart(surface_frame, iv_source)
+    st.caption(SURFACE_CAPTION)
     _interpolation_notes()
 
 
 def _interpolation_notes():
     with st.expander("Surface interpolation"):
-        st.write(
+        st.caption(
             "Convert observed IV to total variance (IV² × tau), linearly "
             "interpolate it between observations, then convert back to IV. "
             "K / S and tau are each scaled to their observed range for "
             "triangulation. Original IV points stay unchanged."
         )
-        st.write(
+        st.caption(
             "The existing grid is filled only inside the convex hull of "
             "observations in the selected range. A cell can be filled across "
             "expiries, but cells outside that boundary stay blank. "
             "A denser grid would add display points, not market observations."
         )
-        st.write(
+        st.caption(
             "In 3D, observed markers are lifted slightly above the mesh for "
             "visibility; hover reports their original IV."
         )
@@ -101,8 +110,8 @@ def visible_range_summary(frame, moneyness):
 
 
 def _choice(label, options, key, help):
-    """A required segmented control whose first option is the default."""
-    default = options[0]
+    """A required segmented control, defaulting to the setting's default."""
+    default = WIDGET_DEFAULTS[key]
     return st.segmented_control(
         label,
         options,
@@ -111,12 +120,6 @@ def _choice(label, options, key, help):
         key=key,
         help=help,
     ) or default
-
-
-def _keep_heatmap_values():
-    """Hold Heatmap values while 3D hides it; Streamlit drops undrawn widgets."""
-    if HEATMAP_VALUES_KEY in st.session_state:
-        st.session_state[HEATMAP_VALUES_KEY] = st.session_state[HEATMAP_VALUES_KEY]
 
 
 def _heatmap_chart(heatmap_frame, iv_source):

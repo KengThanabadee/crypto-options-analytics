@@ -7,7 +7,7 @@ import numpy as np
 import streamlit as st
 
 from iv_surface import iv_source as iv_sources
-from iv_surface.iv_source import DEFAULT_IV_SOURCE, IV_SOURCES, iv_source_long_frame
+from iv_surface.iv_source import IV_SOURCES, iv_source_long_frame
 
 from dashboard import smile_view, surface_view, term_structure_view
 from dashboard.settings import (
@@ -15,10 +15,11 @@ from dashboard.settings import (
     IV_SOURCE_KEY,
     MONEYNESS_RANGE_KEY,
     SURFACE_VIEW_KEY,
+    WIDGET_DEFAULTS,
     expiry_taus,
     smile_key,
 )
-from dashboard.state import widget_default
+from dashboard.state import keep_widget_values, widget_default
 
 
 @st.cache_data(show_spinner="Solving bid/ask IV…", max_entries=4)
@@ -35,10 +36,11 @@ def _iv_source_surface(chain, iv_source):
 
 def iv_source_control():
     """IV source for the IV charts only; switching reuses the loaded snapshot."""
+    default = WIDGET_DEFAULTS[IV_SOURCE_KEY]
     return st.segmented_control(
         "IV source",
         IV_SOURCES,
-        default=widget_default(IV_SOURCE_KEY, DEFAULT_IV_SOURCE),
+        default=widget_default(IV_SOURCE_KEY, default),
         required=True,
         key=IV_SOURCE_KEY,
         help=(
@@ -47,22 +49,19 @@ def iv_source_control():
             "with the contract's reported forward (R = ln(F / X) / T). "
             "Changes the IV charts only."
         ),
-    ) or DEFAULT_IV_SOURCE
+    ) or default
 
 
 def keep_iv_view_settings(chain, snapshot_id):
     """Hold the IV view settings on a run that cannot draw the IV charts.
 
-    Streamlit drops a widget's value on any run that does not draw it.
-    Writing each value back as session state keeps the user's surface view,
-    moneyness range, heatmap values and smile expiries for Save and for when
-    the charts return.
+    Keeps the user's surface view, moneyness range, heatmap values and smile
+    expiries for Save and for when the charts return.
     """
-    state = st.session_state
     smile_keys = [smile_key(snapshot_id, tau) for tau in expiry_taus(chain)]
-    for key in [SURFACE_VIEW_KEY, MONEYNESS_RANGE_KEY, HEATMAP_VALUES_KEY, *smile_keys]:
-        if key in state:
-            state[key] = state[key]
+    keep_widget_values(
+        [SURFACE_VIEW_KEY, MONEYNESS_RANGE_KEY, HEATMAP_VALUES_KEY, *smile_keys]
+    )
 
 
 def iv_section(chain, snapshot_id, sidebar):

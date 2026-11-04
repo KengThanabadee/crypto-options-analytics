@@ -2,15 +2,17 @@
 
 Save reads the settings from the widgets with ``settings_from_widgets``;
 Reopen turns saved settings back into widget values with
-``widgets_from_settings``. Adding a saved setting means adding one row to
-``SETTINGS`` (and its name to ``saved_analysis``).
+``widgets_from_settings``. ``SETTINGS`` has one row per name in
+``saved_analysis.SETTING_NAMES``, in the same order; a test fails when they
+differ.
+Each widget's default is in ``WIDGET_DEFAULTS``, which the page widgets use too.
 """
 
 from dataclasses import dataclass
 from typing import Callable
 
 from iv_surface.iv_source import DEFAULT_IV_SOURCE
-from iv_surface.positioning import DEFAULT_SIGNS, near_spot_range
+from iv_surface.positioning import DEFAULT_SIGNS, GEX_MODES, near_spot_range
 from iv_surface.surface_transforms import HEATMAP_VALUES, MONEYNESS_RANGES, SURFACE_VIEWS
 
 
@@ -40,6 +42,17 @@ def smile_key(snapshot_id, tau):
     return f"smile_expiry_{snapshot_id}_{tau}"
 
 
+# What each widget shows before the user picks anything.
+WIDGET_DEFAULTS = {
+    GEX_VIEW_KEY: GEX_MODES[0],
+    IV_SOURCE_KEY: DEFAULT_IV_SOURCE,
+    MONEYNESS_RANGE_KEY: next(iter(MONEYNESS_RANGES)),
+    HEATMAP_VALUES_KEY: HEATMAP_VALUES[0],
+    SURFACE_VIEW_KEY: SURFACE_VIEWS[0],
+    **{customer_side_key(flag): SIDE_OF_SIGN[sign] for flag, sign in DEFAULT_SIGNS.items()},
+}
+
+
 def expiry_taus(chain):
     """Each expiry datetime in the chain with its tau."""
     return chain.drop_duplicates("expiry_dt").set_index("expiry_dt")["tau"]
@@ -59,11 +72,16 @@ class SavedSetting:
     write: Callable
 
 
-def _single_key(name, key, default, to_saved=lambda v: v, to_widget=lambda v: v):
+def _widget_value(state, key):
+    value = state.get(key)
+    return WIDGET_DEFAULTS[key] if value is None else value
+
+
+def _single_key(name, key, to_saved=lambda v: v, to_widget=lambda v: v):
     """A setting held by one widget whose key does not depend on the snapshot."""
     return SavedSetting(
         name,
-        read=lambda state, chain, snapshot_id: to_saved(default(state.get(key))),
+        read=lambda state, chain, snapshot_id: to_saved(_widget_value(state, key)),
         write=lambda value, chain, snapshot_id: {key: to_widget(value)},
     )
 
@@ -87,9 +105,7 @@ def _read_strike_range(state, chain, snapshot_id):
 
 def _read_signs(state, chain, snapshot_id):
     return {
-        flag: CUSTOMER_SIDES[
-            state.get(customer_side_key(flag)) or SIDE_OF_SIGN[DEFAULT_SIGNS[flag]]
-        ]
+        flag: CUSTOMER_SIDES[_widget_value(state, customer_side_key(flag))]
         for flag in ("call", "put")
     }
 
@@ -115,6 +131,7 @@ def _write_smile_expiries(value, chain, snapshot_id):
 
 _RANGE_NAME = {value: name for name, value in MONEYNESS_RANGES.items()}
 
+# One row per saved-analysis setting, in SETTING_NAMES order (a test checks it).
 SETTINGS = (
     SavedSetting("oi_expiries", _read_oi_expiries, _write_oi_expiries),
     SavedSetting(
@@ -123,22 +140,17 @@ SETTINGS = (
         lambda value, chain, snapshot_id: {strike_range_key(snapshot_id): value},
     ),
     SavedSetting("signs", _read_signs, _write_signs),
-    _single_key("gex_view", GEX_VIEW_KEY, lambda v: v or "Net"),
-    _single_key("iv_source", IV_SOURCE_KEY, lambda v: v or DEFAULT_IV_SOURCE),
+    _single_key("gex_view", GEX_VIEW_KEY),
+    _single_key("iv_source", IV_SOURCE_KEY),
     _single_key(
         "moneyness_range",
         MONEYNESS_RANGE_KEY,
-        lambda v: next(iter(MONEYNESS_RANGES)) if v is None else v,
         to_saved=MONEYNESS_RANGES.__getitem__,
         to_widget=_RANGE_NAME.__getitem__,
     ),
-    _single_key(
-        "heatmap_values",
-        HEATMAP_VALUES_KEY,
-        lambda v: HEATMAP_VALUES[0] if v is None else v,
-    ),
+    _single_key("heatmap_values", HEATMAP_VALUES_KEY),
     SavedSetting("smile_expiries", _read_smile_expiries, _write_smile_expiries),
-    _single_key("surface_view", SURFACE_VIEW_KEY, lambda v: v or SURFACE_VIEWS[0]),
+    _single_key("surface_view", SURFACE_VIEW_KEY),
 )
 
 

@@ -49,7 +49,7 @@ def main():
             snapshot = deribit.load_deribit_snapshot(DATA_PATH / SNAPSHOT_FILE)
             chain = deribit.parse_deribit_snapshot(snapshot)
     except (OSError, ValueError, TypeError, RuntimeError, AttributeError):
-        st.error("Cannot read the frozen Deribit snapshot. Check its file and schema.")
+        header.error("Cannot read the frozen Deribit snapshot. Check its file and schema.")
         return
 
     captured_at = datetime.fromisoformat(

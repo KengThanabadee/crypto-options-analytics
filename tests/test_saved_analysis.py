@@ -152,3 +152,19 @@ def test_invalid_files_raise_value_error(snapshot, change):
 def test_unreadable_files_raise_value_error(raw):
     with pytest.raises(ValueError):
         saved_analysis.open_analysis(raw)
+
+
+@pytest.mark.parametrize("change", [
+    lambda s: s["settings"].pop("iv_source"),
+    lambda s: s["settings"].update(extra=1),
+    lambda s: s.update(settings=[]),
+])
+def test_wrong_setting_names_name_the_required_and_optional_settings(snapshot, change):
+    chain = parse_deribit_snapshot(snapshot)
+    with pytest.raises(ValueError) as error:
+        saved_analysis.open_analysis(_corrupt(snapshot, chain, change))
+    assert str(error.value) == (
+        "Saved settings must have oi_expiries, strike_range, signs, gex_view, "
+        "iv_source, moneyness_range, heatmap_values and smile_expiries, and may "
+        "have surface_view, with no other settings"
+    )

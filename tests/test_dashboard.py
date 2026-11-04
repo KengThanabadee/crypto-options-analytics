@@ -513,6 +513,19 @@ def test_header_is_one_row_with_the_index_and_fetch_latest_on_the_right():
     assert [b.label for b in fetch.button] == ["Fetch latest"]
 
 
+def test_an_unreadable_snapshot_shows_its_error_in_the_header_beside_fetch_latest(monkeypatch):
+    def load(path):
+        raise OSError("missing file")
+
+    monkeypatch.setattr(deribit, "load_deribit_snapshot", load)
+    app = _app()
+    message, fetch = app.columns[0], app.columns[1]
+    assert [e.value for e in message.error] == [
+        "Cannot read the frozen Deribit snapshot. Check its file and schema."
+    ]
+    assert [b.label for b in fetch.button] == ["Fetch latest"]
+
+
 def test_page_labels_the_index_once_and_names_the_counted_iv_source():
     app = _app()
     assert not any(c.value.startswith("Open interest ·") for c in app.caption)
@@ -583,6 +596,7 @@ def _notes_after_chart(block, chart=0):
     """Caption, expander label and expander text between a chart and the next chart."""
     nodes = list(block)
     charts = [i for i, node in enumerate(nodes) if node.type == "plotly_chart"]
+    chart %= len(charts)
     end = charts[chart + 1] if chart + 1 < len(charts) else len(nodes)
     after = nodes[charts[chart] + 1:end]
     caption = next(node for node in after if node.type == "caption")
@@ -617,15 +631,27 @@ def test_smile_chart_has_a_one_line_caption_and_the_band_in_an_expander():
     )
 
 
+SURFACE_CAPTION = (
+    "2D total-variance interpolation · observed IV unchanged · "
+    "blank outside the observed range"
+)
+
+
 @pytest.mark.parametrize("view", ["Heatmap", "3D"])
-def test_surface_interpolation_note_sits_under_the_surface_chart_not_in_the_sidebar(view):
+def test_surface_chart_has_the_range_above_and_a_caption_and_interpolation_expander_below(view):
     app = _app()
     app.segmented_control(key="surface_view").set_value(view).run()
-    nodes = list(_tab(app, "IV surface"))
-    last_chart = max(i for i, node in enumerate(nodes) if node.type == "plotly_chart")
-    expanders = [node for node in nodes[last_chart + 1:] if node.type == "expander"]
-    assert [e.label for e in expanders] == ["Surface interpolation"]
-    text = " ".join(node.value for node in expanders[0] if node.type == "markdown")
+    tab = _tab(app, "IV surface")
+    nodes = list(tab)
+    first_chart = min(i for i, node in enumerate(nodes) if node.type == "plotly_chart")
+    above = [node.value for node in nodes[:first_chart] if node.type == "caption"]
+    assert len(above) == 1 and above[0].startswith("Visible range: ")
+
+    caption, title, text = _notes_after_chart(tab, chart=-1)
+    assert caption == SURFACE_CAPTION
+    assert title == "Surface interpolation"
+    expander = next(e for e in tab.expander if e.label == title)
+    assert len(expander.caption) == 3 and not expander.markdown
     assert text.startswith("Convert observed IV to total variance (IV² × tau)")
-    assert "hover reports their original IV." in text
+    assert text.endswith("hover reports their original IV.")
     assert "Surface interpolation" not in [e.label for e in app.sidebar.expander]
