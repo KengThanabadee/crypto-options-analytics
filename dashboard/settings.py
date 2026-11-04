@@ -26,8 +26,8 @@ HEATMAP_VALUES_KEY = "heatmap_view"
 SURFACE_VIEW_KEY = "surface_view"
 
 
-def oi_expiries_key(snapshot_id):
-    return f"oi_expiries_{snapshot_id}"
+def oi_expiry_key(snapshot_id, tau):
+    return f"oi_expiry_{snapshot_id}_{tau}"
 
 
 def strike_range_key(snapshot_id):
@@ -86,14 +86,23 @@ def _single_key(name, key, to_saved=lambda v: v, to_widget=lambda v: v):
     )
 
 
-def _read_oi_expiries(state, chain, snapshot_id):
-    expiry_of = {tau: expiry for expiry, tau in expiry_taus(chain).items()}
-    return [expiry_of[tau] for tau in state.get(oi_expiries_key(snapshot_id)) or []]
+def _ticked_expiries(key):
+    """Read and write a set of expiries held as one checkbox per expiry."""
 
+    def read(state, chain, snapshot_id):
+        return [
+            expiry for expiry, tau in expiry_taus(chain).items()
+            if state.get(key(snapshot_id, tau), False)
+        ]
 
-def _write_oi_expiries(value, chain, snapshot_id):
-    taus = expiry_taus(chain)
-    return {oi_expiries_key(snapshot_id): [float(taus[e]) for e in value]}
+    def write(value, chain, snapshot_id):
+        chosen = set(value)
+        return {
+            key(snapshot_id, tau): expiry in chosen
+            for expiry, tau in expiry_taus(chain).items()
+        }
+
+    return read, write
 
 
 def _read_strike_range(state, chain, snapshot_id):
@@ -114,26 +123,11 @@ def _write_signs(value, chain, snapshot_id):
     return {customer_side_key(flag): SIDE_OF_SIGN[value[flag]] for flag in ("call", "put")}
 
 
-def _read_smile_expiries(state, chain, snapshot_id):
-    return [
-        expiry for expiry, tau in expiry_taus(chain).items()
-        if state.get(smile_key(snapshot_id, tau), False)
-    ]
-
-
-def _write_smile_expiries(value, chain, snapshot_id):
-    chosen = set(value)
-    return {
-        smile_key(snapshot_id, tau): expiry in chosen
-        for expiry, tau in expiry_taus(chain).items()
-    }
-
-
 _RANGE_NAME = {value: name for name, value in MONEYNESS_RANGES.items()}
 
 # One row per saved-analysis setting, in SETTING_NAMES order (a test checks it).
 SETTINGS = (
-    SavedSetting("oi_expiries", _read_oi_expiries, _write_oi_expiries),
+    SavedSetting("oi_expiries", *_ticked_expiries(oi_expiry_key)),
     SavedSetting(
         "strike_range",
         _read_strike_range,
@@ -149,7 +143,7 @@ SETTINGS = (
         to_widget=_RANGE_NAME.__getitem__,
     ),
     _single_key("heatmap_values", HEATMAP_VALUES_KEY),
-    SavedSetting("smile_expiries", _read_smile_expiries, _write_smile_expiries),
+    SavedSetting("smile_expiries", *_ticked_expiries(smile_key)),
     _single_key("surface_view", SURFACE_VIEW_KEY),
 )
 

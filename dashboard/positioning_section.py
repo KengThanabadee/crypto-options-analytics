@@ -22,7 +22,7 @@ from dashboard.settings import (
     GEX_VIEW_KEY,
     WIDGET_DEFAULTS,
     customer_side_key,
-    oi_expiries_key,
+    oi_expiry_key,
     strike_range_key,
 )
 from dashboard.state import widget_default
@@ -43,14 +43,7 @@ def positioning_section(chain, snapshot_id):
     st.subheader("Open interest and gamma exposure")
     index_price = float(chain["index_price"].iloc[0])
     expiry_dates = chain.drop_duplicates("tau").set_index("tau")["expiry_dt"]
-    selected = st.multiselect(
-        "OI expiries",
-        sorted(expiry_dates.index),
-        format_func=lambda tau: f"{expiry_dates[tau]:%Y-%m-%d}",
-        placeholder="All expiries",
-        key=oi_expiries_key(snapshot_id),
-        help="Leave empty for All expiries. The IV charts keep their own expiries.",
-    )
+    selected = oi_expiry_picker(expiry_dates, snapshot_id)
     expiries = selected or None
     scope = expiry_scope_label(chain, expiries)
     oi_table = open_interest_by_strike(chain, expiries)
@@ -118,6 +111,33 @@ def positioning_section(chain, snapshot_id):
             "shows Incomplete data; one where none are computable shows Insufficient "
             "data. Neither is drawn as a bar."
         )
+
+def oi_expiry_picker(expiry_dates, snapshot_id):
+    """Ticked OI expiries in a popover; none ticked means All expiries."""
+    taus = sorted(expiry_dates.index)
+    keys = {tau: oi_expiry_key(snapshot_id, tau) for tau in taus}
+    ticked = [tau for tau in taus if st.session_state.get(keys[tau])]
+    if not ticked:
+        summary = "All expiries"
+    elif len(ticked) == 1:
+        summary = f"{expiry_dates[ticked[0]]:%Y-%m-%d}"
+    else:
+        summary = f"{len(ticked)} expiries"
+    with st.popover(
+        f"OI expiries: {summary}",
+        key=f"oi_expiries_popover_{snapshot_id}",
+        help="Tick none for All expiries. The IV charts keep their own expiries.",
+    ):
+        st.caption("Expiry (UTC) · none ticked = All expiries")
+        return [
+            tau for tau in taus
+            if st.checkbox(
+                f"{expiry_dates[tau]:%Y-%m-%d}",
+                value=widget_default(keys[tau], False) or False,
+                key=keys[tau],
+            )
+        ]
+
 
 def gex_scenario_controls():
     """Customer side per option type and Net/Gross; a new snapshot keeps them."""

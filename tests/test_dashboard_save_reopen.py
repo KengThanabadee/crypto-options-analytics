@@ -13,6 +13,7 @@ from options_analytics import iv_source, saved_analysis
 from options_analytics.deribit import load_deribit_snapshot, parse_deribit_snapshot
 
 from dashboard import settings
+from conftest import smile_boxes, oi_expiries, set_oi_expiries
 
 
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
@@ -80,7 +81,7 @@ def _explore(app):
     """Move every analysis setting off its default."""
     chain = parse_deribit_snapshot(load_deribit_snapshot(SNAPSHOT_PATH))
     taus = sorted(chain["tau"].unique())
-    app.multiselect[0].set_value([taus[1], taus[4]]).run()
+    set_oi_expiries(app, [taus[1], taus[4]])
     app.slider[0].set_value((60_000.0, 110_000.0)).run()
     _segmented(app, "Calls").set_value("Customer buys").run()
     _segmented(app, "Puts").set_value("Customer sells").run()
@@ -89,15 +90,15 @@ def _explore(app):
     app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
     app.segmented_control(key="heatmap_view").set_value("Observed").run()
     app.segmented_control(key="surface_view").set_value("3D").run()
-    app.checkbox[0].set_value(False).run()
-    app.checkbox[5].set_value(True).run()
+    smile_boxes(app)[0].set_value(False).run()
+    smile_boxes(app)[5].set_value(True).run()
     assert not app.exception and not app.error
     return app
 
 
 def _settings_shown(app):
     return {
-        "oi_expiries": app.multiselect[0].value,
+        "oi_expiries": oi_expiries(app),
         "strike_range": app.slider[0].value,
         "calls": _segmented(app, "Calls").value,
         "puts": _segmented(app, "Puts").value,
@@ -108,7 +109,7 @@ def _settings_shown(app):
         "heatmap": next(
             (c.value for c in app.segmented_control if c.key == "heatmap_view"), None
         ),
-        "smiles": [box.value for box in app.checkbox],
+        "smiles": [box.value for box in smile_boxes(app)],
     }
 
 
@@ -208,16 +209,16 @@ def test_reopening_another_snapshot_switches_the_page_and_controls_keep_working(
         for c in app.caption
     )
     tau = float(chain.loc[chain["expiry_dt"] == expiries[2], "tau"].iloc[0])
-    assert app.multiselect[0].value == [tau]
+    assert oi_expiries(app) == [tau]
     assert app.slider[0].value == (70_000.0, 100_000.0)
     assert _segmented(app, "Puts").value == "Customer sells"
-    assert [box.value for box in app.checkbox] == [i == 3 for i in range(len(expiries))]
+    assert [box.value for box in smile_boxes(app)] == [i == 3 for i in range(len(expiries))]
 
     _segmented(app, "Puts").set_value("Customer buys").run()
-    app.checkbox[0].set_value(True).run()
+    smile_boxes(app)[0].set_value(True).run()
     assert not app.exception and not app.error
     assert _segmented(app, "Puts").value == "Customer buys"
-    assert app.checkbox[0].value and app.checkbox[3].value
+    assert smile_boxes(app)[0].value and smile_boxes(app)[3].value
     assert app.slider[0].value == (70_000.0, 100_000.0)
     assert any("Reopened snapshot: 2026-10-15 16:18:14 UTC" in c.value for c in app.caption)
 
@@ -238,8 +239,8 @@ def test_a_failed_iv_build_keeps_the_iv_view_settings_and_saves_them(
     app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
     app.segmented_control(key="heatmap_view").set_value("Observed").run()
     app.segmented_control(key="surface_view").set_value("3D").run()
-    app.checkbox[0].set_value(False).run()
-    app.checkbox[5].set_value(True).run()
+    smile_boxes(app)[0].set_value(False).run()
+    smile_boxes(app)[5].set_value(True).run()
     chosen = json.loads(saved_files[-1])["settings"]
     assert chosen["surface_view"] == "3D" and chosen["heatmap_values"] == "Observed"
     shown = _settings_shown(app)

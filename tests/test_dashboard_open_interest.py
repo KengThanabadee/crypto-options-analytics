@@ -7,6 +7,7 @@ from streamlit.testing.v1 import AppTest
 
 from options_analytics import deribit, visualization
 from options_analytics.positioning import near_spot_range, open_interest_by_strike
+from conftest import smile_boxes, oi_expiries, set_oi_expiries
 
 
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
@@ -60,8 +61,7 @@ def test_open_interest_opens_on_all_expiries_near_spot(figures, chain):
     assert not app.exception and not app.error
     index_price = chain["index_price"].iloc[0]
     low, high = near_spot_range(index_price)
-    assert app.multiselect[0].label == "OI expiries"
-    assert app.multiselect[0].value == []
+    assert oi_expiries(app) == []
     assert app.slider[0].value == pytest.approx((low, high))
 
     figure = figures["make_positioning_figure"]
@@ -79,11 +79,11 @@ def test_open_interest_opens_on_all_expiries_near_spot(figures, chain):
 def test_oi_expiry_selection_sums_only_those_expiries_and_leaves_iv_alone(figures, chain):
     app = _app()
     smile_before = figures["make_smile_figure"].to_json()
-    checks_before = [box.value for box in app.checkbox]
+    checks_before = [box.value for box in smile_boxes(app)]
     taus = sorted(chain["tau"].unique())
     chosen = [taus[1], taus[4]]
 
-    app.multiselect[0].set_value(chosen).run()
+    set_oi_expiries(app, chosen)
     assert not app.exception
     dates = [chain.loc[chain.tau == tau, "expiry_dt"].iloc[0].strftime("%Y-%m-%d")
              for tau in chosen]
@@ -100,7 +100,7 @@ def test_oi_expiry_selection_sums_only_those_expiries_and_leaves_iv_alone(figure
         expected = subset.loc[(subset.strike == strike) & (subset.flag == "put"), "open_interest"].sum()
         assert value == pytest.approx(expected)
 
-    assert [box.value for box in app.checkbox] == checks_before
+    assert [box.value for box in smile_boxes(app)] == checks_before
     assert figures["make_smile_figure"].to_json() == smile_before
 
 

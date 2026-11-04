@@ -8,6 +8,7 @@ from streamlit.testing.v1 import AppTest
 import requests
 
 from options_analytics import deribit, iv_source, visualization
+from conftest import smile_boxes, oi_boxes
 
 
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
@@ -183,22 +184,24 @@ def test_smile_selection_preserves_observations_and_other_views(monkeypatch):
     dates = chain.drop_duplicates("tau").set_index("tau")["expiry_dt"]
     app = _app()
     assert not app.exception
-    assert [select.label for select in app.multiselect] == ["OI expiries"]
-    assert [box.label for box in app.checkbox] == [
+    assert [box.label for box in oi_boxes(app)] == [
+        dates[tau].strftime("%Y-%m-%d") for tau in ordered_expiries
+    ]
+    assert [box.label for box in smile_boxes(app)] == [
         dates[tau].strftime("%Y-%m-%d") for tau in ordered_expiries
     ]
     expected_defaults = [
         tau for tau in ordered_expiries
         if np.isfinite(result.iv_surface[result.expiries.index(tau)]).any()
     ][:3]
-    assert [tau for tau, box in zip(ordered_expiries, app.checkbox) if box.value] == expected_defaults
+    assert [tau for tau, box in zip(ordered_expiries, smile_boxes(app)) if box.value] == expected_defaults
     other_views = {
         name: figures[name].to_json()
         for name in ["make_iv_heatmap"]
     }
 
     selected = ordered_expiries[-1]
-    for tau, box in zip(ordered_expiries, app.checkbox):
+    for tau, box in zip(ordered_expiries, smile_boxes(app)):
         box.set_value(tau == selected)
     app.run()
     assert not app.exception
@@ -224,9 +227,9 @@ def test_smile_selection_preserves_observations_and_other_views(monkeypatch):
     app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
     assert not app.exception
     assert figures["make_smile_figure"].to_json() == smile.to_json()
-    assert [tau for tau, box in zip(ordered_expiries, app.checkbox) if box.value] == [selected]
+    assert [tau for tau, box in zip(ordered_expiries, smile_boxes(app)) if box.value] == [selected]
 
-    for box in app.checkbox:
+    for box in smile_boxes(app):
         box.uncheck()
     app.run()
     assert not app.exception
@@ -252,7 +255,7 @@ def test_smile_defaults_skip_expiries_without_finite_iv(monkeypatch, finite_coun
     _patch_iv_build(monkeypatch, sparse_result)
     app = _app()
     assert not app.exception
-    assert [tau for tau, box in zip(ordered_expiries, app.checkbox) if box.value] == expected
+    assert [tau for tau, box in zip(ordered_expiries, smile_boxes(app)) if box.value] == expected
     assert len(app.get("plotly_chart")) == (4 if finite_count else 3)
 
 
@@ -328,7 +331,7 @@ def test_atm_uses_raw_all_expiries_independent_of_view_controls(monkeypatch):
     assert trace.connectgaps is False
     assert len(trace.x) == len(result.expiries)
     before = figures[-1].to_json()
-    for box in app.checkbox:
+    for box in smile_boxes(app):
         box.uncheck()
     app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)")
     app.segmented_control(key="heatmap_view").set_value("Observed").run()
@@ -392,7 +395,7 @@ def test_all_views_follow_the_raw_deribit_chain(monkeypatch):
     mesh = figures["make_iv_surface_figure"].data[0]
     np.testing.assert_allclose(mesh.z, heatmap.data[0].z, equal_nan=True)
     atm_before = figures["make_atm_term_structure_figure"].to_json()
-    for box in app.checkbox:
+    for box in smile_boxes(app):
         box.uncheck()
     app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
     assert not app.exception
@@ -435,7 +438,7 @@ def test_fetch_latest_switches_the_whole_page_and_controls_do_not_fetch(monkeypa
 
     app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
     app.segmented_control(key="heatmap_view").set_value("Observed").run()
-    app.checkbox[0].set_value(not app.checkbox[0].value).run()
+    smile_boxes(app)[0].set_value(not smile_boxes(app)[0].value).run()
     assert not app.exception
     assert len(calls) == 1
     assert any("16:18:14 UTC · Index $90,000.00" in c.value for c in app.caption)
@@ -565,8 +568,8 @@ def test_smile_checkboxes_show_what_the_chart_draws_on_every_run(monkeypatch):
         assert not app.exception
         drawn = {trace.meta for trace in _line_traces(figures["make_smile_figure"])}
         assert len(drawn) == 3
-        assert sum(box.value for box in app.checkbox) == 3
-        assert [box.proto.default for box in app.checkbox] == [box.value for box in app.checkbox]
+        assert sum(box.value for box in smile_boxes(app)) == 3
+        assert [box.proto.default for box in smile_boxes(app)] == [box.value for box in smile_boxes(app)]
         app.segmented_control(key="heatmap_view").set_value("Observed").run()
 
 

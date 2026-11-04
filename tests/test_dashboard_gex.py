@@ -8,6 +8,7 @@ from streamlit.testing.v1 import AppTest
 
 from options_analytics import deribit, positioning, visualization
 from options_analytics.positioning import near_spot_range, net_gex_by_strike
+from conftest import set_oi_expiries
 
 
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
@@ -84,7 +85,7 @@ def test_gex_follows_the_oi_expiries_and_strike_zoom(figures, chain):
     app = _app()
     taus = sorted(chain["tau"].unique())
     chosen = [taus[1], taus[4]]
-    app.multiselect[0].set_value(chosen).run()
+    set_oi_expiries(app, chosen)
     app.slider[0].set_value((60_000.0, 110_000.0)).run()
     assert not app.exception
 

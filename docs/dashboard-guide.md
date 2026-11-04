@@ -46,8 +46,9 @@ The top of the page is one chart with two panels that share a strike axis: a
 strike sits at the same x in both, and one zoom covers both. The controls sit
 above the chart.
 
-- **OI expiries** starts empty, which means All expiries. It is separate from
-  the IV charts' expiries.
+- **OI expiries** is a popover of expiry checkboxes, like the IV smiles'
+  picker; its button names the choice. None ticked, the start, means All
+  expiries. It is separate from the IV charts' expiries.
 - **Strike range (USD)** starts at Near spot, ±10% around the index with both
   ends included, and **Near spot** resets it. Dragging across either panel
   sets the range to the dragged band, widened to whole $500 steps, so the
