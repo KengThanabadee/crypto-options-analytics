@@ -96,14 +96,15 @@ SOURCE_LABELS = {
     "near_atm_average": "Call–Put average",
     "near_atm_call_only": "Call only (no Put IV)",
     "near_atm_put_only": "Put only (no Call IV)",
-    "call_fallback": "Call (no Put IV)",
-    "put_fallback": "Put (no Call IV)",
     "missing": "No IV",
 }
 
 
 def _source_label(source):
-    return SOURCE_LABELS.get(source, source)
+    """Plain-words label; averaged ATM strikes join theirs with " / "."""
+    return " / ".join(
+        SOURCE_LABELS.get(part, part) for part in str(source).split(" / ")
+    )
 
 
 def _iv_label(iv_source=None):
@@ -648,15 +649,30 @@ def make_atm_term_structure_figure(
     data = atm_frame.sort_values("tau")
     color = "#38BDF8"
     has_band = {"band_low", "band_high"} <= set(data.columns)
-    columns = ["strike", "moneyness", "atm_distance", "selection_status"]
+    has_source = "source" in data.columns
+    customdata = data[
+        ["strike", "moneyness", "atm_distance", "selection_status"]
+    ].to_numpy(dtype=object)
+    source_hover = ""
     band_hover = ""
+    if has_source:
+        source_index = customdata.shape[1]
+        customdata = np.column_stack([
+            customdata, data["source"].map(_source_label).to_numpy(dtype=object)
+        ])
+        source_hover = f"<br>IV from: %{{customdata[{source_index}]}}"
     if has_band:
-        columns += ["band_low", "band_high"]
+        low_index = customdata.shape[1]
+        customdata = np.column_stack([
+            customdata,
+            data["band_low"].to_numpy(dtype=float),
+            data["band_high"].to_numpy(dtype=float),
+        ])
+        band_of = f" of %{{customdata[{source_index}]}}" if has_source else ""
         band_hover = (
-            "<br>bid–ask display band: %{customdata[4]:.2%}"
-            " – %{customdata[5]:.2%}"
+            f"<br>bid–ask display band{band_of}: %{{customdata[{low_index}]:.2%}}"
+            f" – %{{customdata[{low_index + 1}]:.2%}}"
         )
-    customdata = data[columns].to_numpy()
     trace = go.Scatter(
         x=data["tau"].to_numpy(dtype=float),
         y=data["iv"].to_numpy(dtype=float),
@@ -674,6 +690,7 @@ def make_atm_term_structure_figure(
             "K / S: %{customdata[1]:.4f}<br>"
             "ATM distance: %{customdata[2]:.2%}<br>"
             "selection: %{customdata[3]}"
+            + source_hover
             + band_hover
             + "<extra></extra>"
         ),

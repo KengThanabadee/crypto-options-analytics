@@ -64,8 +64,9 @@ that button fetches; every other control reuses the loaded snapshot.
 
 The sidebar has two parts. **Saved analysis** holds Reopen analysis and Save
 analysis (see [Save and reopen](#save-and-reopen)). **Method notes** holds two
-expanders: **Combined IV coverage** counts the grid cells that are preferred
-or averaged, fallback or one-sided, and missing for the selected IV source;
+expanders: **Combined IV coverage** counts the grid cells that are out of
+the money or averaged, one-sided near spot, and missing for the selected IV
+source;
 **Deribit pricing** states the USD conversion and the solver's forward rate.
 
 ## Reading each section
@@ -166,15 +167,17 @@ reprice the USD midpoint within $0.01, or it counts as missing.
 **Combined IV** puts Calls and Puts on one expiry × strike grid. Selection is
 spot-based:
 
-- below `K / S = 0.98`, prefer Put IV;
+- below `K / S = 0.98`, Put IV only;
 - from `0.98` through `1.02`, average the same-strike Call and Put IV when
-  both are available;
-- above `K / S = 1.02`, prefer Call IV.
+  both are available, otherwise use the side that is, labelled one-sided;
+- above `K / S = 1.02`, Call IV only.
 
-If the preferred side is unavailable, the other side is used and labelled as a
-fallback (or one-sided near ATM); if neither side has IV, the cell stays
-missing. Tooltips say which side a value came from in plain words, for example
-"Call–Put average" or "Call (no Put IV)".
+Outside `0.98–1.02` a strike whose out-of-the-money side has no IV stays
+missing; the in-the-money side is never used there. Its quote is mostly
+intrinsic value, so a bid–ask spread many times its time value sets the IV,
+and on the frozen snapshot every such substitute in Quote midpoint had a bid
+below intrinsic and IVs up to about 189%. Tooltips say which side a value came
+from in plain words, for example "Call–Put average" or "Call only (no Put IV)".
 
 Below the selector, three tabs hold the IV charts: **IV surface**, **IV
 smiles** and **ATM term structure**. All IV tooltips show the expiry date in
@@ -232,9 +235,7 @@ and a Put at one strike have very different prices but comparable IVs. The lower
 from the ask, so the band is wide where quotes are wide. It is drawn only where
 both edges exist; a point whose neighbours have no band is drawn as a short
 vertical bar, since a one-point shape has no width. Short-dated far OTM
-contracts often have no bid, so mark IV can show there with no shading; in
-Quote midpoint, a deep ITM fallback contract can have a bid below intrinsic
-value, which has no bid IV. It is a
+contracts often have no bid, so mark IV can show there with no shading. It is a
 display band, not a tradable quote, and mark IV may sit outside it. The caption
 and the **Reading the bid–ask shading** expander sit under the chart. Hover
 names the option the band belongs to, the same one as "IV from".
@@ -247,7 +248,9 @@ strikes; expiries without one stay gaps, and a note under the chart counts
 them. Numerical maturity (`tau`) spaces the dates. The same bid–ask display
 band is shaded around the line: each expiry takes the band edges of its chosen
 strikes, averaged like IV, and an edge missing on any averaged strike stays
-missing. The **Reading the bid–ask shading** expander explains the band, and
+missing. Hover names the option behind the line and band ("IV from"), usually
+the Call–Put average since the proxy sits within 2% of spot. The **Reading the
+bid–ask shading** expander explains the band, and
 the **ATM selection details** expander lists every expiry's status.
 
 ## Save and reopen

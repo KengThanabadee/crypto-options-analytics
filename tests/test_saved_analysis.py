@@ -110,7 +110,6 @@ def test_a_file_saved_without_a_surface_view_opens_on_heatmap(snapshot):
     saved = json.loads(saved_analysis.save_analysis(snapshot, _settings(chain)))
     del saved["settings"]["surface_view"]
     saved["format_version"] = 1
-    saved["calculation_version"] = 1
 
     reopened = saved_analysis.open_analysis(json.dumps(saved))
 

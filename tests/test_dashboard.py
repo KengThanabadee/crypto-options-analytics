@@ -653,11 +653,12 @@ def test_atm_chart_shades_the_band_and_explains_it(monkeypatch):
     (line,) = _line_traces(figure)
     customdata = np.asarray(line.customdata)
     np.testing.assert_allclose(
-        customdata[:, 4:6].astype(float),
+        customdata[:, 5:7].astype(float),
         expected[["band_low", "band_high"]].to_numpy(), equal_nan=True,
     )
     assert np.isfinite(expected["band_low"]).any()
-    assert "bid–ask display band" in line.hovertemplate
+    assert "IV from: %{customdata[4]}" in line.hovertemplate
+    assert "bid–ask display band of %{customdata[4]}:" in line.hovertemplate
 
 
 SURFACE_CAPTION = (

@@ -106,29 +106,21 @@ def _iv_method_notes(frame, iv_source):
     source = frame["source"]
     counts = (
         int(source.isin(["call", "put", "near_atm_average"]).sum()),
-        int(
-            source.isin(
-                [
-                    "call_fallback",
-                    "put_fallback",
-                    "near_atm_call_only",
-                    "near_atm_put_only",
-                ]
-            ).sum()
-        ),
+        int(source.isin(["near_atm_call_only", "near_atm_put_only"]).sum()),
         int(source.eq("missing").sum()),
     )
     st.subheader("Method notes")
     with st.expander(f"Combined IV coverage · {iv_source}"):
         for label, count in zip(
-            ["Preferred / averaged", "Fallback / one-sided", "Missing"], counts
+            ["Out of the money / averaged", "One-sided near spot", "Missing"], counts
         ):
             st.metric(label, f"{count:,}")
         st.caption(f"All {len(frame):,} expiry × strike grid cells.")
         st.caption(
             "Within 2% of spot, average same-strike Call and Put IV when both "
-            "are available. Outside that band, prefer Put below spot and Call "
-            "above spot."
+            "are available, else use the one that is. Outside that band, use "
+            "only the out-of-the-money side, Put below spot and Call above; "
+            "without it the cell stays missing."
         )
     with st.expander("Deribit pricing"):
         st.caption(

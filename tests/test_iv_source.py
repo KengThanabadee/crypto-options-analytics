@@ -275,14 +275,24 @@ def test_combined_iv_blends_near_atm_and_prefers_otm_wings():
     np.testing.assert_allclose(combined[0], [0.31, 0.27, 0.29, 0.31, 0.28])
 
 
-def test_combined_iv_uses_labelled_opposite_side_fallbacks_and_gaps():
+def test_combined_iv_wings_use_only_the_out_of_the_money_side():
     strikes = [95, 100, 105, 110]
+    # The only IV at 95 is a Call and at 105 a Put: both in the money.
     call_iv = [[0.20, np.nan, np.nan, np.nan]]
     put_iv = [[np.nan, 0.30, 0.40, np.nan]]
 
     combined, source_grid = combine_call_put_iv(call_iv, put_iv, strikes, 100)
 
     assert source_grid.tolist() == [[
-        "call_fallback", "near_atm_put_only", "put_fallback", "missing",
+        "missing", "near_atm_put_only", "missing", "missing",
     ]]
-    np.testing.assert_allclose(combined[0], [0.20, 0.30, 0.40, np.nan])
+    np.testing.assert_allclose(combined[0], [np.nan, 0.30, np.nan, np.nan])
+
+
+def test_quote_midpoint_wings_have_no_in_the_money_iv(chain):
+    result = build_iv_source_surface(chain, "Quote midpoint")
+    moneyness = np.asarray(result.strikes) / result.spot_price
+    labels = set(result.source_grid[:, moneyness < 0.98].reshape(-1))
+    assert labels <= {"put", "missing"}
+    labels = set(result.source_grid[:, moneyness > 1.02].reshape(-1))
+    assert labels <= {"call", "missing"}

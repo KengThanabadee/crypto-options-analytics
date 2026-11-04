@@ -7,8 +7,8 @@ BAND_CAPTION = "shading = bid–ask IV band, wider where quotes are wider"
 BAND_NOTES = (
     "At each strike the band belongs to the same option the line uses, shown "
     "as \"IV from\" in the hover: the Put below 0.98 K/S, the Call above "
-    "1.02, and the Call–Put average in between. Where that side has no IV, "
-    "the line and band both switch to the other side.",
+    "1.02, and the Call–Put average in between, or the one side that has IV "
+    "there.",
     "The lower edge is the IV our solver implies from the best bid, the upper "
     "edge the IV from the best ask. Quote midpoint IV always sits between them.",
     "Width shows how far apart buyers and sellers are. A narrow band means the "
@@ -17,9 +17,7 @@ BAND_NOTES = (
     "Where a strike's neighbours have no band, its band is a short vertical "
     "bar. Where the line continues with no shading, the bid or ask is missing "
     "or did not solve: short-dated far out-of-the-money contracts often have "
-    "no bid, yet Exchange mark IV still exists there. In Quote midpoint the "
-    "line can fall back to a deep in-the-money contract whose bid sits below "
-    "intrinsic value; no volatility gives that price, so it has no bid IV.",
+    "no bid, yet Exchange mark IV still exists there.",
     "Within 2% of spot each edge is an average of two solved IVs: the lower "
     "edge averages the Call bid IV and the Put bid IV, the upper edge the Call "
     "ask IV and the Put ask IV. Each price is solved to IV first, because a "

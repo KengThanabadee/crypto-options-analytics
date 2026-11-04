@@ -98,10 +98,10 @@ def test_source_grid_preserves_alignment_and_existing_output():
     baseline = surface_to_long_frame(*args, expiry_datetimes=metadata)
     frame = surface_to_long_frame(
         *args, expiry_datetimes=metadata,
-        source_grid=[["call", "missing"], ["put_fallback", "near_atm_average"]],
+        source_grid=[["call", "missing"], ["near_atm_put_only", "near_atm_average"]],
     )
     assert frame.source.tolist() == [
-        "call", "missing", "put_fallback", "near_atm_average"
+        "call", "missing", "near_atm_put_only", "near_atm_average"
     ]
     pd.testing.assert_frame_equal(frame.drop(columns="source"), baseline)
     assert "source" not in baseline.columns
@@ -120,12 +120,12 @@ def test_chart_sources_follow_sorted_cells_and_selected_expiry():
         [0.5, 0.25], [110, 90, 100], 100,
         source_grid=[
             ["call", "missing", "near_atm_call_only"],
-            ["put_fallback", "put", "near_atm_average"],
+            ["near_atm_put_only", "put", "near_atm_average"],
         ],
     ).sample(frac=1, random_state=7)
     heatmap = make_iv_heatmap(frame).data[0]
     assert heatmap.customdata.tolist() == [
-        [[90.0, "Put"], [100.0, "Call–Put average"], [110.0, "Put (no Call IV)"]],
+        [[90.0, "Put"], [100.0, "Call–Put average"], [110.0, "Put only (no Call IV)"]],
         [[90.0, "No IV"], [100.0, "Call only (no Put IV)"], [110.0, "Call"]],
     ]
     assert np.isnan(heatmap.z[1, 0])
@@ -292,6 +292,55 @@ def test_atm_figure_shades_the_band_beneath_the_line_only_where_both_edges_exist
     assert shapes == [[0.1, 0.2]]
     assert _band_segments(bars) == [[(0.4, 0.38), (0.4, 0.42)]]
     assert "bid–ask display band" in line.hovertemplate
+
+
+def test_atm_term_structure_carries_the_combined_iv_source():
+    frame = pd.DataFrame(
+        {
+            "tau": [0.25, 0.25, 0.5, 0.5, 0.75],
+            "strike": [98, 102, 99, 101, 120],
+            "iv": [0.20, 0.24, 0.30, 0.34, 0.40],
+            "moneyness": [0.98, 1.02, 0.99, 1.01, 1.20],
+            "source": [
+                "near_atm_average", "near_atm_call_only",
+                "near_atm_average", "near_atm_average", "call",
+            ],
+        }
+    )
+
+    result = atm_term_structure_frame(frame)
+
+    # Averaged strikes with different labels keep both; equal labels stay one.
+    assert result["source"].tolist() == [
+        "near_atm_average / near_atm_call_only", "near_atm_average", "missing",
+    ]
+
+
+def test_atm_hover_names_the_option_behind_the_line_and_band():
+    atm = pd.DataFrame(
+        {
+            "tau": [0.1, 0.2],
+            "strike": [100.0, 100.0],
+            "iv": [0.50, 0.45],
+            "moneyness": [1.0, 1.0],
+            "atm_distance": [0.0, 0.0],
+            "selection_status": ["nearest", "symmetric_average"],
+            "band_low": [0.48, 0.43],
+            "band_high": [0.52, 0.47],
+            "source": ["near_atm_average", "near_atm_average / near_atm_put_only"],
+        }
+    )
+
+    *_, line = make_atm_term_structure_figure(atm).data
+
+    assert "IV from: %{customdata[4]}" in line.hovertemplate
+    assert "bid–ask display band of %{customdata[4]}:" in line.hovertemplate
+    assert [row[4] for row in line.customdata] == [
+        "Call–Put average", "Call–Put average / Put only (no Call IV)",
+    ]
+    np.testing.assert_allclose(
+        np.asarray(line.customdata)[:, 5:7].astype(float), [[.48, .52], [.43, .47]]
+    )
 
 
 def test_atm_figure_without_band_columns_has_only_the_line():
@@ -550,14 +599,14 @@ def test_surface_hover_text_is_aligned_on_a_nonsquare_grid():
     frame = surface_to_long_frame(
         [[.21, .22, .23, .24], [.31, .32, .33, .34]],
         [.5, .25], [110, 90, 100, 120], 100,
-        source_grid=[["call", "put", "near_atm_average", "call_fallback"],
+        source_grid=[["call", "put", "near_atm_average", "near_atm_call_only"],
                      ["call", "put", "near_atm_put_only", "call"]],
     ).sample(frac=1, random_state=4)
     trace = make_iv_surface_figure(frame).data[0]
     assert np.asarray(trace.text).shape == (2, 4)
     assert "Strike: $90<br>IV from: Put" in trace.text[0][0]
     assert "Strike: $120<br>IV from: Call" in trace.text[0][3]
-    assert "Strike: $120<br>IV from: Call (no Put IV)" in trace.text[1][3]
+    assert "Strike: $120<br>IV from: Call only (no Put IV)" in trace.text[1][3]
     assert "Time to expiry: 91.25 days" in trace.text[0][3]
     assert "IV: 34.00%" in trace.text[0][3]
     assert trace.hovertemplate is None
@@ -782,20 +831,20 @@ def test_iv_hovers_use_reader_words():
     frame = surface_to_long_frame(
         [[.21, .22, .23], [.31, .32, .33]],
         [.5, .25], [81_000, 82_000, 83_500.5], 82_000,
-        source_grid=[["put", "near_atm_average", "call_fallback"],
-                     ["put_fallback", "near_atm_call_only", "missing"]],
+        source_grid=[["put", "near_atm_average", "near_atm_call_only"],
+                     ["near_atm_put_only", "near_atm_call_only", "missing"]],
         expiry_datetimes=["2027-03-26T08:00:00Z", "2026-12-25T08:00:00Z"],
     )
     smile = make_smile_figure(frame, selected_expiries=[.25]).data[0]
     assert list(smile.hovertext) == ["$81,000", "$82,000", "$83,500.5"]
     assert "Strike: %{hovertext}" in smile.hovertemplate
     assert smile.customdata[:, 1].tolist() == [
-        "Put (no Call IV)", "Call only (no Put IV)", "No IV",
+        "Put only (no Call IV)", "Call only (no Put IV)", "No IV",
     ]
     assert smile.text[0] == "Expiry (UTC): 2026-12-25<br>Time to expiry: 91.25 days"
     heatmap = make_iv_heatmap(frame).data[0]
     assert heatmap.customdata[1, :, 1].tolist() == [
-        "Put", "Call–Put average", "Call (no Put IV)",
+        "Put", "Call–Put average", "Call only (no Put IV)",
     ]
     surface = make_iv_surface_figure(frame).data[0]
     texts = " ".join(np.asarray(surface.text).reshape(-1))

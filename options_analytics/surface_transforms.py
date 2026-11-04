@@ -213,7 +213,9 @@ def atm_term_structure_frame(
 
     When the frame has band_low/band_high columns, the chosen strikes' band
     edges come along, averaged like IV; an edge missing on any averaged
-    strike stays missing.
+    strike stays missing. A ``source`` column comes along too: the chosen
+    strikes' Combined IV labels, joined with " / " when averaged strikes
+    differ.
     """
     _require_columns(long_frame, _LONG_FRAME_COLUMNS, "long_frame")
     band_columns = [
@@ -221,6 +223,9 @@ def atm_term_structure_frame(
         if column in long_frame.columns
     ]
     no_band = {column: np.nan for column in band_columns}
+    has_source = "source" in long_frame.columns
+    if has_source:
+        no_band["source"] = "missing"
 
     try:
         distance_bound = float(max_moneyness_distance)
@@ -306,6 +311,10 @@ def atm_term_structure_frame(
                     column: float(tied[column].to_numpy(dtype=float).mean())
                     for column in band_columns
                 },
+                **(
+                    {"source": " / ".join(dict.fromkeys(tied["source"]))}
+                    if has_source else {}
+                ),
             }
         )
 
@@ -320,6 +329,7 @@ def atm_term_structure_frame(
             "atm_distance",
             "selection_status",
             *band_columns,
+            *(["source"] if has_source else []),
         ]
     )
     return pd.DataFrame(rows, columns=columns)

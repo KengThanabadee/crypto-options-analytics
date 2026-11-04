@@ -73,7 +73,9 @@ def contract_iv(chain: pd.DataFrame, iv_source: str) -> pd.Series:
 def combine_call_put_iv(call_iv, put_iv, strikes, spot_price):
     """Apply the spot-based Combined IV rule to aligned Call and Put IV grids.
 
-    Returns the Combined IV grid and a same-shaped grid of source labels.
+    Within 2% of spot the Call and Put IV are averaged, or the one present is
+    used; outside it only the out-of-the-money side counts, so a strike whose
+    OTM side has no IV stays missing. Returns the Combined IV grid and a same-shaped grid of source labels.
     """
     call_iv = np.asarray(call_iv, dtype=float)
     put_iv = np.asarray(put_iv, dtype=float)
@@ -97,20 +99,15 @@ def combine_call_put_iv(call_iv, put_iv, strikes, spot_price):
                 elif put_finite:
                     combined_iv[i, j] = put_value
                     source_grid[i, j] = "near_atm_put_only"
+            # The wings use only the out-of-the-money side: an in-the-money
+            # quote is mostly intrinsic value, so its IV is spread noise.
             elif moneyness < 0.98:
                 if put_finite:
                     combined_iv[i, j] = put_value
                     source_grid[i, j] = "put"
-                elif call_finite:
-                    combined_iv[i, j] = call_value
-                    source_grid[i, j] = "call_fallback"
-            else:
-                if call_finite:
-                    combined_iv[i, j] = call_value
-                    source_grid[i, j] = "call"
-                elif put_finite:
-                    combined_iv[i, j] = put_value
-                    source_grid[i, j] = "put_fallback"
+            elif call_finite:
+                combined_iv[i, j] = call_value
+                source_grid[i, j] = "call"
 
     return combined_iv, source_grid
 
@@ -134,10 +131,8 @@ class IVSourceResult:
 # Call/Put weights of each Combined IV label; the band reuses the line's weights.
 _LINE_WEIGHTS = {
     "call": (1.0, 0.0),
-    "call_fallback": (1.0, 0.0),
     "near_atm_call_only": (1.0, 0.0),
     "put": (0.0, 1.0),
-    "put_fallback": (0.0, 1.0),
     "near_atm_put_only": (0.0, 1.0),
     "near_atm_average": (0.5, 0.5),
 }
