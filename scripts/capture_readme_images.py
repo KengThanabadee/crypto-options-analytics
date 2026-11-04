@@ -14,7 +14,7 @@ the dark colour scheme, which the page follows as its System theme. The page
 opens at its defaults in a 1400 x 4000 viewport and each image is cropped from
 the live DOM at 1.5x. The IV surface tab is captured as the Heatmap, then its
 View control is switched to 3D for the surface image. The images are written to docs/images/ as JPEG. It needs the
-`websockets` and `Pillow` packages, which the dashboard extra installs.
+`websockets` and `Pillow` packages, which the plain install brings.
 
 To check a chart in the light theme, pass `--scheme light --out <dir>` with a
 directory outside docs/images/; the README images stay dark.

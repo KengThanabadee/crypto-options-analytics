@@ -10,8 +10,8 @@ API. Read it before changing analytics, inputs or the dashboard.
 
 ## Project Contracts
 
-- Quantitative transforms and figure construction work without Streamlit;
-  Plotly and Streamlit stay in optional extras.
+- Quantitative transforms and figure construction import nothing from
+  Streamlit.
 - Page sections live in `dashboard/`; `app.py` lays them out. They call
   `iv_surface` functions through their module (`visualization.make_*`,
   `deribit.*`, `iv_source.*`), since dashboard tests patch them there.

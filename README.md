@@ -177,13 +177,14 @@ Accordingly, the surface APIs take `expiries` before `strikes`.
 
 ## Installation
 
-Install locally in editable mode:
+Install locally in editable mode; this brings Streamlit and Plotly for the
+dashboard:
 
 ```bash
 pip install -e .
 ```
 
-For development dependencies:
+For the test and lint tools:
 
 ```bash
 pip install -e ".[dev]"
@@ -194,7 +195,7 @@ pip install -e ".[dev]"
 From the repository root:
 
 ```bash
-pip install -e ".[dashboard]"
+pip install -e .
 python -m streamlit run app.py
 ```
 
