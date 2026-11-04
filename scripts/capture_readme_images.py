@@ -15,6 +15,14 @@ opens at its defaults in a 1400 x 4000 viewport and each image is cropped from
 the live DOM at 1.5x. The IV surface tab is captured as the Heatmap, then its
 View control is switched to 3D for the surface image. The images are written to docs/images/ as JPEG. It needs the
 `websockets` and `Pillow` packages, which the dashboard extra installs.
+
+To check a chart in the light theme, pass `--scheme light --out <dir>` with a
+directory outside docs/images/; the README images stay dark.
+
+The 3D surface is WebGL. Headless Chromium draws it only with the software
+renderer flags this script passes (`--use-angle=swiftshader
+--enable-unsafe-swiftshader`); a headless browser started without them shows
+an empty 3D frame.
 """
 import argparse
 import asyncio
@@ -96,7 +104,7 @@ class Page:
         await asyncio.sleep(4)
 
 
-async def capture(browser, url):
+async def capture(browser, url, scheme="dark"):
     process = subprocess.Popen(
         [browser, "--headless", f"--remote-debugging-port={PORT}",
          "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "about:blank"],
@@ -119,7 +127,7 @@ async def capture(browser, url):
             )
             await page.call(
                 "Emulation.setEmulatedMedia",
-                features=[{"name": "prefers-color-scheme", "value": "dark"}],
+                features=[{"name": "prefers-color-scheme", "value": scheme}],
             )
             await page.call("Page.navigate", url=url)
             await asyncio.sleep(25)
@@ -156,11 +164,16 @@ async def capture(browser, url):
 
 
 def main():
+    global OUT
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--browser", required=True, help="Chromium binary")
     parser.add_argument("--url", default="http://localhost:8599")
+    parser.add_argument("--scheme", choices=["dark", "light"], default="dark")
+    parser.add_argument("--out", type=Path, default=OUT, help="image directory")
     args = parser.parse_args()
-    asyncio.run(capture(args.browser, args.url))
+    OUT = args.out
+    OUT.mkdir(parents=True, exist_ok=True)
+    asyncio.run(capture(args.browser, args.url, args.scheme))
 
 
 if __name__ == "__main__":

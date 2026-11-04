@@ -5,10 +5,9 @@ API. Read it before changing analytics, inputs or the dashboard.
 
 ## Plans
 
-- Before work on OI, GEX, the IV source selector, Fetch latest or save/reopen,
-  read `.scratch/options-dashboard/spec.md`; its tickets go in `issues/` beside
-  it.
-- `.agents/history/` holds finished plans; read them only for past rationale.
+- Each feature's spec and tickets live in `.scratch/<feature>/`. Specs marked
+  resolved, and finished plans in `.agents/history/`, hold past rationale; read
+  one only for why a feature works as it does.
 
 ## Project Contracts
 
@@ -50,8 +49,10 @@ From a worktree, use the main checkout's interpreter:
 `"$(git rev-parse --git-common-dir)/../.venv/bin/python" -m pytest`.
 Launch the dashboard with `.venv/bin/python -m streamlit run app.py`.
 A change to a chart or the page is done once you have opened the dashboard
-and looked at every chart it touches; `scripts/capture_readme_images.py`
-screenshots them.
+and looked at every chart it touches in dark and light;
+`scripts/capture_readme_images.py` screenshots them.
+Before stating a fact about strike coverage or quote quality, run
+`scripts/snapshot_coverage.py`.
 
 ## Agent skills
 
