@@ -1,4 +1,4 @@
-"""Implied volatility: IV source, method notes and the four IV chart tabs.
+"""Implied volatility: IV source, method notes and the three IV chart tabs.
 
 Each tab is drawn by its own view module: surface, smiles, term structure.
 """
@@ -9,13 +9,13 @@ import streamlit as st
 from iv_surface import iv_source as iv_sources
 from iv_surface import visualization
 from iv_surface.iv_source import DEFAULT_IV_SOURCE, IV_SOURCES, iv_source_long_frame
-from iv_surface.surface_transforms import interpolate_surface_2d
 
 from dashboard import smile_view, surface_view, term_structure_view
 from dashboard.settings import (
     HEATMAP_VALUES_KEY,
     IV_SOURCE_KEY,
     MONEYNESS_RANGE_KEY,
+    SURFACE_VIEW_KEY,
     expiry_taus,
     smile_key,
 )
@@ -55,12 +55,13 @@ def keep_iv_view_settings(chain, snapshot_id):
     """Hold the IV view settings on a run that cannot draw the IV charts.
 
     Streamlit drops a widget's value on any run that does not draw it.
-    Writing each value back as session state keeps the user's moneyness range,
-    heatmap values and smile expiries for Save and for when the charts return.
+    Writing each value back as session state keeps the user's surface view,
+    moneyness range, heatmap values and smile expiries for Save and for when
+    the charts return.
     """
     state = st.session_state
     smile_keys = [smile_key(snapshot_id, tau) for tau in expiry_taus(chain)]
-    for key in [MONEYNESS_RANGE_KEY, HEATMAP_VALUES_KEY, *smile_keys]:
+    for key in [SURFACE_VIEW_KEY, MONEYNESS_RANGE_KEY, HEATMAP_VALUES_KEY, *smile_keys]:
         if key in state:
             state[key] = state[key]
 
@@ -68,8 +69,8 @@ def keep_iv_view_settings(chain, snapshot_id):
 def iv_section(chain, snapshot_id, sidebar):
     """IV charts from the selected IV source; a failed IV build keeps the IV settings.
 
-    Method notes and the surface range control go into ``sidebar``, a
-    container the page places in its sidebar.
+    Method notes go into ``sidebar``, a container the page places in its
+    sidebar.
     """
     st.subheader("Implied volatility")
     iv_source = iv_source_control()
@@ -94,21 +95,13 @@ def iv_section(chain, snapshot_id, sidebar):
         st.warning("No IV solves succeeded for this snapshot.")
 
     with sidebar:
-        st.subheader("Surface views")
-        moneyness = surface_view.moneyness_range_control()
-    surface_frame = interpolate_surface_2d(
-        frame, min_moneyness=moneyness[0], max_moneyness=moneyness[1]
-    )
-    with sidebar:
         surface_view.interpolation_notes()
 
-    heatmap_tab, surface_tab, smile_tab, atm_tab = st.tabs(
-        ["Heatmap", "3D surface", "IV smiles", "ATM term structure"]
+    surface_tab, smile_tab, atm_tab = st.tabs(
+        ["IV surface", "IV smiles", "ATM term structure"]
     )
-    with heatmap_tab:
-        surface_view.heatmap_view(surface_frame, moneyness, iv_source)
     with surface_tab:
-        surface_view.surface_3d_view(surface_frame, moneyness, iv_source)
+        surface_view.surface_view(frame, iv_source)
     with smile_tab:
         smile_view.smile_view(frame, snapshot_id, iv_source)
     with atm_tab:

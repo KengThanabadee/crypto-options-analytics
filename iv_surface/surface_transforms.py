@@ -10,6 +10,7 @@ MONEYNESS_RANGES = {
     "Extended (0.7–1.3)": (0.7, 1.3),
 }
 HEATMAP_VALUES = ("Surface", "Observed")
+SURFACE_VIEWS = ("Heatmap", "3D")
 
 _LONG_FRAME_COLUMNS = {"tau", "strike", "iv", "moneyness"}
 _ATM_TOLERANCE = 1e-12

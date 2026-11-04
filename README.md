@@ -222,7 +222,7 @@ fetches; every other control reuses the current snapshot.
 **Save analysis** in the sidebar downloads one JSON file with the raw snapshot
 (every API response with its capture times) and the settings: OI/GEX expiries,
 strike range, Call/Put customer sides, Net/Gross, IV source, moneyness range,
-heatmap values and smile expiries. **Reopen analysis** loads such a file,
+heatmap values, smile expiries and the IV surface view. **Reopen analysis** loads such a file,
 restores every setting and recomputes every number from the raw snapshot; the
 header then reads "Reopened snapshot". A file saved with a different
 calculation version opens with a short recompute notice. An invalid file shows
@@ -488,7 +488,9 @@ no computed numbers. Settings are `oi_expiries` and `smile_expiries` (expiry
 datetimes, saved as UTC `YYYY-MM-DDTHH:MM:SSZ`; empty OI expiries means All
 expiries), `strike_range` and `moneyness_range` as `(low, high)`, `signs`
 (`call`/`put` → ±1), `gex_view` (`Net`/`Gross`), `iv_source` and
-`heatmap_values` (`Surface`/`Observed`). `open_analysis` validates the file,
+`heatmap_values` (`Surface`/`Observed`), and `surface_view`
+(`Heatmap`/`3D`). A file without `surface_view` opens as `Heatmap`; it
+needs no new format or calculation version. `open_analysis` validates the file,
 the snapshot and every setting against that snapshot and raises `ValueError`
 on any problem. Its `SavedAnalysis` result has `snapshot`, `settings`,
 `calculation_version`, `version_differs` and the parsed `chain`. `CALCULATION_VERSION` goes up

@@ -84,8 +84,9 @@ def _explore(app):
     _segmented(app, "Puts").set_value("Customer sells").run()
     _segmented(app, "GEX view").set_value("Gross").run()
     app.segmented_control(key="iv_source").set_value("Quote midpoint").run()
-    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
-    app.radio(key="heatmap_view").set_value("Observed").run()
+    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.segmented_control(key="heatmap_view").set_value("Observed").run()
+    app.segmented_control(key="surface_view").set_value("3D").run()
     app.checkbox[0].set_value(False).run()
     app.checkbox[5].set_value(True).run()
     assert not app.exception and not app.error
@@ -100,8 +101,11 @@ def _settings_shown(app):
         "puts": _segmented(app, "Puts").value,
         "gex_view": _segmented(app, "GEX view").value,
         "iv_source": app.segmented_control(key="iv_source").value,
-        "moneyness": app.radio(key="moneyness_range").value,
-        "heatmap": app.radio(key="heatmap_view").value,
+        "view": app.segmented_control(key="surface_view").value,
+        "moneyness": app.segmented_control(key="moneyness_range").value,
+        "heatmap": next(
+            (c.value for c in app.segmented_control if c.key == "heatmap_view"), None
+        ),
         "smiles": [box.value for box in app.checkbox],
     }
 
@@ -120,6 +124,13 @@ def test_reopening_a_saved_analysis_restores_every_setting_and_the_same_charts(
 
     assert not reopened.exception and not reopened.error and not reopened.warning
     assert _settings_shown(reopened) == _settings_shown(explored)
+    assert _settings_shown(reopened)["view"] == "3D"
+    assert _charts(reopened) == _charts(explored)
+    upload.file = None  # the explored page must not reopen the file too
+    for app in (reopened, explored):
+        app.segmented_control(key="surface_view").set_value("Heatmap").run()
+    assert _settings_shown(reopened) == _settings_shown(explored)
+    assert _settings_shown(reopened)["heatmap"] == "Observed"
     assert _charts(reopened) == _charts(explored)
     assert any("Reopened snapshot: 2026-10-15 15:18:14 UTC" in c.value
                for c in reopened.caption)
@@ -183,6 +194,7 @@ def test_reopening_another_snapshot_switches_the_page_and_controls_keep_working(
         "moneyness_range": (0.8, 1.2),
         "heatmap_values": "Surface",
         "smile_expiries": [expiries[3]],
+        "surface_view": "Heatmap",
     })
     app = _app()
     upload.put(file)
@@ -219,11 +231,13 @@ def test_a_failed_iv_build_keeps_the_iv_view_settings_and_saves_them(
     streamlit.cache_data.clear()
     monkeypatch.setattr(iv_source, "build_iv_source_surface", build_or_fail)
     app = _app()
-    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
-    app.radio(key="heatmap_view").set_value("Observed").run()
+    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.segmented_control(key="heatmap_view").set_value("Observed").run()
+    app.segmented_control(key="surface_view").set_value("3D").run()
     app.checkbox[0].set_value(False).run()
     app.checkbox[5].set_value(True).run()
     chosen = json.loads(saved_files[-1])["settings"]
+    assert chosen["surface_view"] == "3D" and chosen["heatmap_values"] == "Observed"
     shown = _settings_shown(app)
 
     app.segmented_control(key="iv_source").set_value("Quote midpoint").run()

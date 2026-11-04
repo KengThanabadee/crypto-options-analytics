@@ -18,7 +18,6 @@ from dashboard.snapshot_controls import (
     save_analysis_control,
 )
 from dashboard.state import start_run
-from dashboard.surface_view import SURFACE_LAYOUT_CSS
 
 
 DATA_PATH = Path(__file__).resolve().parent / "data"
@@ -28,8 +27,7 @@ SNAPSHOT_FILE = "deribit_btc_options_snapshot.json"
 def main():
     st.set_page_config(page_title="BTC volatility", layout="wide")
     st.markdown(
-        "<style>.stMainBlockContainer {padding-top: 2rem; padding-bottom: 1rem;}"
-        f"{SURFACE_LAYOUT_CSS}</style>",
+        "<style>.stMainBlockContainer {padding-top: 2rem; padding-bottom: 1rem;}</style>",
         unsafe_allow_html=True,
     )
     st.title("BTC volatility")

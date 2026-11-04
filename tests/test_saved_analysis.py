@@ -30,6 +30,7 @@ def _settings(chain):
         "moneyness_range": (0.7, 1.3),
         "heatmap_values": "Observed",
         "smile_expiries": [expiries[0], expiries[2], expiries[5]],
+        "surface_view": "3D",
     }
 
 
@@ -88,6 +89,7 @@ def test_the_file_holds_raw_responses_settings_and_one_version_but_no_numbers(sn
         "moneyness_range": [0.7, 1.3],
         "heatmap_values": "Observed",
         "smile_expiries": [f"{expiries[i]:%Y-%m-%dT%H:%M:%SZ}" for i in (0, 2, 5)],
+        "surface_view": "3D",
     }
 
 
@@ -101,6 +103,19 @@ def test_an_older_calculation_version_is_flagged(snapshot):
     assert reopened.version_differs
     assert reopened.calculation_version == saved["calculation_version"]
     assert str(saved["calculation_version"]) in reopened.version_notice()
+
+
+def test_a_file_saved_without_a_surface_view_opens_on_heatmap(snapshot):
+    chain = parse_deribit_snapshot(snapshot)
+    saved = json.loads(saved_analysis.save_analysis(snapshot, _settings(chain)))
+    del saved["settings"]["surface_view"]
+    saved["format_version"] = 1
+    saved["calculation_version"] = 1
+
+    reopened = saved_analysis.open_analysis(json.dumps(saved))
+
+    assert reopened.settings == {**_settings(chain), "surface_view": "Heatmap"}
+    assert not reopened.version_differs
 
 
 def _corrupt(snapshot, chain, change):
@@ -125,6 +140,7 @@ def _corrupt(snapshot, chain, change):
     lambda s: s["settings"].update(smile_expiries=["not a date"]),
     lambda s: s["settings"].update(moneyness_range=[0.5, 2.0]),
     lambda s: s["settings"].update(heatmap_values="Both"),
+    lambda s: s["settings"].update(surface_view="Contour"),
 ])
 def test_invalid_files_raise_value_error(snapshot, change):
     chain = parse_deribit_snapshot(snapshot)

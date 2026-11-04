@@ -14,7 +14,7 @@ import pandas as pd
 from iv_surface.deribit import parse_deribit_snapshot
 from iv_surface.iv_source import IV_SOURCES
 from iv_surface.positioning import GEX_MODES, strike_zoom_bounds
-from iv_surface.surface_transforms import HEATMAP_VALUES, MONEYNESS_RANGES
+from iv_surface.surface_transforms import HEATMAP_VALUES, MONEYNESS_RANGES, SURFACE_VIEWS
 
 
 FILE_FORMAT = "btc-options-analysis"
@@ -24,8 +24,10 @@ FORMAT_VERSION = 1
 CALCULATION_VERSION = 1
 SETTING_NAMES = (
     "oi_expiries", "strike_range", "signs", "gex_view", "iv_source",
-    "moneyness_range", "heatmap_values", "smile_expiries",
+    "moneyness_range", "heatmap_values", "smile_expiries", "surface_view",
 )
+# Settings added after format version 1, with the value a file without them opens on.
+OPTIONAL_SETTINGS = {"surface_view": SURFACE_VIEWS[0]}
 _EXPIRY_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 
@@ -53,7 +55,7 @@ def save_analysis(snapshot: dict, settings: dict) -> str:
     Settings: ``oi_expiries`` and ``smile_expiries`` are expiry datetimes
     (empty OI expiries means All expiries), ``strike_range`` and
     ``moneyness_range`` are (low, high), ``signs`` maps call/put to ±1,
-    plus ``gex_view``, ``iv_source`` and ``heatmap_values``.
+    plus ``gex_view``, ``iv_source``, ``heatmap_values`` and ``surface_view``.
     """
     stored = {
         "oi_expiries": [_expiry_text(e) for e in settings["oi_expiries"]],
@@ -64,6 +66,7 @@ def save_analysis(snapshot: dict, settings: dict) -> str:
         "moneyness_range": [float(v) for v in settings["moneyness_range"]],
         "heatmap_values": settings["heatmap_values"],
         "smile_expiries": [_expiry_text(e) for e in settings["smile_expiries"]],
+        "surface_view": settings["surface_view"],
     }
     return json.dumps({
         "format": FILE_FORMAT,
@@ -137,7 +140,10 @@ def _read_choice(value, choices, name):
 
 
 def _read_settings(stored, chain) -> dict:
-    if not isinstance(stored, dict) or set(stored) != set(SETTING_NAMES):
+    if not isinstance(stored, dict):
+        raise ValueError("Saved settings must list exactly: " + ", ".join(SETTING_NAMES))
+    stored = {**OPTIONAL_SETTINGS, **stored}
+    if set(stored) != set(SETTING_NAMES):
         raise ValueError("Saved settings must list exactly: " + ", ".join(SETTING_NAMES))
     strike_range = _read_pair(stored["strike_range"], "strike_range")
     low, high = strike_zoom_bounds(chain)
@@ -161,4 +167,5 @@ def _read_settings(stored, chain) -> dict:
             stored["heatmap_values"], HEATMAP_VALUES, "heatmap_values"
         ),
         "smile_expiries": _read_expiries(stored["smile_expiries"], chain, "smile_expiries"),
+        "surface_view": _read_choice(stored["surface_view"], SURFACE_VIEWS, "surface_view"),
     }

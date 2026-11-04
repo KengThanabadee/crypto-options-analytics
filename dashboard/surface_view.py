@@ -1,4 +1,4 @@
-"""IV surface: moneyness range, Heatmap and 3D surface of the interpolated IV."""
+"""IV surface tab: View, Moneyness range and Heatmap values above one chart."""
 
 import streamlit as st
 
@@ -6,35 +6,66 @@ from iv_surface import visualization
 from iv_surface.surface_transforms import (
     HEATMAP_VALUES,
     MONEYNESS_RANGES,
+    SURFACE_VIEWS,
+    interpolate_surface_2d,
     observed_surface_frame,
 )
 
-from dashboard.settings import HEATMAP_VALUES_KEY, MONEYNESS_RANGE_KEY
+from dashboard.settings import HEATMAP_VALUES_KEY, MONEYNESS_RANGE_KEY, SURFACE_VIEW_KEY
+from dashboard.state import widget_default
 
 
 # The 3D chart is drawn twice, wide and compact; a container query on the
-# page width shows one of them.
-SURFACE_LAYOUT_CSS = """
+# tab width shows one of them.
+_SURFACE_LAYOUT_CSS = """<style>
         .st-key-surface-responsive {container-type: inline-size;}
         .st-key-surface-narrow {display: none;}
         @container (max-width: 699px) {
             .st-key-surface-wide {display: none;}
             .st-key-surface-narrow {display: block;}
-        }"""
+        }</style>"""
 
 
-def moneyness_range_control():
-    """The chosen K / S range as (low, high)."""
-    range_name = st.radio(
-        "Moneyness range",
-        list(MONEYNESS_RANGES),
-        horizontal=True,
-        key=MONEYNESS_RANGE_KEY,
-        help=(
-            "Applies to Heatmap and 3D surface. IV smiles show all observed strikes."
-        ),
+def surface_view(frame, iv_source):
+    """The IV surface as a Heatmap or in 3D, over the chosen K / S range."""
+    view_column, range_column, values_column = st.columns(3)
+    with view_column:
+        view = _choice(
+            "View", SURFACE_VIEWS, SURFACE_VIEW_KEY,
+            help="Two views of the same interpolated surface.",
+        )
+    with range_column:
+        range_name = _choice(
+            "Moneyness range", list(MONEYNESS_RANGES), MONEYNESS_RANGE_KEY,
+            help="Applies to both views. IV smiles show all observed strikes.",
+        )
+    if view == "Heatmap":
+        with values_column:
+            heatmap_values = _choice(
+                "Heatmap values", HEATMAP_VALUES, HEATMAP_VALUES_KEY,
+                help=(
+                    "Surface uses 2D total-variance interpolation. Observed "
+                    "shows solved market IV without interpolation."
+                ),
+            )
+    else:
+        _keep_heatmap_values()
+
+    moneyness = MONEYNESS_RANGES[range_name]
+    surface_frame = interpolate_surface_2d(
+        frame, min_moneyness=moneyness[0], max_moneyness=moneyness[1]
     )
-    return MONEYNESS_RANGES[range_name]
+    if view == "Heatmap":
+        shown = (
+            surface_frame if heatmap_values == "Surface"
+            else observed_surface_frame(surface_frame)
+        )
+        st.caption(visible_range_summary(shown, moneyness))
+        _heatmap_chart(shown, iv_source)
+    else:
+        st.caption(visible_range_summary(surface_frame, moneyness))
+        st.caption("2D total-variance interpolation · observed IV overlaid as points.")
+        _surface_3d_chart(surface_frame, iv_source)
 
 
 def interpolation_notes():
@@ -68,23 +99,26 @@ def visible_range_summary(frame, moneyness):
     )
 
 
-def heatmap_view(surface_frame, moneyness, iv_source):
-    """Heatmap of the interpolated surface, or of observed IV only."""
-    heatmap_values = st.radio(
-        "Heatmap values",
-        HEATMAP_VALUES,
-        horizontal=True,
-        key=HEATMAP_VALUES_KEY,
-        help=(
-            "Surface uses 2D total-variance interpolation. Observed "
-            "shows solved market IV without interpolation."
-        ),
-    )
-    heatmap_frame = (
-        surface_frame if heatmap_values == "Surface"
-        else observed_surface_frame(surface_frame)
-    )
-    st.caption(visible_range_summary(heatmap_frame, moneyness))
+def _choice(label, options, key, help):
+    """A required segmented control whose first option is the default."""
+    default = options[0]
+    return st.segmented_control(
+        label,
+        options,
+        default=widget_default(key, default),
+        required=True,
+        key=key,
+        help=help,
+    ) or default
+
+
+def _keep_heatmap_values():
+    """Hold Heatmap values while 3D hides it; Streamlit drops undrawn widgets."""
+    if HEATMAP_VALUES_KEY in st.session_state:
+        st.session_state[HEATMAP_VALUES_KEY] = st.session_state[HEATMAP_VALUES_KEY]
+
+
+def _heatmap_chart(heatmap_frame, iv_source):
     st.plotly_chart(
         visualization.make_iv_heatmap(
             heatmap_frame, equal_expiry_spacing=True, iv_source=iv_source
@@ -93,10 +127,9 @@ def heatmap_view(surface_frame, moneyness, iv_source):
     )
 
 
-def surface_3d_view(surface_frame, moneyness, iv_source):
+def _surface_3d_chart(surface_frame, iv_source):
     """3D surface with observed IV as points, in a wide and a compact layout."""
-    st.caption(visible_range_summary(surface_frame, moneyness))
-    st.caption("2D total-variance interpolation · observed IV overlaid as points.")
+    st.markdown(_SURFACE_LAYOUT_CSS, unsafe_allow_html=True)
     with st.container(key="surface-responsive"):
         for compact, key in [(False, "surface-wide"), (True, "surface-narrow")]:
             with st.container(key=key):

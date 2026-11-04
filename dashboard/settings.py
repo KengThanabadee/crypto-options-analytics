@@ -11,7 +11,7 @@ from typing import Callable
 
 from iv_surface.iv_source import DEFAULT_IV_SOURCE
 from iv_surface.positioning import DEFAULT_SIGNS, near_spot_range
-from iv_surface.surface_transforms import HEATMAP_VALUES, MONEYNESS_RANGES
+from iv_surface.surface_transforms import HEATMAP_VALUES, MONEYNESS_RANGES, SURFACE_VIEWS
 
 
 CUSTOMER_SIDES = {"Customer sells": 1, "Customer buys": -1}
@@ -21,6 +21,7 @@ GEX_VIEW_KEY = "gex_mode"
 IV_SOURCE_KEY = "iv_source"
 MONEYNESS_RANGE_KEY = "moneyness_range"
 HEATMAP_VALUES_KEY = "heatmap_view"
+SURFACE_VIEW_KEY = "surface_view"
 
 
 def oi_expiries_key(snapshot_id):
@@ -137,6 +138,7 @@ SETTINGS = (
         lambda v: HEATMAP_VALUES[0] if v is None else v,
     ),
     SavedSetting("smile_expiries", _read_smile_expiries, _write_smile_expiries),
+    _single_key("surface_view", SURFACE_VIEW_KEY, lambda v: v or SURFACE_VIEWS[0]),
 )
 
 

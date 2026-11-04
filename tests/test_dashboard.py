@@ -122,30 +122,45 @@ def test_dashboard_opens_on_exchange_mark_without_rate_inputs(monkeypatch):
     counts = [int(metric.value.replace(",", "")) for metric in app.metric]
     assert sum(counts) == result.iv_surface.size
     assert counts[2] == np.isnan(result.iv_surface).sum()
-    assert len(app.get("plotly_chart")) == 6
-    assert app.radio(key="moneyness_range").value == "Core (0.8–1.2)"
-    assert app.radio(key="heatmap_view").value == "Surface"
-    assert [tab.label for tab in app.tabs] == ["Heatmap", "3D surface", "IV smiles", "ATM term structure"]
+    assert len(app.get("plotly_chart")) == 4
+    assert app.segmented_control(key="surface_view").value == "Heatmap"
+    assert app.segmented_control(key="moneyness_range").value == "Core (0.8–1.2)"
+    assert app.segmented_control(key="heatmap_view").value == "Surface"
+    assert [tab.label for tab in app.tabs] == ["IV surface", "IV smiles", "ATM term structure"]
     assert any(
         "293 observed · 175 interpolated · 36 blank" in caption.value
         for caption in app.caption
     )
     assert any("Deribit BTC · Frozen snapshot:" in caption.value for caption in app.caption)
 
-    app.radio(key="heatmap_view").set_value("Observed").run()
+    app.segmented_control(key="heatmap_view").set_value("Observed").run()
     assert not app.exception
-    assert app.radio(key="heatmap_view").value == "Observed"
+    assert app.segmented_control(key="heatmap_view").value == "Observed"
     assert any(
         "293 observed · 0 interpolated · 211 blank" in caption.value
         for caption in app.caption
     )
 
-    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
     assert not app.exception
+    assert any(
+        "355 observed · 0 interpolated · 317 blank" in caption.value
+        for caption in app.caption
+    )
+
+    app.segmented_control(key="surface_view").set_value("3D").run()
+    assert not app.exception
+    assert len(app.get("plotly_chart")) == 5
+    assert not [c for c in app.segmented_control if c.key == "heatmap_view"]
     assert any(
         "355 observed · 248 interpolated · 69 blank" in caption.value
         for caption in app.caption
     )
+
+    app.segmented_control(key="surface_view").set_value("Heatmap").run()
+    assert not app.exception
+    assert app.segmented_control(key="heatmap_view").value == "Observed"
+    assert len(app.get("plotly_chart")) == 4
     # View controls reuse the cached Exchange mark surface.
     assert calls == ["Exchange mark"]
 
@@ -179,7 +194,7 @@ def test_smile_selection_preserves_observations_and_other_views(monkeypatch):
     assert [tau for tau, box in zip(ordered_expiries, app.checkbox) if box.value] == expected_defaults
     other_views = {
         name: figures[name].to_json()
-        for name in ["make_iv_heatmap", "make_iv_surface_figure"]
+        for name in ["make_iv_heatmap"]
     }
 
     selected = ordered_expiries[-1]
@@ -206,7 +221,7 @@ def test_smile_selection_preserves_observations_and_other_views(monkeypatch):
     for name, before in other_views.items():
         assert figures[name].to_json() == before
 
-    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
     assert not app.exception
     assert figures["make_smile_figure"].to_json() == smile.to_json()
     assert [tau for tau, box in zip(ordered_expiries, app.checkbox) if box.value] == [selected]
@@ -215,7 +230,7 @@ def test_smile_selection_preserves_observations_and_other_views(monkeypatch):
         box.uncheck()
     app.run()
     assert not app.exception
-    assert len(app.get("plotly_chart")) == 5
+    assert len(app.get("plotly_chart")) == 3
     assert any("Select an expiry" in info.value for info in app.info)
 
 
@@ -238,7 +253,7 @@ def test_smile_defaults_skip_expiries_without_finite_iv(monkeypatch, finite_coun
     app = _app()
     assert not app.exception
     assert [tau for tau, box in zip(ordered_expiries, app.checkbox) if box.value] == expected
-    assert len(app.get("plotly_chart")) == (6 if finite_count else 5)
+    assert len(app.get("plotly_chart")) == (4 if finite_count else 3)
 
 
 @pytest.mark.parametrize("case", ["file", "schema", "index"])
@@ -315,8 +330,8 @@ def test_atm_uses_raw_all_expiries_independent_of_view_controls(monkeypatch):
     before = figures[-1].to_json()
     for box in app.checkbox:
         box.uncheck()
-    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)")
-    app.radio(key="heatmap_view").set_value("Observed").run()
+    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)")
+    app.segmented_control(key="heatmap_view").set_value("Observed").run()
     assert not app.exception
     assert figures[-1].to_json() == before
 
@@ -353,7 +368,8 @@ def test_all_views_follow_the_raw_deribit_chain(monkeypatch):
 
     app = _app()
     assert not app.exception and not app.error
-    assert len(app.get("plotly_chart")) == 6
+    assert len(app.get("plotly_chart")) == 4
+    assert "make_iv_surface_figure" not in figures
     assert any("Deribit BTC · Frozen snapshot:" in caption.value for caption in app.caption)
     chain = _chain()
     result = _mark_result()
@@ -369,13 +385,16 @@ def test_all_views_follow_the_raw_deribit_chain(monkeypatch):
     for trace in _line_traces(figures["make_smile_figure"]):
         tau = next(t for t in result.expiries if dates[t].strftime("%Y-%m-%d") == trace.name)
         np.testing.assert_allclose(trace.y, result.iv_surface[result.expiries.index(tau)], equal_nan=True)
+    heatmap = figures.pop("make_iv_heatmap")
+    app.segmented_control(key="surface_view").set_value("3D").run()
+    assert not app.exception
+    assert "make_iv_heatmap" not in figures
     mesh = figures["make_iv_surface_figure"].data[0]
-    np.testing.assert_allclose(mesh.z, figures["make_iv_heatmap"].data[0].z, equal_nan=True)
+    np.testing.assert_allclose(mesh.z, heatmap.data[0].z, equal_nan=True)
     atm_before = figures["make_atm_term_structure_figure"].to_json()
     for box in app.checkbox:
         box.uncheck()
-    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)")
-    app.radio(key="heatmap_view").set_value("Observed").run()
+    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
     assert not app.exception
     assert figures["make_atm_term_structure_figure"].to_json() == atm_before
 
@@ -414,8 +433,8 @@ def test_fetch_latest_switches_the_whole_page_and_controls_do_not_fetch(monkeypa
     assert not any("Frozen snapshot" in c.value for c in app.caption)
     assert any("$90,000.00" in m.value for m in app.markdown)
 
-    app.radio(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
-    app.radio(key="heatmap_view").set_value("Observed").run()
+    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.segmented_control(key="heatmap_view").set_value("Observed").run()
     app.checkbox[0].set_value(not app.checkbox[0].value).run()
     assert not app.exception
     assert len(calls) == 1
@@ -441,7 +460,7 @@ def test_failed_fetch_keeps_the_previous_snapshot_and_shows_the_error(monkeypatc
         assert "offline" in app.error[0].value
     assert any("Frozen snapshot: 2026-10-15 15:18:14 UTC" in c.value for c in app.caption)
     assert any("$82,227.73" in m.value for m in app.markdown)
-    assert len(app.get("plotly_chart")) == 6
+    assert len(app.get("plotly_chart")) == 4
 
 
 def test_a_fetched_snapshot_is_parsed_once(monkeypatch):
@@ -458,7 +477,7 @@ def test_a_fetched_snapshot_is_parsed_once(monkeypatch):
     app = _app()
     _fetch_button(app).click().run()
     assert not app.exception and not app.error
-    app.radio(key="heatmap_view").set_value("Observed").run()
+    app.segmented_control(key="heatmap_view").set_value("Observed").run()
     assert not app.exception
     assert parsed.count(fetched["captured_at_utc"]) == 1
 
@@ -500,16 +519,18 @@ def test_smile_checkboxes_show_what_the_chart_draws_on_every_run(monkeypatch):
         assert len(drawn) == 3
         assert sum(box.value for box in app.checkbox) == 3
         assert [box.proto.default for box in app.checkbox] == [box.value for box in app.checkbox]
-        app.radio(key="heatmap_view").set_value("Observed").run()
+        app.segmented_control(key="heatmap_view").set_value("Observed").run()
 
 
+@pytest.mark.parametrize("view", ["Heatmap", "3D"])
 @pytest.mark.parametrize("source", ["Exchange mark", "Quote midpoint"])
-def test_no_chart_draws_across_missing_values(source):
+def test_no_chart_draws_across_missing_values(source, view):
     # Missing values stay gaps on screen: lines never bridge them, and a band
     # is only ever a closed shape, since "tonexty" joins two edges across gaps.
     app = _app()
     (control,) = [c for c in app.segmented_control if c.label == "IV source"]
     control.set_value(source).run()
+    app.segmented_control(key="surface_view").set_value(view).run()
     assert not app.exception
     traces = [
         trace
