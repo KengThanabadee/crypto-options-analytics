@@ -36,7 +36,7 @@ def main():
     start_run()
     header, fetch_column = st.columns([6, 1], vertical_alignment="center")
     # Fetch before the snapshot is read, so a fetch updates the header this run.
-    fetch_latest_snapshot(fetch_column)
+    fetch_latest_snapshot(fetch_column.container(horizontal_alignment="right"))
     with st.sidebar:
         st.subheader("Saved analysis")
         reopen_saved_analysis()
