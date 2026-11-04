@@ -5,6 +5,7 @@ import streamlit as st
 
 from options_analytics import visualization
 
+from dashboard.band_note import BAND_CAPTION, band_expander
 from dashboard.settings import smile_key
 from dashboard.state import widget_default
 
@@ -43,11 +44,6 @@ def smile_view(frame, snapshot_id, iv_source):
         st.info("Select an expiry to show its IV smile.")
     st.caption(
         f"Observed Combined {iv_source} IV · all strikes · gaps preserved · "
-        "shading = bid–ask IV band"
+        + BAND_CAPTION
     )
-    with st.expander("Smile shading"):
-        st.caption(
-            "Shading is a bid–ask IV display band from our solver, blended with the "
-            "line's Call/Put weights; it is not a tradable quote, and mark IV may sit "
-            "outside it."
-        )
+    band_expander()

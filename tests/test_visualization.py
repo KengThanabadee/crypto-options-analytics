@@ -125,7 +125,7 @@ def test_chart_sources_follow_sorted_cells_and_selected_expiry():
     ).sample(frac=1, random_state=7)
     heatmap = make_iv_heatmap(frame).data[0]
     assert heatmap.customdata.tolist() == [
-        [[90.0, "Put"], [100.0, "Average of Call and Put"], [110.0, "Put (no Call IV)"]],
+        [[90.0, "Put"], [100.0, "Call–Put average"], [110.0, "Put (no Call IV)"]],
         [[90.0, "No IV"], [100.0, "Call only (no Put IV)"], [110.0, "Call"]],
     ]
     assert np.isnan(heatmap.z[1, 0])
@@ -244,6 +244,62 @@ def test_atm_term_structure_averages_exact_and_near_ties(right_moneyness):
     assert result["moneyness"] == pytest.approx(
         (0.98 + right_moneyness) / 2
     )
+
+
+def test_atm_term_structure_carries_the_band_and_averages_tied_edges():
+    frame = pd.DataFrame(
+        {
+            "tau": [0.25, 0.25, 0.5, 0.5, 0.75],
+            "strike": [98, 102, 98, 102, 120],
+            "iv": [0.20, 0.24, 0.30, 0.34, 0.40],
+            "moneyness": [0.98, 1.02, 0.98, 1.02, 1.20],
+            "band_low": [0.18, 0.22, np.nan, 0.32, 0.38],
+            "band_high": [0.22, 0.26, 0.32, 0.36, 0.42],
+        }
+    )
+
+    result = atm_term_structure_frame(frame)
+
+    assert result["band_low"].iloc[0] == pytest.approx(0.20)
+    assert result["band_high"].iloc[0] == pytest.approx(0.24)
+    # An edge missing on one averaged strike stays missing.
+    assert np.isnan(result["band_low"].iloc[1])
+    assert result["band_high"].iloc[1] == pytest.approx(0.34)
+    # Outside the 2% bound the whole point, band included, is a gap.
+    assert result.iloc[2][["band_low", "band_high"]].isna().all()
+
+
+def test_atm_figure_shades_the_band_beneath_the_line_only_where_both_edges_exist():
+    atm = pd.DataFrame(
+        {
+            "tau": [0.1, 0.2, 0.3, 0.4],
+            "strike": [100.0] * 4,
+            "iv": [0.50, 0.45, 0.42, 0.40],
+            "moneyness": [1.0] * 4,
+            "atm_distance": [0.0] * 4,
+            "selection_status": ["nearest"] * 4,
+            "band_low": [0.48, 0.43, np.nan, 0.38],
+            "band_high": [0.52, 0.47, 0.44, 0.42],
+        }
+    )
+
+    figure = make_atm_term_structure_figure(atm)
+
+    band, bars, line = figure.data
+    assert band.fill == "toself" and band.showlegend
+    assert line.mode == "lines+markers"
+    shapes = [sorted({x for x, _ in segment}) for segment in _band_segments(band)]
+    assert shapes == [[0.1, 0.2]]
+    assert _band_segments(bars) == [[(0.4, 0.38), (0.4, 0.42)]]
+    assert "bid–ask display band" in line.hovertemplate
+
+
+def test_atm_figure_without_band_columns_has_only_the_line():
+    atm = atm_term_structure_frame(pd.DataFrame(
+        {"tau": [0.25], "strike": [100], "iv": [0.2], "moneyness": [1.0]}
+    ))
+    (line,) = make_atm_term_structure_figure(atm).data
+    assert "display band" not in line.hovertemplate
 
 
 def test_atm_term_structure_does_not_average_distinct_distances():
@@ -739,7 +795,7 @@ def test_iv_hovers_use_reader_words():
     assert smile.text[0] == "Expiry (UTC): 2026-12-25<br>Time to expiry: 91.25 days"
     heatmap = make_iv_heatmap(frame).data[0]
     assert heatmap.customdata[1, :, 1].tolist() == [
-        "Put", "Average of Call and Put", "Call (no Put IV)",
+        "Put", "Call–Put average", "Call (no Put IV)",
     ]
     surface = make_iv_surface_figure(frame).data[0]
     texts = " ".join(np.asarray(surface.text).reshape(-1))
@@ -774,9 +830,14 @@ def test_smile_band_shades_only_strikes_with_both_edges():
         band_high=[.52, .47, .42, .44, .46],
     )
     figure = make_smile_figure(frame)
-    (band,) = [trace for trace in figure.data if trace.mode != "lines+markers"]
+    band, bars = [trace for trace in figure.data if trace.mode != "lines+markers"]
     assert band.fill == "toself"
     shapes = [sorted({x for x, _ in segment}) for segment in _band_segments(band)]
-    assert shapes == [[pytest.approx(0.9)], [pytest.approx(1.1), pytest.approx(1.2)]]
-    upper_and_lower = sorted(y for _, y in _band_segments(band)[1])
+    assert shapes == [[pytest.approx(1.1), pytest.approx(1.2)]]
+    upper_and_lower = sorted(y for _, y in _band_segments(band)[0])
     assert upper_and_lower == pytest.approx([.38, .40, .42, .44])
+    # 0.9 has both edges but no neighbour with them: a bar, not a zero-width shape.
+    assert _band_segments(bars) == [
+        [(pytest.approx(0.9), .48), (pytest.approx(0.9), .52)]
+    ]
+    assert bars.fill != "toself" and bars.legendgroup == band.legendgroup

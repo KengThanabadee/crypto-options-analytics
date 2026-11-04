@@ -174,7 +174,7 @@ spot-based:
 If the preferred side is unavailable, the other side is used and labelled as a
 fallback (or one-sided near ATM); if neither side has IV, the cell stays
 missing. Tooltips say which side a value came from in plain words, for example
-"Average of Call and Put" or "Call (no Put IV)".
+"Call–Put average" or "Call (no Put IV)".
 
 Below the selector, three tabs hold the IV charts: **IV surface**, **IV
 smiles** and **ATM term structure**. All IV tooltips show the expiry date in
@@ -224,20 +224,29 @@ interpolation. **Select expiries** opens an expiry checklist, independent of
 the OI expiries, that starts at the first three expiries with any IV.
 
 The shaded area is a **bid–ask IV display band**, in both IV source modes: our
-solver inverts bid and ask separately with the same forward rate, and the band
-blends them with the line's Call/Put weights (bid with bid and ask with ask in
-the `0.98–1.02` zone). It is drawn only where both edges exist, so it is wide
-where quotes are wide. It is a display band, not a tradable quote, and mark IV
-may sit outside it. The caption and the **Smile shading** expander sit under
-the chart.
+solver inverts each contract's bid and ask separately with the same forward
+rate, and the band blends those IVs with the line's Call/Put weights. In the
+`0.98–1.02` zone the lower edge is the mean of the Call and Put bid IVs and the
+upper edge the mean of their ask IVs; prices are never averaged, since a Call
+and a Put at one strike have very different prices but comparable IVs. The lower edge comes from the bid and the upper edge
+from the ask, so the band is wide where quotes are wide. It is drawn only where
+both edges exist; a point whose neighbours have no band is drawn as a short
+vertical bar, since a one-point shape has no width. Short-dated far OTM
+contracts often have no bid, so mark IV can show there with no shading. It is a
+display band, not a tradable quote, and mark IV may sit outside it. The caption
+and the **Reading the bid–ask shading** expander sit under the chart. Hover
+names the option the band belongs to, the same one as "IV from".
 
 ### ATM term structure
 
 The ATM term structure shows near-ATM IV across every expiry. Each expiry uses
 the nearest finite Combined IV within 2% of spot, averaging equally near
 strikes; expiries without one stay gaps, and a note under the chart counts
-them. Numerical maturity (`tau`) spaces the dates. The **ATM selection
-details** expander lists every expiry's status.
+them. Numerical maturity (`tau`) spaces the dates. The same bid–ask display
+band is shaded around the line: each expiry takes the band edges of its chosen
+strikes, averaged like IV, and an edge missing on any averaged strike stays
+missing. The **Reading the bid–ask shading** expander explains the band, and
+the **ATM selection details** expander lists every expiry's status.
 
 ## Save and reopen
 

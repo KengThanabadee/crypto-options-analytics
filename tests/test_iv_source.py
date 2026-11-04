@@ -201,10 +201,13 @@ def test_smile_draws_a_labelled_display_band_and_names_the_source(midpoint_frame
     tau = result.expiries[-1]
     figure = make_smile_figure(frame, selected_expiries=[tau], iv_source="Quote midpoint")
     lines = [trace for trace in figure.data if trace.mode == "lines+markers"]
-    (band,) = [trace for trace in figure.data if trace.mode != "lines+markers"]
+    band, *bars = [trace for trace in figure.data if trace.mode != "lines+markers"]
     assert len(lines) == 1
     assert "Quote midpoint IV: %{y:.2%}" in lines[0].hovertemplate
     assert "display band" in lines[0].hovertemplate
+    # The band names the option it belongs to, the same one as "IV from".
+    assert "IV from: %{customdata[1]}" in lines[0].hovertemplate
+    assert "bid–ask display band of %{customdata[1]}:" in lines[0].hovertemplate
     row = result.expiries.index(tau)
     order = np.argsort(result.strikes)
     moneyness = np.asarray(result.strikes)[order] / result.spot_price
@@ -214,7 +217,12 @@ def test_smile_draws_a_labelled_display_band_and_names_the_source(midpoint_frame
         [(m, v) for m, v in zip(moneyness[both], high[both])]
         + [(m, v) for m, v in zip(moneyness[both], low[both])]
     )
-    drawn = sorted((x, y) for x, y in zip(band.x, band.y) if x is not None)
+    drawn = sorted(
+        (x, y)
+        for trace in [band, *bars]
+        for x, y in zip(trace.x, trace.y)
+        if x is not None
+    )
     np.testing.assert_allclose(drawn, expected)
     assert all(trace.connectgaps is False for trace in figure.data)
     assert "display band" in band.name
@@ -239,7 +247,8 @@ def test_atm_hover_names_the_iv_source(midpoint_frame):
     figure = make_atm_term_structure_figure(
         atm_term_structure_frame(frame), iv_source="Quote midpoint"
     )
-    assert "Quote midpoint IV: %{y:.2%}" in figure.data[0].hovertemplate
+    (line,) = [trace for trace in figure.data if trace.mode == "lines+markers"]
+    assert "Quote midpoint IV: %{y:.2%}" in line.hovertemplate
 
 
 @pytest.mark.parametrize("source", ["Exchange mark", "Quote midpoint"])

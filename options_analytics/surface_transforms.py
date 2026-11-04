@@ -209,8 +209,18 @@ def observed_surface_frame(surface_frame: pd.DataFrame) -> pd.DataFrame:
 def atm_term_structure_frame(
     long_frame: pd.DataFrame, max_moneyness_distance: float = 0.02
 ) -> pd.DataFrame:
-    """Select a bounded, transparent ATM proxy independently for each expiry."""
+    """Select a bounded, transparent ATM proxy independently for each expiry.
+
+    When the frame has band_low/band_high columns, the chosen strikes' band
+    edges come along, averaged like IV; an edge missing on any averaged
+    strike stays missing.
+    """
     _require_columns(long_frame, _LONG_FRAME_COLUMNS, "long_frame")
+    band_columns = [
+        column for column in ("band_low", "band_high")
+        if column in long_frame.columns
+    ]
+    no_band = {column: np.nan for column in band_columns}
 
     try:
         distance_bound = float(max_moneyness_distance)
@@ -243,6 +253,7 @@ def atm_term_structure_frame(
                     "moneyness": np.nan,
                     "atm_distance": np.nan,
                     "selection_status": "no_finite_iv",
+                    **no_band,
                 }
             )
             continue
@@ -267,6 +278,7 @@ def atm_term_structure_frame(
                     "moneyness": np.nan,
                     "atm_distance": minimum_distance,
                     "selection_status": "outside_bound",
+                    **no_band,
                 }
             )
             continue
@@ -290,6 +302,10 @@ def atm_term_structure_frame(
                 "selection_status": (
                     "symmetric_average" if len(tied) > 1 else "nearest"
                 ),
+                **{
+                    column: float(tied[column].to_numpy(dtype=float).mean())
+                    for column in band_columns
+                },
             }
         )
 
@@ -303,6 +319,7 @@ def atm_term_structure_frame(
             "moneyness",
             "atm_distance",
             "selection_status",
+            *band_columns,
         ]
     )
     return pd.DataFrame(rows, columns=columns)

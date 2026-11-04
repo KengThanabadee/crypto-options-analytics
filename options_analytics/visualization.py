@@ -93,7 +93,7 @@ def _format_strike(strike):
 SOURCE_LABELS = {
     "call": "Call",
     "put": "Put",
-    "near_atm_average": "Average of Call and Put",
+    "near_atm_average": "Call–Put average",
     "near_atm_call_only": "Call only (no Put IV)",
     "near_atm_put_only": "Put only (no Call IV)",
     "call_fallback": "Call (no Put IV)",
@@ -466,41 +466,75 @@ def make_iv_surface_figure(
     return figure
 
 
-def _band_polygons(x, low, high):
-    """One closed shape per run of strikes where both band edges exist.
-
-    Shapes are separated by None, so a strike missing either edge is a gap.
-    """
+def _band_runs(low, high):
+    """(start, stop) of each run of points where both band edges exist."""
     both = np.isfinite(low) & np.isfinite(high)
-    xs, ys = [], []
-    start = None
-    for index in range(len(x) + 1):
-        if index < len(x) and both[index]:
+    runs, start = [], None
+    for index in range(len(both) + 1):
+        if index < len(both) and both[index]:
             if start is None:
                 start = index
-            continue
-        if start is not None:
-            run = slice(start, index)
-            xs.extend([*x[run], *x[run][::-1], None])
-            ys.extend([*high[run], *low[run][::-1], None])
+        elif start is not None:
+            runs.append((start, index))
             start = None
+    return runs
+
+
+def _band_polygons(x, low, high):
+    """One closed shape per run of two or more points with both band edges.
+
+    Shapes are separated by None, so a point missing either edge is a gap.
+    """
+    xs, ys = [], []
+    for start, stop in _band_runs(low, high):
+        if stop - start < 2:
+            continue
+        run = slice(start, stop)
+        xs.extend([*x[run], *x[run][::-1], None])
+        ys.extend([*high[run], *low[run][::-1], None])
     return xs[:-1], ys[:-1]
 
 
-def _add_band_traces(figure, smile, expiry_label, color):
-    """Shade the bid-ask IV display band only where both edges exist."""
-    x, y = _band_polygons(
-        smile["moneyness"].to_numpy(dtype=float),
-        smile["band_low"].to_numpy(dtype=float),
-        smile["band_high"].to_numpy(dtype=float),
-    )
-    fill = f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, 0.18)"
+def _band_bars(x, low, high):
+    """Vertical low-to-high segments for points whose neighbours lack a band."""
+    xs, ys = [], []
+    for start, stop in _band_runs(low, high):
+        if stop - start == 1:
+            xs.extend([x[start], x[start], None])
+            ys.extend([low[start], high[start], None])
+    return xs[:-1], ys[:-1]
+
+
+def _band_fill(color, alpha=0.18):
+    red, green, blue = (int(color[i:i + 2], 16) for i in (1, 3, 5))
+    return f"rgba({red}, {green}, {blue}, {alpha})"
+
+
+def _add_band_trace(figure, x, low, high, color, name, legendgroup, showlegend):
+    """Shade the bid-ask IV display band only where both edges exist.
+
+    A run of one point has no width to shade, so it is drawn as a short
+    vertical bar from the low to the high edge.
+    """
+    x = np.asarray(x, dtype=float)
+    low = np.asarray(low, dtype=float)
+    high = np.asarray(high, dtype=float)
+    shape_x, shape_y = _band_polygons(x, low, high)
     figure.add_trace(go.Scatter(
-        x=x, y=y, mode="lines", fill="toself", fillcolor=fill,
+        x=shape_x, y=shape_y, mode="lines", fill="toself",
+        fillcolor=_band_fill(color),
         line=dict(width=0, color=color), connectgaps=False,
-        hoverinfo="skip", legendgroup=expiry_label, showlegend=False,
-        name=f"{expiry_label} bid–ask IV (display band)",
+        hoverinfo="skip", legendgroup=legendgroup, showlegend=showlegend,
+        name=name,
     ))
+    bar_x, bar_y = _band_bars(x, low, high)
+    if bar_x:
+        figure.add_trace(go.Scatter(
+            x=bar_x, y=bar_y, mode="lines",
+            line=dict(width=6, color=_band_fill(color, 0.35)), connectgaps=False,
+            hoverinfo="skip", legendgroup=legendgroup, showlegend=False,
+            name=f"{name} · single points",
+        ))
 
 
 def make_smile_figure(
@@ -546,11 +580,16 @@ def make_smile_figure(
                 smile["band_high"].to_numpy(dtype=float),
             ])
             low_index = customdata.shape[1] - 2
+            band_of = " of %{customdata[1]}" if source_hover else ""
             band_hover = (
-                f"<br>bid–ask display band: %{{customdata[{low_index}]:.2%}}"
+                f"<br>bid–ask display band{band_of}: %{{customdata[{low_index}]:.2%}}"
                 f" – %{{customdata[{low_index + 1}]:.2%}}"
             )
-            _add_band_traces(figure, smile, expiry_label, color)
+            _add_band_trace(
+                figure, smile["moneyness"], smile["band_low"], smile["band_high"],
+                color, name=f"{expiry_label} bid–ask IV (display band)",
+                legendgroup=expiry_label, showlegend=False,
+            )
         figure.add_trace(
             go.Scatter(
                 x=smile["moneyness"].to_numpy(dtype=float),
@@ -599,13 +638,25 @@ def make_smile_figure(
 def make_atm_term_structure_figure(
     atm_frame: pd.DataFrame, iv_source=None
 ) -> go.Figure:
-    """Create an ATM-proxy term structure while preserving rejected expiries."""
+    """Create an ATM-proxy term structure while preserving rejected expiries.
+
+    When the frame has band_low/band_high columns, a shaded bid-ask IV
+    display band is drawn beneath the line.
+    """
     _require_columns(atm_frame, _ATM_FRAME_COLUMNS, "atm_frame")
 
     data = atm_frame.sort_values("tau")
-    customdata = data[
-        ["strike", "moneyness", "atm_distance", "selection_status"]
-    ].to_numpy()
+    color = "#38BDF8"
+    has_band = {"band_low", "band_high"} <= set(data.columns)
+    columns = ["strike", "moneyness", "atm_distance", "selection_status"]
+    band_hover = ""
+    if has_band:
+        columns += ["band_low", "band_high"]
+        band_hover = (
+            "<br>bid–ask display band: %{customdata[4]:.2%}"
+            " – %{customdata[5]:.2%}"
+        )
+    customdata = data[columns].to_numpy()
     trace = go.Scatter(
         x=data["tau"].to_numpy(dtype=float),
         y=data["iv"].to_numpy(dtype=float),
@@ -613,6 +664,8 @@ def make_atm_term_structure_figure(
         hovertext=[_format_strike(strike) for strike in data["strike"]],
         customdata=customdata,
         mode="lines+markers",
+        line=dict(width=2, color=color),
+        name=f"ATM {_iv_label(iv_source)}",
         connectgaps=False,
         hovertemplate=(
             "%{text}<br>"
@@ -620,13 +673,23 @@ def make_atm_term_structure_figure(
             "Strike: %{hovertext}<br>"
             "K / S: %{customdata[1]:.4f}<br>"
             "ATM distance: %{customdata[2]:.2%}<br>"
-            "selection: %{customdata[3]}<extra></extra>"
+            "selection: %{customdata[3]}"
+            + band_hover
+            + "<extra></extra>"
         ),
     )
-    figure = go.Figure(data=[trace])
+    figure = go.Figure()
+    if has_band:
+        _add_band_trace(
+            figure, data["tau"], data["band_low"], data["band_high"], color,
+            name="bid–ask IV (display band)", legendgroup="band", showlegend=True,
+        )
+    figure.add_trace(trace)
     figure.update_layout(
         height=430,
-        margin=dict(l=12, r=12, t=24, b=12),
+        margin=dict(l=12, r=12, t=48, b=12),
+        legend=dict(orientation="h", x=0, y=1.02, xanchor="left", yanchor="bottom"),
+        showlegend=has_band,
         xaxis_title=(
             "Expiry (UTC) · spaced by maturity"
             if "expiry_datetime" in data.columns else "tau (years)"

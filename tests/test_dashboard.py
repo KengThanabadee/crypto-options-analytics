@@ -81,7 +81,7 @@ def test_iv_charts_open_on_exchange_mark_and_switch_to_quote_midpoint(monkeypatc
         atm = atm_term_structure_frame(surface_to_long_frame(
             expected.iv_surface, expected.expiries, expected.strikes, expected.spot_price,
         ))
-        trace = figures["make_atm_term_structure_figure"].data[0]
+        (trace,) = _line_traces(figures["make_atm_term_structure_figure"])
         np.testing.assert_allclose(trace.y, atm["iv"], equal_nan=True)
         assert f"{source} IV" in trace.hovertemplate
         for line in _line_traces(figures["make_smile_figure"]):
@@ -317,7 +317,7 @@ def test_atm_uses_raw_all_expiries_independent_of_view_controls(monkeypatch):
     ))
     app = _app()
     assert not app.exception
-    trace = figures[-1].data[0]
+    (trace,) = _line_traces(figures[-1])
     np.testing.assert_allclose(trace.x, expected["tau"])
     np.testing.assert_allclose(trace.y, expected["iv"], equal_nan=True)
     np.testing.assert_allclose(
@@ -379,7 +379,7 @@ def test_all_views_follow_the_raw_deribit_chain(monkeypatch):
         expiry_datetimes=dates.reindex(result.expiries).tolist(), source_grid=result.source_grid,
     )
     expected_atm = atm_term_structure_frame(frame)
-    np.testing.assert_allclose(figures["make_atm_term_structure_figure"].data[0].y,
+    np.testing.assert_allclose(_line_traces(figures["make_atm_term_structure_figure"])[0].y,
                                expected_atm.iv, equal_nan=True)
     assert sum(int(metric.value.replace(",", "")) for metric in app.metric) == result.iv_surface.size
     for trace in _line_traces(figures["make_smile_figure"]):
@@ -618,17 +618,46 @@ def _tab(app, label):
 
 
 def test_smile_chart_has_a_one_line_caption_and_the_band_in_an_expander():
+    from dashboard.band_note import BAND_NOTES
+
     caption, title, text = _notes_after_chart(_tab(_app(), "IV smiles"))
     assert caption == (
         "Observed Combined Exchange mark IV · all strikes · gaps preserved · "
-        "shading = bid–ask IV band"
+        "shading = bid–ask IV band, wider where quotes are wider"
     )
-    assert title == "Smile shading"
-    assert text == (
-        "Shading is a bid–ask IV display band from our solver, blended with the "
-        "line's Call/Put weights; it is not a tradable quote, and mark IV may sit "
-        "outside it."
+    assert title == "Reading the bid–ask shading"
+    assert text == " ".join(BAND_NOTES)
+
+
+def test_atm_chart_shades_the_band_and_explains_it(monkeypatch):
+    from dashboard.band_note import BAND_NOTES
+    from options_analytics.iv_source import build_iv_source_surface, iv_source_long_frame
+    from options_analytics.surface_transforms import atm_term_structure_frame
+
+    figures = _record_figures(monkeypatch, ["make_atm_term_structure_figure"])
+    app = _app()
+    assert not app.exception and not app.error
+    tab = _tab(app, "ATM term structure")
+    assert tab.caption[0].value.endswith(
+        "· shading = bid–ask IV band, wider where quotes are wider"
     )
+    (expander,) = [e for e in tab.expander if e.label == "Reading the bid–ask shading"]
+    assert " ".join(node.value for node in expander.caption) == " ".join(BAND_NOTES)
+
+    expected = atm_term_structure_frame(
+        iv_source_long_frame(build_iv_source_surface(_chain(), "Exchange mark"))
+    )
+    figure = figures["make_atm_term_structure_figure"]
+    (band,) = [trace for trace in figure.data if trace.fill == "toself"]
+    assert band.showlegend and "display band" in band.name
+    (line,) = _line_traces(figure)
+    customdata = np.asarray(line.customdata)
+    np.testing.assert_allclose(
+        customdata[:, 4:6].astype(float),
+        expected[["band_low", "band_high"]].to_numpy(), equal_nan=True,
+    )
+    assert np.isfinite(expected["band_low"]).any()
+    assert "bid–ask display band" in line.hovertemplate
 
 
 SURFACE_CAPTION = (
