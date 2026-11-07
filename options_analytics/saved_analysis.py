@@ -26,8 +26,6 @@ SETTING_NAMES = (
     "oi_expiries", "strike_range", "signs", "gex_view", "iv_source",
     "moneyness_range", "heatmap_values", "smile_expiries", "surface_view",
 )
-# Settings a file may leave out, with the value a file without them opens on.
-OPTIONAL_SETTINGS = {"surface_view": SURFACE_VIEWS[0]}
 _EXPIRY_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 
@@ -144,16 +142,12 @@ def _names(names):
     return ", ".join(names[:-1]) + " and " + names[-1] if len(names) > 1 else names[0]
 
 
-_REQUIRED_SETTINGS = [name for name in SETTING_NAMES if name not in OPTIONAL_SETTINGS]
 _SETTING_NAMES_ERROR = (
-    f"Saved settings must have {_names(_REQUIRED_SETTINGS)}, and may have "
-    f"{_names(list(OPTIONAL_SETTINGS))}, with no other settings"
+    f"Saved settings must have {_names(list(SETTING_NAMES))}, with no other settings"
 )
 
 
 def _read_settings(stored, chain) -> dict:
-    if isinstance(stored, dict):
-        stored = {**OPTIONAL_SETTINGS, **stored}
     if not isinstance(stored, dict) or set(stored) != set(SETTING_NAMES):
         raise ValueError(_SETTING_NAMES_ERROR)
     strike_range = _read_pair(stored["strike_range"], "strike_range")

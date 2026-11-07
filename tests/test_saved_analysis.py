@@ -124,17 +124,6 @@ def test_a_format_1_file_is_rejected_as_unsupported(snapshot):
         saved_analysis.open_analysis(json.dumps(saved))
 
 
-def test_a_file_saved_without_a_surface_view_opens_on_heatmap(snapshot):
-    chain = parse_deribit_snapshot(snapshot)
-    saved = json.loads(saved_analysis.save_analysis(snapshot, _settings(chain)))
-    del saved["settings"]["surface_view"]
-
-    reopened = saved_analysis.open_analysis(json.dumps(saved))
-
-    assert reopened.settings == {**_settings(chain), "surface_view": "Heatmap"}
-    assert not reopened.version_differs
-
-
 def _corrupt(snapshot, chain, change):
     saved = json.loads(saved_analysis.save_analysis(snapshot, _settings(chain)))
     change(saved)
@@ -175,15 +164,16 @@ def test_unreadable_files_raise_value_error(raw):
 
 @pytest.mark.parametrize("change", [
     lambda s: s["settings"].pop("iv_source"),
+    lambda s: s["settings"].pop("surface_view"),
     lambda s: s["settings"].update(extra=1),
     lambda s: s.update(settings=[]),
 ])
-def test_wrong_setting_names_name_the_required_and_optional_settings(snapshot, change):
+def test_wrong_setting_names_name_the_required_settings(snapshot, change):
     chain = parse_deribit_snapshot(snapshot)
     with pytest.raises(ValueError) as error:
         saved_analysis.open_analysis(_corrupt(snapshot, chain, change))
     assert str(error.value) == (
         "Saved settings must have oi_expiries, strike_range, signs, gex_view, "
-        "iv_source, moneyness_range, heatmap_values and smile_expiries, and may "
-        "have surface_view, with no other settings"
+        "iv_source, moneyness_range, heatmap_values, smile_expiries and "
+        "surface_view, with no other settings"
     )
