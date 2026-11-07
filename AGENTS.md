@@ -55,7 +55,8 @@ From a worktree, use the main checkout's interpreter:
 Launch the dashboard with `.venv/bin/python -m streamlit run app.py`.
 A change to a chart or the page is done once you have opened the dashboard
 and looked at every chart it touches in dark and light;
-`scripts/capture_readme_images.py` screenshots them.
+`scripts/capture_readme_images.py` screenshots them (`--states` for every
+IV surface range and view). Check hover and other interactions in a browser.
 Before stating a fact about strike coverage or quote quality, run
 `scripts/snapshot_coverage.py`.
 

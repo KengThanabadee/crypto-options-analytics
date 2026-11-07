@@ -17,16 +17,24 @@ Defaults to the frozen snapshot in data/.
 """
 
 import argparse
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from options_analytics import deribit, iv_source
-from options_analytics.surface_transforms import MONEYNESS_RANGES, moneyness_range_surface
+ROOT = Path(__file__).resolve().parents[1]
+# Import this checkout's package, also from a worktree whose venv points elsewhere.
+sys.path.insert(0, str(ROOT))
 
-SNAPSHOT = Path(__file__).resolve().parents[1] / "data" / "deribit_btc_options_snapshot.json"
+from options_analytics import deribit, iv_source  # noqa: E402
+from options_analytics.surface_transforms import (  # noqa: E402
+    MONEYNESS_RANGES,
+    moneyness_range_surface,
+)
+
+SNAPSHOT = ROOT / "data" / "deribit_btc_options_snapshot.json"
 BUCKETS = [0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5, 2.0, 3.0, np.inf]
 
 
