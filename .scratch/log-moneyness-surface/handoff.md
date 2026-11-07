@@ -1,7 +1,36 @@
 # Handoff: log-moneyness and a wider IV surface
 
-**Status:** idea, not yet grilled. Next step: Keng starts a grilling session
-(`/mattpocock-skills:grill-with-docs`) on it.
+**Status:** grilled 2026-11-07; the spec is `spec.md` beside this file.
+
+## Decisions (grilling, 2026-11-04 to 11-07)
+
+1. Every chart with a moneyness axis (3D, Heatmap, IV smiles) places K/S on
+   a log axis. Data, hover, saved files and tick labels stay K/S; the axis
+   title is "K / S (log scale)". AGENTS.md gains a sentence on the log axis.
+2. The fill stays 2D linear total variance on K/S, with two changes, both
+   from one principle: choosing a range is only a view and never changes
+   how the data relate.
+   - **One surface, sliced per view.** Triangulate every observed point in
+     the snapshot and fill the whole grid once; each moneyness range shows
+     a slice of that surface. A cell has the same value in every range.
+   - **Strike–time scale** (anisotropy): a fixed 1 year of tau = 8 K/S
+     units, replacing the per-range min/max normalization.
+   No fitted surface is planned; the surface is for viewing.
+   Leave-one-out MAE (Exchange mark): Core 0.93 → 0.26, Wide 0.51 → 0.24,
+   All listed 0.30 → 0.25 vol pt; it plateaus from 8 upward. Today's
+   per-range rescaling gives an effective rate of about 0.4 in Core and 1.6
+   in Wide (strike span ÷ tau span), so a cell's fill depends on the range
+   viewed.
+3. Moneyness ranges: Core (0.8–1.2), Wide (0.5–2.0, the default) and All
+   listed (bounds from the snapshot's listed strikes). Extended is removed.
+4. Saved files: no migration for old files (still in development);
+   `CALCULATION_VERSION` goes to 4 because filled values change.
+5. Re-run `scripts/snapshot_coverage.py` for every range before the spec
+   states blank or filled counts.
+
+Terms are in `GLOSSARY.md` (Moneyness, Log-moneyness, Moneyness range).
+Explainer of the fill (Core, per-range squeeze version):
+https://claude.ai/artifact/Gd7pjGVr8oNbdP2g3vm6Mg
 
 Written 2026-11-04 at the end of the session that finished the
 `dashboard-layout` and `crypto-options-analytics` specs (both resolved in
