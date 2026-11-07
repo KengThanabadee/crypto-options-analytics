@@ -52,7 +52,7 @@ the way, so the result can be checked rather than trusted.
 - **Missing stays missing.** Absent quotes and failed solves stay empty and
   charts show gaps, never zeros or silent substitutes.
 - **Reproducible and tested.** Saved analyses keep the raw snapshot, not
-  computed numbers. 278 tests run offline on the frozen snapshot in CI.
+  computed numbers. 282 tests run offline on the frozen snapshot in CI.
 
 ## Screenshots
 
