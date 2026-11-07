@@ -10,6 +10,11 @@ MONEYNESS_RANGES = {
     "Extended (0.7–1.3)": (0.7, 1.3),
 }
 HEATMAP_VALUES = ("Surface", "Observed")
+# Strike–time scale of the 2D fill: 1 year of tau counts as 8 K/S units, for
+# every range and snapshot. Leave-one-out refill error on the frozen snapshot
+# stops improving from 8 upward; at 8, K/S 0.01 apart is as close as expiries
+# about half a day apart, so gaps borrow from their own expiry first.
+STRIKE_TIME_SCALE = 8.0
 SURFACE_VIEWS = ("Heatmap", "3D")
 
 _LONG_FRAME_COLUMNS = {"tau", "strike", "iv", "moneyness"}
@@ -106,37 +111,26 @@ def surface_to_long_frame(
     return pd.DataFrame(data)
 
 
-def interpolate_surface_2d(
-    long_frame: pd.DataFrame,
-    min_moneyness: float = 0.8,
-    max_moneyness: float = 1.2,
-) -> pd.DataFrame:
-    """Fill existing missing cells by piecewise-linear total variance in 2D.
+def interpolate_surface_2d(long_frame: pd.DataFrame) -> pd.DataFrame:
+    """Fill every missing cell of the frame by piecewise-linear total variance.
 
-    Restrict both support and targets to the inclusive display range. Use only
-    original finite IV (observed_iv when present), interpolate w = IV**2 * tau
-    on (K/S, tau), then recover IV = sqrt(w/tau). Both coordinate axes are
-    independently scaled to the observed min/max range before triangulation.
+    One surface per snapshot and IV source: every original finite IV
+    (observed_iv when present) supports the fill, whatever range is viewed;
+    ``moneyness_range_slice`` then picks a range. Interpolate w = IV**2 * tau
+    on (K/S, tau * STRIKE_TIME_SCALE), then recover IV = sqrt(w/tau).
 
     Observations, quote provenance, metadata, row order and index are preserved.
     Outside the observed convex hull, or without non-collinear 2D support,
     missing cells remain NaN. This operation creates no additional grid cells.
     """
     _require_columns(long_frame, _LONG_FRAME_COLUMNS, "long_frame")
-    try:
-        lower, upper = float(min_moneyness), float(max_moneyness)
-    except (TypeError, ValueError) as exc:
-        raise ValueError("moneyness bounds must be finite with min < max") from exc
-    if not np.isfinite([lower, upper]).all() or lower >= upper:
-        raise ValueError("moneyness bounds must be finite with min < max")
-
     coordinates = long_frame[["moneyness", "tau"]].to_numpy(dtype=float)
     if not np.isfinite(coordinates).all() or (coordinates <= 0).any():
         raise ValueError("moneyness and tau must be finite and positive")
     if long_frame.duplicated(["tau", "moneyness"]).any():
         raise ValueError("long_frame must have unique tau and moneyness cells")
 
-    frame = long_frame[long_frame.moneyness.between(lower, upper)].copy()
+    frame = long_frame.copy()
     original_index = frame.index
     frame = frame.reset_index(drop=True)
     observed_column = "observed_iv" if "observed_iv" in frame else "iv"
@@ -160,12 +154,8 @@ def interpolate_surface_2d(
         return finish()
 
     points = frame[["moneyness", "tau"]].to_numpy(dtype=float)
-    support = points[finite]
-    shift = support.min(axis=0)
-    scale = np.ptp(support, axis=0)
-    if (scale == 0).any():
-        return finish()
-    support = (support - shift) / scale
+    scaled = points * [1.0, STRIKE_TIME_SCALE]
+    support = scaled[finite]
     if np.linalg.matrix_rank(support - support[0]) < 2:
         return finish()
     total_variance = observed[finite] ** 2 * points[finite, 1]
@@ -177,7 +167,7 @@ def interpolate_surface_2d(
         # Degenerate support cannot define a stable 2D triangulation.
         return finish()
     targets = np.flatnonzero(~finite)
-    variance = interpolator((points[targets] - shift) / scale)
+    variance = interpolator(scaled[targets])
     supported = np.isfinite(variance) & (variance >= 0)
     targets = targets[supported]
     recovered = np.sqrt(variance[supported] / points[targets, 1])
@@ -187,6 +177,20 @@ def interpolate_surface_2d(
     frame.loc[targets, "surface_value_type"] = "Interpolated"
     frame.loc[targets, "interpolation_method"] = "2D linear total variance"
     return finish()
+
+
+def moneyness_range_slice(
+    surface_frame: pd.DataFrame, min_moneyness: float, max_moneyness: float
+) -> pd.DataFrame:
+    """Keep the cells whose K/S lies inside the inclusive bounds, unchanged."""
+    _require_columns(surface_frame, {"moneyness"}, "surface_frame")
+    try:
+        lower, upper = float(min_moneyness), float(max_moneyness)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("moneyness bounds must be finite with min < max") from exc
+    if not np.isfinite([lower, upper]).all() or lower >= upper:
+        raise ValueError("moneyness bounds must be finite with min < max")
+    return surface_frame[surface_frame.moneyness.between(lower, upper)].copy()
 
 
 def observed_surface_frame(surface_frame: pd.DataFrame) -> pd.DataFrame:

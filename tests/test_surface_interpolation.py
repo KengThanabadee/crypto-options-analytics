@@ -4,6 +4,7 @@ import pytest
 
 from options_analytics.surface_transforms import (
     interpolate_surface_2d,
+    moneyness_range_slice,
     observed_surface_frame,
     surface_to_long_frame,
 )
@@ -69,17 +70,47 @@ def test_2d_preserves_duplicate_row_labels_and_shuffled_order():
     np.testing.assert_allclose(result.iv, expected)
 
 
-def test_2d_leaves_outside_convex_hull_missing_and_clips_training_support():
+def test_2d_leaves_outside_convex_hull_missing():
     extra = pd.DataFrame({"tau": [.05, .4, .2, .2], "strike": [100, 100, 80, 120],
                           "moneyness": [1., 1., .8, 1.2], "iv": [np.nan] * 4})
     frame = pd.concat([_frame(), extra], ignore_index=True)
     result = interpolate_surface_2d(frame)
     assert result.iloc[-4:].iv.isna().all()
     assert result.iloc[-4:].surface_value_type.eq("Missing").all()
-    # Removing the right support by range selection prevents filling x=1.0.
-    clipped = interpolate_surface_2d(frame, .8, 1.)
-    assert clipped.moneyness.le(1.).all()
-    assert clipped.loc[clipped.moneyness.eq(1.), "iv"].isna().all()
+
+
+def _plane_frame(strikes):
+    taus = [.1, .3]
+    grid = np.full((2, len(strikes)), np.nan)
+    frame = surface_to_long_frame(grid, taus, strikes, 100)
+    frame["iv"] = np.sqrt(
+        (.02 + .01 * frame.moneyness + .03 * frame.tau) / frame.tau
+    )
+    return frame
+
+
+def test_range_slice_keeps_inclusive_bounds_and_the_cell_values():
+    frame = _plane_frame([60, 70, 80, 90, 100, 110, 120, 130])
+    frame.loc[frame.moneyness.isin([.8, 1.]), "iv"] = np.nan
+    surface = interpolate_surface_2d(frame)
+    core = moneyness_range_slice(surface, .8, 1.2)
+    extended = moneyness_range_slice(surface, .7, 1.3)
+    assert core.moneyness.between(.8, 1.2).all()
+    assert sorted(core.moneyness.unique()) == pytest.approx([.8, .9, 1., 1.1, 1.2])
+    assert len(extended) == 14
+    pd.testing.assert_frame_equal(core, extended.loc[core.index])
+    pd.testing.assert_frame_equal(core, surface.loc[core.index])
+
+
+def test_gap_at_a_range_edge_is_filled_from_an_observation_outside_the_range():
+    frame = _plane_frame([70, 80, 90, 100])
+    frame.loc[frame.moneyness.eq(.8), "iv"] = np.nan
+    core = moneyness_range_slice(interpolate_surface_2d(frame), .8, 1.2)
+    edge = core[core.moneyness.eq(.8)]
+    assert edge.surface_value_type.eq("Interpolated").all()
+    np.testing.assert_allclose(
+        edge.iv, np.sqrt((.02 + .01 * .8 + .03 * edge.tau) / edge.tau)
+    )
 
 
 @pytest.mark.parametrize("case", ["empty", "missing", "one", "collinear"])
@@ -107,9 +138,9 @@ def test_2d_uses_original_observations_when_called_on_display_frame():
 
 
 @pytest.mark.parametrize("bounds", [(1., 1.), (1.2, .8), (np.nan, 1.2), (.8, np.inf)])
-def test_2d_rejects_bad_bounds(bounds):
+def test_range_slice_rejects_bad_bounds(bounds):
     with pytest.raises(ValueError, match="moneyness bounds"):
-        interpolate_surface_2d(_frame(), *bounds)
+        moneyness_range_slice(interpolate_surface_2d(_frame()), *bounds)
 
 
 @pytest.mark.parametrize("column,value", [("tau", 0), ("tau", -1), ("tau", np.nan),
@@ -149,3 +180,17 @@ def test_2d_shows_correct_method_in_both_figures(with_source):
     assert len(surface.data[1].x) == 4
     assert heatmap.connectgaps is False
     assert surface.data[0].connectgaps is False
+
+
+def test_2d_gap_between_strikes_of_one_expiry_borrows_from_that_expiry():
+    # Expiries a week apart: at 1 year of tau = 8 K/S units, the neighbouring
+    # strikes 0.01 away are far closer than the neighbouring expiries.
+    taus = [.04, .06, .08, 1.]
+    strikes = [80, 99, 100, 101, 120]
+    grid = np.full((4, 5), .3)
+    grid[1] = .5
+    grid[1, 2] = np.nan
+    result = interpolate_surface_2d(surface_to_long_frame(grid, taus, strikes, 100))
+    gap = result.tau.eq(.06) & result.moneyness.eq(1.)
+    assert result.loc[gap, "surface_value_type"].item() == "Interpolated"
+    assert result.loc[gap, "iv"].item() == pytest.approx(.5)

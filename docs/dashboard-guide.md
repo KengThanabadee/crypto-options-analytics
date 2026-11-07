@@ -186,14 +186,26 @@ the visible range; a one-line caption under it names the fill, and the
 Interpolated and Missing cells, with `2D linear total variance` as the
 interpolated value source.
 
-The interpolation converts observed IV to total variance `w = IV² × tau`,
-interpolates it piecewise-linearly across spot moneyness and numerical `tau`,
-then converts back with `IV = sqrt(w / tau)`. Both axes are scaled to their
-observed min/max before triangulation. Support uses only original finite
-observations inside the selected range; observed values stay unchanged, cells
-outside their convex hull stay missing, and fewer than three non-collinear
+One surface is built per snapshot and IV source, from every original finite
+observation in the snapshot, and the moneyness range shows a slice of it. A
+cell therefore has the same value in every range, and cells at a range's edge
+are filled from observations just outside it. The interpolation converts
+observed IV to total variance `w = IV² × tau`, interpolates it
+piecewise-linearly across spot moneyness and numerical `tau`, then converts
+back with `IV = sqrt(w / tau)`. Observed values stay unchanged, cells outside
+the observations' convex hull stay missing, and fewer than three non-collinear
 observations leave every gap unfilled. It fills the existing grid rather than
 adding display points. The surface is a display, not an arbitrage-free fit.
+
+Distance in the fill uses a fixed **strike–time scale**: triangulation runs on
+(`K / S`, `tau × 8`), so 1 year of `tau` counts as 8 `K / S` units for every
+range and snapshot (`STRIKE_TIME_SCALE` in
+`options_analytics/surface_transforms.py`). Strikes 0.01 apart then count as
+close as expiries about half a day apart, so a gap is filled from its own
+expiry's neighbouring strikes before other expiries. On the frozen snapshot,
+leave-one-out refill error (hide each Exchange mark IV, fill it back) falls as
+the scale rises and stops improving from 8 upward, at about 0.25 vol points in
+every range; 8 is the smallest value on that plateau.
 
 ### IV smiles
 

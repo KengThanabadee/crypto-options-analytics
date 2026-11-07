@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 from options_analytics import deribit, iv_source
-from options_analytics.surface_transforms import interpolate_surface_2d
+from options_analytics.surface_transforms import interpolate_surface_2d, moneyness_range_slice
 
 SNAPSHOT = Path(__file__).resolve().parents[1] / "data" / "deribit_btc_options_snapshot.json"
 BUCKETS = [0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5, 2.0, 3.0, np.inf]
@@ -62,8 +62,9 @@ def by_expiry(chain, frame, low, high):
     result = iv_source.build_iv_source_surface(
         chain, "Exchange mark", bid_ask_iv=iv_source.solve_bid_ask_iv(chain)
     )
-    surface = interpolate_surface_2d(
-        iv_source.iv_source_long_frame(result), min_moneyness=low, max_moneyness=high
+    # Build the whole surface, then slice the range, as the dashboard does.
+    surface = moneyness_range_slice(
+        interpolate_surface_2d(iv_source.iv_source_long_frame(result)), low, high
     )
     cells = surface.groupby("tau")["surface_value_type"].value_counts().unstack(fill_value=0)
     span = frame.groupby("tau").agg(

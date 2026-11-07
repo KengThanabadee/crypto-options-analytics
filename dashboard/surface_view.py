@@ -8,6 +8,7 @@ from options_analytics.surface_transforms import (
     MONEYNESS_RANGES,
     SURFACE_VIEWS,
     interpolate_surface_2d,
+    moneyness_range_slice,
     observed_surface_frame,
 )
 
@@ -56,8 +57,9 @@ def surface_view(frame, iv_source):
             help="Applies to both views. IV smiles show all observed strikes.",
         )
     moneyness = MONEYNESS_RANGES[range_name]
-    surface_frame = interpolate_surface_2d(
-        frame, min_moneyness=moneyness[0], max_moneyness=moneyness[1]
+    # One surface from every observation; the range only slices it.
+    surface_frame = moneyness_range_slice(
+        interpolate_surface_2d(frame), *moneyness
     )
 
     if view == HEATMAP:
@@ -86,16 +88,26 @@ def surface_view(frame, iv_source):
 def _interpolation_notes():
     with st.expander("Surface interpolation"):
         st.caption(
-            "Convert observed IV to total variance (IV² × tau), linearly "
+            "One surface is built from every observed IV in the snapshot: "
+            "convert observed IV to total variance (IV² × tau), linearly "
             "interpolate it between observations, then convert back to IV. "
-            "K / S and tau are each scaled to their observed range for "
-            "triangulation. Original IV points stay unchanged."
+            "Original IV points stay unchanged."
         )
         st.caption(
-            "The existing grid is filled only inside the convex hull of "
-            "observations in the selected range. A cell can be filled across "
-            "expiries, but cells outside that boundary stay blank. "
-            "A denser grid would add display points, not market observations."
+            "The moneyness range only picks which part of that surface you "
+            "see, so a cell has the same value in every range, and cells at "
+            "a range's edge are filled from observations just outside it."
+        )
+        st.caption(
+            "Distance between observations uses a fixed strike–time scale: "
+            "one year of tau counts as 8 K / S units. Strikes 0.01 apart are "
+            "then as close as expiries about half a day apart, so a gap is "
+            "filled from its own expiry's strikes before other expiries."
+        )
+        st.caption(
+            "Only the existing grid is filled, inside the convex hull of the "
+            "observations; cells outside that boundary stay blank. A denser "
+            "grid would add display points, not market observations."
         )
         st.caption(
             "In 3D, observed markers are lifted slightly above the mesh for "

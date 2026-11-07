@@ -145,10 +145,13 @@ def test_reopening_a_saved_analysis_restores_every_setting_and_the_same_charts(
     assert saved["snapshot"] == load_deribit_snapshot(SNAPSHOT_PATH)
 
 
-def test_a_different_calculation_version_shows_a_recompute_notice(saved_files, upload):
+@pytest.mark.parametrize("version", [3, saved_analysis.CALCULATION_VERSION + 1])
+def test_a_different_calculation_version_shows_a_recompute_notice(
+    saved_files, upload, version
+):
     app = _app()
     saved = json.loads(saved_files[-1])
-    saved["calculation_version"] = saved_analysis.CALCULATION_VERSION + 1
+    saved["calculation_version"] = version
     upload.put(json.dumps(saved))
     app.run()
 

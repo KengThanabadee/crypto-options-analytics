@@ -94,6 +94,28 @@ def test_iv_charts_open_on_exchange_mark_and_switch_to_quote_midpoint(monkeypatc
         assert any("display band" in caption.value for caption in app.caption)
 
 
+def _heatmap_cells(figure):
+    (trace,) = figure.data
+    return {
+        (y, round(float(x), 9)): value
+        for y, row in zip(trace.y, trace.z)
+        for x, value in zip(trace.x, row)
+    }
+
+
+def test_switching_moneyness_range_keeps_each_cell_value(monkeypatch):
+    figures = _record_figures(monkeypatch, ["make_iv_heatmap"])
+    app = _app()
+    core = _heatmap_cells(figures["make_iv_heatmap"])
+    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    assert not app.exception
+    extended = _heatmap_cells(figures["make_iv_heatmap"])
+    assert set(core) < set(extended)
+    np.testing.assert_array_equal(
+        [core[cell] for cell in core], [extended[cell] for cell in core]
+    )
+
+
 def _patch_iv_build(monkeypatch, adjust=lambda result: result):
     calls = []
     build = iv_source.build_iv_source_surface
@@ -129,7 +151,7 @@ def test_dashboard_opens_on_exchange_mark_without_rate_inputs(monkeypatch):
     assert app.segmented_control(key="heatmap_view").value == "Surface"
     assert [tab.label for tab in app.tabs] == ["IV surface", "IV smiles", "ATM term structure"]
     assert any(
-        "293 observed · 175 interpolated · 36 blank" in caption.value
+        "293 observed · 205 interpolated · 6 blank" in caption.value
         for caption in app.caption
     )
     assert any("Deribit BTC · Frozen snapshot:" in caption.value for caption in app.caption)
@@ -154,7 +176,7 @@ def test_dashboard_opens_on_exchange_mark_without_rate_inputs(monkeypatch):
     assert len(app.get("plotly_chart")) == 5
     assert not [c for c in app.segmented_control if c.key == "heatmap_view"]
     assert any(
-        "355 observed · 248 interpolated · 69 blank" in caption.value
+        "355 observed · 272 interpolated · 45 blank" in caption.value
         for caption in app.caption
     )
 
@@ -684,8 +706,10 @@ def test_surface_chart_has_the_range_above_and_a_caption_and_interpolation_expan
     assert caption == SURFACE_CAPTION
     assert title == "Surface interpolation"
     expander = next(e for e in tab.expander if e.label == title)
-    assert len(expander.caption) == 3 and not expander.markdown
-    assert text.startswith("Convert observed IV to total variance (IV² × tau)")
+    assert len(expander.caption) == 5 and not expander.markdown
+    assert text.startswith("One surface is built from every observed IV")
+    assert "same value in every range" in text
+    assert "one year of tau counts as 8 K / S units" in text
     assert text.endswith("hover reports their original IV.")
     assert "Surface interpolation" not in [e.label for e in app.sidebar.expander]
 
