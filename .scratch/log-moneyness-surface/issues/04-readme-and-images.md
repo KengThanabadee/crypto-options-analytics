@@ -4,8 +4,12 @@
 
 **Blocked by:** 01, 02, 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] README highlights match the dashboard guide.
-- [ ] The heatmap, surface and smile images show the log axes and the Wide range.
-- [ ] Lint and tests pass; the dashboard has been checked in dark and light.
+- [x] README highlights match the dashboard guide.
+- [x] The heatmap, surface and smile images show the log axes and the Wide range.
+- [x] Lint and tests pass; the dashboard has been checked in dark and light.
+
+## Comments
+
+- 2026-11-07: Resolved on `log-moneyness-surface` (3052919); images recaptured at 94eb44e.

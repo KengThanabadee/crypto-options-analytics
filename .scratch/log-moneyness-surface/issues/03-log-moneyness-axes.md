@@ -4,10 +4,14 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The 3D, Heatmap and smile figures have a log moneyness axis titled "K / S (log scale)".
-- [ ] Their tick values are K/S ladder values inside the plotted range, and the labels read as K/S.
-- [ ] Data arrays still hold K/S; hover still reports K/S to four decimals and the USD strike.
-- [ ] K/S 0.5 and 2.0 sit at equal distances from 1 on the axis.
-- [ ] Lint and tests pass; the dashboard has been opened and all three charts checked in dark and light.
+- [x] The 3D, Heatmap and smile figures have a log moneyness axis titled "K / S (log scale)".
+- [x] Their tick values are K/S ladder values inside the plotted range, and the labels read as K/S.
+- [x] Data arrays still hold K/S; hover still reports K/S to four decimals and the USD strike.
+- [x] K/S 0.5 and 2.0 sit at equal distances from 1 on the axis.
+- [x] Lint and tests pass; the dashboard has been opened and all three charts checked in dark and light.
+
+## Comments
+
+- 2026-11-07: Resolved on `log-moneyness-surface` (d373398); review fix 94eb44e draws the Heatmap and 3D axes over the selected range bounds.

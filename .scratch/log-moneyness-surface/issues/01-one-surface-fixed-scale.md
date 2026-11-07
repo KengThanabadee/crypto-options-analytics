@@ -4,14 +4,18 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The fill takes the whole chart frame and no range bounds; a separate slicing step keeps cells inside inclusive bounds.
-- [ ] A cell has the same value in Core and Extended (surface test and page test).
-- [ ] A gap at a range edge is filled from an observation outside that range.
-- [ ] With two expiries close in `tau`, a gap between two strikes of one expiry takes its value from that expiry.
-- [ ] Existing cases still hold: exact on a plane, observed values unchanged, blank outside the hull, existing errors on invalid input.
-- [ ] The scale is a named module constant with a docstring or comment giving its meaning.
-- [ ] Reopening a calculation version 3 file shows the recompute notice.
-- [ ] `scripts/snapshot_coverage.py` reports Exchange mark blanks of 6 of 504 cells in Core on the frozen snapshot (spec table), or the change is explained.
-- [ ] Lint and tests pass; the dashboard has been opened and the IV surface tab checked in both views, dark and light.
+- [x] The fill takes the whole chart frame and no range bounds; a separate slicing step keeps cells inside inclusive bounds.
+- [x] A cell has the same value in Core and Extended (surface test and page test).
+- [x] A gap at a range edge is filled from an observation outside that range.
+- [x] With two expiries close in `tau`, a gap between two strikes of one expiry takes its value from that expiry.
+- [x] Existing cases still hold: exact on a plane, observed values unchanged, blank outside the hull, existing errors on invalid input.
+- [x] The scale is a named module constant with a docstring or comment giving its meaning.
+- [x] Reopening a calculation version 3 file shows the recompute notice.
+- [x] `scripts/snapshot_coverage.py` reports Exchange mark blanks of 6 of 504 cells in Core on the frozen snapshot (spec table), or the change is explained.
+- [x] Lint and tests pass; the dashboard has been opened and the IV surface tab checked in both views, dark and light.
+
+## Comments
+
+- 2026-11-07: Resolved on `log-moneyness-surface` (8cc62a0); review fixes at 94eb44e.

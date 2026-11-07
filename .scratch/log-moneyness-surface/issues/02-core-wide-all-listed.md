@@ -4,11 +4,15 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The control's options are exactly Core, Wide and All listed, with Wide selected on a fresh page.
-- [ ] All listed's caption shows the frozen snapshot's listed bounds (about 0.24–3.04).
-- [ ] Switching between ranges keeps a cell's value.
-- [ ] Save then Reopen restores each range by name; an unknown name is rejected; a format 1 file is rejected.
-- [ ] `snapshot_coverage.py --range Wide` and `--range "All listed"` work; numeric bounds still work.
-- [ ] Lint and tests pass; the dashboard has been opened and all three ranges checked in both views, dark and light.
+- [x] The control's options are exactly Core, Wide and All listed, with Wide selected on a fresh page.
+- [x] All listed's caption shows the frozen snapshot's listed bounds (about 0.24–3.04).
+- [x] Switching between ranges keeps a cell's value.
+- [x] Save then Reopen restores each range by name; an unknown name is rejected; a format 1 file is rejected.
+- [x] `snapshot_coverage.py --range Wide` and `--range "All listed"` work; numeric bounds still work.
+- [x] Lint and tests pass; the dashboard has been opened and all three ranges checked in both views, dark and light.
+
+## Comments
+
+- 2026-11-07: Resolved on `log-moneyness-surface` (d302ba5); review fixes at d9fdd3b and 94eb44e.
