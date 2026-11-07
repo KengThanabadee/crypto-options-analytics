@@ -160,6 +160,17 @@ smiles** and **ATM term structure**. All IV tooltips show the expiry date in
 UTC, time to expiry in days (`tau × 365`) at the snapshot time and the strike
 in USD with thousands separators.
 
+The Heatmap, the 3D surface and the IV smiles draw spot moneyness on a log
+axis titled "K / S (log scale)", so a strike sits at the same place in every
+tab and the put and call wings get equal width: K/S 0.5 and 2 are the same
+distance from 1, as are 0.8 and 1.25. Tick labels, hover and data stay in
+`K / S`. Ticks come from a fixed ladder (0.2, 0.25, 0.33, 0.5, 0.67, 0.8, 1,
+1.25, 1.5, 2, 3, 4, 5) and show the values inside the plotted range; when the
+range spans less than a factor of 2, as Core does, 0.9 and 1.1 are added. The
+0.33 and 0.67 ticks sit at exactly 1/3 and 2/3, mirroring 3 and 1.5. Heatmap
+cells are centred on their `K / S` in log space, and the Heatmap axis reaches
+the outer edges of its end cells, so Core still shows a 0.8 tick.
+
 ### IV surface
 
 Three controls sit in a row above the chart:

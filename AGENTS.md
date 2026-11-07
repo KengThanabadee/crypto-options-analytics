@@ -33,8 +33,9 @@ overview for readers of the repository; keep its highlights in step.
   out.
 - Missing quotes and failed solves stay `NaN`; Plotly traces use
   `connectgaps=False`; interpolation is a separate explicit operation.
-- Moneyness is spot-based `K / S`. Numerical `tau` drives calculations, expiry
-  ordering and maturity axes; expiry datetimes come from source metadata.
+- Moneyness is spot-based `K / S`. Charts with a moneyness axis draw K/S on a
+  log axis. Numerical `tau` drives calculations, expiry ordering and maturity
+  axes; expiry datetimes come from source metadata.
 - Combined IV and the ATM proxy follow the rules in `docs/dashboard-guide.md`.
 - When a change picks a convention, tolerance or default that affects the
   numbers, name it and say why in the summary.

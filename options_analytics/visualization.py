@@ -20,6 +20,62 @@ _ATM_FRAME_COLUMNS = {
 }
 
 
+MONEYNESS_AXIS_TITLE = "K / S (log scale)"
+# K/S tick ladder for log moneyness axes. Reciprocal pairs (0.5 and 2,
+# 0.8 and 1.25) sit at equal distances from 1, so each wing reads alike.
+_MONEYNESS_TICKS = (
+    (0.2, "0.2"), (0.25, "0.25"), (1 / 3, "0.33"), (0.5, "0.5"),
+    (2 / 3, "0.67"), (0.8, "0.8"), (1.0, "1"), (1.25, "1.25"), (1.5, "1.5"),
+    (2.0, "2"), (3.0, "3"), (4.0, "4"), (5.0, "5"),
+)
+# Extra ticks for a narrow range such as Core, where the ladder alone
+# leaves only 0.8 and 1.
+_NARROW_MONEYNESS_TICKS = ((0.9, "0.9"), (1.1, "1.1"))
+_NARROW_LOG_SPAN = np.log(2.0)
+
+
+def _moneyness_ticks(lower, upper):
+    """Ladder tick values and K/S labels that fall inside ``[lower, upper]``."""
+    ladder = list(_MONEYNESS_TICKS)
+    if np.log(upper / lower) < _NARROW_LOG_SPAN:
+        ladder = sorted(ladder + list(_NARROW_MONEYNESS_TICKS))
+    tolerance = 1e-9
+    inside = [
+        (value, label) for value, label in ladder
+        if lower * (1 - tolerance) <= value <= upper * (1 + tolerance)
+    ]
+    return [value for value, _ in inside], [label for _, label in inside]
+
+
+def _log_moneyness_axis(lower, upper):
+    """Axis properties drawing K/S on a log axis with ladder ticks."""
+    tickvals, ticktext = _moneyness_ticks(lower, upper)
+    return {
+        "type": "log",
+        "title": {"text": MONEYNESS_AXIS_TITLE},
+        "tickmode": "array",
+        "tickvals": tickvals,
+        "ticktext": ticktext,
+    }
+
+
+def _log_cell_edges(moneyness):
+    """Outer edges of heatmap cells centred on ``moneyness`` on a log axis.
+
+    Plotly places cell boundaries at log midpoints and extends the end cells
+    by half their neighbouring gap, so the plotted range reaches past the
+    lowest and highest K/S.
+    """
+    if len(moneyness) == 0:
+        return 0.8, 1.2
+    if len(moneyness) < 2:
+        return moneyness[0], moneyness[-1]
+    return (
+        moneyness[0] / np.sqrt(moneyness[1] / moneyness[0]),
+        moneyness[-1] * np.sqrt(moneyness[-1] / moneyness[-2]),
+    )
+
+
 def _require_columns(frame: pd.DataFrame, required: set[str], name: str) -> None:
     if not isinstance(frame, pd.DataFrame):
         raise TypeError(f"{name} must be a pandas DataFrame")
@@ -236,8 +292,12 @@ def make_iv_heatmap(
         colorscale="Viridis",
     )
     figure = go.Figure(data=[trace])
+    lower, upper = _log_cell_edges(iv_grid.columns.to_numpy(dtype=float))
     figure.update_layout(
-        xaxis_title="K / S",
+        xaxis={
+            **_log_moneyness_axis(lower, upper),
+            "range": [np.log10(lower), np.log10(upper)],
+        },
         yaxis_title="Expiry (UTC)" if equal_expiry_spacing else "tau (years)",
         plot_bgcolor="rgba(128, 128, 128, 0.18)",
         height=430,
@@ -407,7 +467,13 @@ def make_iv_surface_figure(
             # width; its axis labels are clipped at the scene's edges.
             "domain": {"x": [0, 0.9] if compact_layout else [0, 0.93]},
             "bgcolor": "rgba(0, 0, 0, 0)",
-            "xaxis": {"title": {"text": "K / S", "font": {"size": 14}}, **axis_style},
+            "xaxis": {
+                **_log_moneyness_axis(
+                    iv_grid.columns.min(), iv_grid.columns.max()
+                ),
+                "title": {"text": MONEYNESS_AXIS_TITLE, "font": {"size": 14}},
+                **axis_style,
+            },
             "yaxis": {
                 "title": {
                     "text": "" if compact_layout else "Expiry (UTC)",
@@ -617,21 +683,23 @@ def make_smile_figure(
         )
 
     if observed_moneyness:
-        lower, upper = min(observed_moneyness), max(observed_moneyness)
-        padding = max((upper - lower) * 0.05, 0.01)
+        lower = np.log10(min(observed_moneyness))
+        upper = np.log10(max(observed_moneyness))
+        # Pad by 5% of the log span, and at least 1% in K/S.
+        padding = max((upper - lower) * 0.05, np.log10(1.01))
         x_range = [lower - padding, upper + padding]
     else:
-        x_range = [0.8, 1.2]
+        x_range = [np.log10(0.8), np.log10(1.2)]
     figure.add_vline(x=1.0, line_dash="dot", line_color="gray", line_width=1)
     figure.update_layout(
-        xaxis_title="Moneyness (K / S)",
+        xaxis=_log_moneyness_axis(10 ** x_range[0], 10 ** x_range[1]),
         yaxis_title="IV",
         height=430,
         margin=dict(l=12, r=12, t=65, b=12),
         legend=dict(orientation="h", x=0, y=1.02, xanchor="left", yanchor="bottom"),
         hovermode="closest",
     )
-    figure.update_xaxes(range=x_range, tickformat=".2f", zeroline=False)
+    figure.update_xaxes(range=x_range, zeroline=False)
     figure.update_yaxes(tickformat=".0%", zeroline=False)
     return figure
 

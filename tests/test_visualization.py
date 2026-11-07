@@ -467,7 +467,7 @@ def test_make_iv_heatmap_sorts_grid_keeps_nan_and_strike_hover():
     assert np.asarray(trace.customdata).tolist() == [[90.0, 110.0], [90.0, 110.0]]
     assert trace.connectgaps is False
     assert "Strike" in trace.hovertemplate
-    assert figure.layout.xaxis.title.text == "K / S"
+    assert figure.layout.xaxis.title.text == "K / S (log scale)"
     assert figure.layout.yaxis.title.text == "tau (years)"
 
 
@@ -648,7 +648,8 @@ def test_smile_axis_fits_selected_observations_without_removing_gaps():
         [.25, .5], [10, 90, 100, 110, 400], 100,
     )
     figure = make_smile_figure(frame, selected_expiries=[.25])
-    assert list(figure.layout.xaxis.range) == pytest.approx([.89, 1.11])
+    shown = 10 ** np.asarray(figure.layout.xaxis.range)
+    assert shown.tolist() == pytest.approx([.891, 1.111], abs=1e-3)
     assert len(figure.data[0].x) == 5
     np.testing.assert_allclose(figure.data[0].y, frame.iloc[:5]["iv"], equal_nan=True)
     assert figure.data[0].connectgaps is False
@@ -663,8 +664,9 @@ def test_smile_axis_fits_selected_observations_without_removing_gaps():
 def test_smile_axis_handles_missing_or_single_observation(values):
     frame = surface_to_long_frame([values], [.25], [100, 400], 100)
     figure = make_smile_figure(frame)
-    expected = [.8, 1.2] if np.isnan(values).all() else [.99, 1.01]
-    assert list(figure.layout.xaxis.range) == pytest.approx(expected)
+    expected = [.8, 1.2] if np.isnan(values).all() else [1 / 1.01, 1.01]
+    shown = 10 ** np.asarray(figure.layout.xaxis.range)
+    assert shown.tolist() == pytest.approx(expected)
 
 
 def test_make_atm_term_structure_figure_keeps_gap_and_hover_fields():
@@ -890,3 +892,108 @@ def test_smile_band_shades_only_strikes_with_both_edges():
         [(pytest.approx(0.9), .48), (pytest.approx(0.9), .52)]
     ]
     assert bars.fill != "toself" and bars.legendgroup == band.legendgroup
+
+
+def _wide_frame():
+    """Two expiries listed from K/S 0.5 to 2.0, as in the Wide range."""
+    return surface_to_long_frame(
+        [[0.60, 0.50, 0.45, 0.40, 0.42, 0.48, 0.55],
+         [0.55, 0.47, 0.43, 0.39, 0.41, 0.45, 0.50]],
+        [0.25, 0.5], [50, 70, 85, 100, 120, 150, 200], 100,
+    )
+
+
+def _log_position(value):
+    return np.log10(value)
+
+
+def test_heatmap_draws_moneyness_on_a_log_axis_with_ks_ticks():
+    frame = _wide_frame()
+    figure = make_iv_heatmap(frame)
+    xaxis = figure.layout.xaxis
+
+    assert xaxis.type == "log"
+    assert xaxis.title.text == "K / S (log scale)"
+    assert list(xaxis.tickvals) == pytest.approx([0.5, 2 / 3, 0.8, 1, 1.25, 1.5, 2])
+    assert list(xaxis.ticktext) == ["0.5", "0.67", "0.8", "1", "1.25", "1.5", "2"]
+    assert figure.data[0].x.tolist() == [0.5, 0.7, 0.85, 1.0, 1.2, 1.5, 2.0]
+    assert "K / S: %{x:.4f}" in figure.data[0].hovertemplate
+    assert "Strike" in figure.data[0].hovertemplate
+
+
+def test_3d_surface_draws_moneyness_on_a_log_axis_with_ks_ticks():
+    frame = _wide_frame()
+    for figure in (
+        make_iv_surface_figure(frame),
+        make_iv_surface_figure(frame, compact_layout=True),
+    ):
+        xaxis = figure.layout.scene.xaxis
+        assert xaxis.type == "log"
+        assert xaxis.title.text == "K / S (log scale)"
+        assert list(xaxis.tickvals) == pytest.approx(
+            [0.5, 2 / 3, 0.8, 1, 1.25, 1.5, 2]
+        )
+        assert list(xaxis.ticktext) == ["0.5", "0.67", "0.8", "1", "1.25", "1.5", "2"]
+        assert figure.data[0].x.tolist() == [0.5, 0.7, 0.85, 1.0, 1.2, 1.5, 2.0]
+        assert figure.data[1].x.tolist() == frame["moneyness"].tolist()
+        assert "K / S: 0.5000" in figure.data[0].text[0][0]
+        assert "Strike: $50" in figure.data[0].text[0][0]
+
+
+def test_smile_draws_moneyness_on_a_log_axis_with_equal_wings():
+    figure = make_smile_figure(_wide_frame(), selected_expiries=[0.25])
+    xaxis = figure.layout.xaxis
+
+    assert xaxis.type == "log"
+    assert xaxis.title.text == "K / S (log scale)"
+    # A log axis range is in log10 units; observations 0.5 to 2.0 are padded
+    # equally on both sides, so 0.5 and 2 sit at equal distances from 1.
+    lower, upper = xaxis.range
+    assert lower < _log_position(0.5) and upper > _log_position(2.0)
+    assert lower == pytest.approx(-upper)
+    assert list(xaxis.tickvals) == pytest.approx([0.5, 2 / 3, 0.8, 1, 1.25, 1.5, 2])
+    assert list(xaxis.ticktext) == ["0.5", "0.67", "0.8", "1", "1.25", "1.5", "2"]
+    assert figure.data[0].x.tolist() == [0.5, 0.7, 0.85, 1.0, 1.2, 1.5, 2.0]
+    assert "K / S: %{x:.4f}" in figure.data[0].hovertemplate
+    # Shapes take K/S positions on a log axis, unlike the log10 axis range.
+    spot_line = figure.layout.shapes[0]
+    assert spot_line.x0 == spot_line.x1 == 1.0
+
+
+@pytest.mark.parametrize(
+    ("strikes", "expected_labels"),
+    [
+        # Core (0.8–1.2): the ladder adds 0.9 and 1.1 on a narrow range.
+        ([80, 90, 100, 110, 120], ["0.8", "0.9", "1", "1.1"]),
+        # All listed on the frozen snapshot spans about K/S 0.243–3.04.
+        (
+            [24.3, 50, 100, 200, 304],
+            ["0.25", "0.33", "0.5", "0.67", "0.8", "1", "1.25", "1.5", "2", "3"],
+        ),
+    ],
+)
+def test_3d_ticks_stay_inside_core_and_all_listed_ranges(
+    strikes, expected_labels,
+):
+    frame = surface_to_long_frame([[0.4] * len(strikes)], [0.25], strikes, 100)
+    xaxis = make_iv_surface_figure(frame).layout.scene.xaxis
+
+    assert list(xaxis.ticktext) == expected_labels
+    assert min(xaxis.tickvals) >= min(strikes) / 100
+    assert max(xaxis.tickvals) <= max(strikes) / 100
+
+
+def test_heatmap_axis_spans_its_cells_so_core_keeps_its_edge_ticks():
+    # Core's lowest and highest grid columns sit just inside 0.8 and 1.2,
+    # but their cells reach past them. Plotly centres cells in log space.
+    frame = surface_to_long_frame(
+        [[0.4] * 5], [0.25], [80.5, 90, 100, 110, 119.5], 100,
+    )
+    xaxis = make_iv_heatmap(frame).layout.xaxis
+
+    lower_edge = 0.805 / np.sqrt(0.90 / 0.805)
+    upper_edge = 1.195 * np.sqrt(1.195 / 1.10)
+    assert list(xaxis.range) == pytest.approx(
+        [_log_position(lower_edge), _log_position(upper_edge)]
+    )
+    assert list(xaxis.ticktext) == ["0.8", "0.9", "1", "1.1"]
