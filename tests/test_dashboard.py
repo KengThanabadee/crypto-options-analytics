@@ -199,9 +199,10 @@ def test_dashboard_opens_on_exchange_mark_without_rate_inputs(monkeypatch):
     assert app.segmented_control(key="surface_view").value == "Heatmap"
     assert app.segmented_control(key="moneyness_range").value == "Wide"
     assert app.segmented_control(key="heatmap_view").value == "Surface"
+    assert app.segmented_control(key="heatmap_view").options == ["Surface", "Deribit mark"]
     assert [tab.label for tab in app.tabs] == ["IV surface", "IV smiles", "ATM term structure"]
     assert any(
-        "436 observed · 345 interpolated · 155 blank" in caption.value
+        "436 Deribit mark · 345 interpolated · 155 blank" in caption.value
         for caption in app.caption
     )
     assert any("Deribit BTC · Frozen snapshot:" in caption.value for caption in app.caption)
@@ -210,14 +211,14 @@ def test_dashboard_opens_on_exchange_mark_without_rate_inputs(monkeypatch):
     assert not app.exception
     assert app.segmented_control(key="heatmap_view").value == "Observed"
     assert any(
-        "436 observed · 0 interpolated · 500 blank" in caption.value
+        "436 Deribit mark · 0 interpolated · 500 blank" in caption.value
         for caption in app.caption
     )
 
     app.segmented_control(key="moneyness_range").set_value("All listed").run()
     assert not app.exception
     assert any(
-        "468 observed · 0 interpolated · 624 blank" in caption.value
+        "468 Deribit mark · 0 interpolated · 624 blank" in caption.value
         for caption in app.caption
     )
 
@@ -226,7 +227,7 @@ def test_dashboard_opens_on_exchange_mark_without_rate_inputs(monkeypatch):
     assert len(app.get("plotly_chart")) == 5
     assert not [c for c in app.segmented_control if c.key == "heatmap_view"]
     assert any(
-        "468 observed · 361 interpolated · 263 blank" in caption.value
+        "468 Deribit mark · 361 interpolated · 263 blank" in caption.value
         for caption in app.caption
     )
 
@@ -697,7 +698,7 @@ def test_smile_chart_has_a_one_line_caption_and_the_band_in_an_expander():
 
     caption, title, text = _notes_after_chart(_tab(_app(), "IV smiles"))
     assert caption == (
-        "Observed Combined Exchange mark IV · all strikes · gaps preserved · "
+        "Combined Exchange mark IV · all strikes · gaps preserved · "
         "shading = bid–ask IV band, wider where quotes are wider"
     )
     assert title == "Reading the bid–ask shading"
@@ -737,8 +738,8 @@ def test_atm_chart_shades_the_band_and_explains_it(monkeypatch):
 
 
 SURFACE_CAPTION = (
-    "2D total-variance interpolation · observed IV unchanged · "
-    "blank outside the observed range"
+    "2D total-variance interpolation · Deribit mark IV unchanged · "
+    "blank outside the Deribit mark range"
 )
 
 
@@ -766,6 +767,22 @@ def test_surface_chart_has_the_range_above_and_a_caption_and_interpolation_expan
 
 def test_observed_heatmap_caption_says_nothing_is_interpolated():
     app = _app()
+    app.segmented_control(key="heatmap_view").set_value("Observed").run()
+    caption, _, _ = _notes_after_chart(_tab(app, "IV surface"), chart=-1)
+    assert caption == (
+        "Deribit mark IV only · no interpolation · blank where Deribit reports none"
+    )
+
+
+def test_quote_midpoint_labels_its_own_iv_as_observed():
+    app = _app()
+    app.segmented_control(key="iv_source").set_value("Quote midpoint").run()
+    assert not app.exception
+    assert app.segmented_control(key="heatmap_view").options == ["Surface", "Observed"]
+    assert any(" observed · " in caption.value for caption in app.caption)
+    caption, _, _ = _notes_after_chart(_tab(app, "IV smiles"))
+    assert caption.startswith("Observed Combined Quote midpoint IV · all strikes")
+
     app.segmented_control(key="heatmap_view").set_value("Observed").run()
     caption, _, _ = _notes_after_chart(_tab(app, "IV surface"), chart=-1)
     assert caption == (

@@ -2,6 +2,7 @@
 
 import streamlit as st
 
+from options_analytics import iv_source as iv_sources
 from options_analytics import visualization
 from options_analytics.surface_transforms import (
     HEATMAP_VALUES,
@@ -34,19 +35,27 @@ _SURFACE_LAYOUT_CSS = """<style>
 
 HEATMAP, VIEW_3D = SURFACE_VIEWS
 SURFACE_VALUES, OBSERVED_VALUES = HEATMAP_VALUES
-SURFACE_CAPTION = (
-    "2D total-variance interpolation · observed IV unchanged · "
-    "blank outside the observed range"
-)
-OBSERVED_CAPTION = (
-    "Observed IV only · no interpolation · blank where no contract was solved"
-)
+
+
+def surface_caption(iv_source):
+    label = iv_sources.observed_label(iv_source)
+    shown = "observed" if label == "Observed" else label
+    return (
+        f"2D total-variance interpolation · {shown} IV unchanged · "
+        f"blank outside the {shown} range"
+    )
+
+
+def observed_caption(iv_source):
+    if iv_sources.observed_label(iv_source) == "Observed":
+        return "Observed IV only · no interpolation · blank where no contract was solved"
+    return "Deribit mark IV only · no interpolation · blank where Deribit reports none"
 
 
 def surface_view(frame, iv_source):
     """The IV surface as a Heatmap or in 3D, over the chosen K / S range."""
-    # The range control's labels carry their bounds; give it the most room.
-    view_column, range_column, values_column = st.columns([2, 3, 2])
+    # Widths follow each control's labels, so all three fit from about 1150 px.
+    view_column, range_column, values_column = st.columns([3, 7, 4])
     with view_column:
         view = _choice(
             "View", SURFACE_VIEWS, SURFACE_VIEW_KEY,
@@ -65,25 +74,36 @@ def surface_view(frame, iv_source):
     surface_frame, moneyness = moneyness_range_surface(frame, range_name)
 
     if view == HEATMAP:
+        label = iv_sources.observed_label(iv_source)
         with values_column:
             heatmap_values = _choice(
                 "Heatmap values", HEATMAP_VALUES, HEATMAP_VALUES_KEY,
                 help=(
-                    "Surface uses 2D total-variance interpolation. Observed "
-                    "shows solved market IV without interpolation."
+                    "Surface uses 2D total-variance interpolation. "
+                    + (
+                        "Observed shows solved market IV"
+                        if label == "Observed"
+                        else "Deribit mark shows the mark IV Deribit reports"
+                    )
+                    + " without interpolation."
+                ),
+                format_func=lambda value: (
+                    label if value == OBSERVED_VALUES else value
                 ),
             )
         observed_only = heatmap_values == OBSERVED_VALUES
         if observed_only:
             surface_frame = observed_surface_frame(surface_frame)
-        st.caption(visible_range_summary(surface_frame, moneyness))
+        st.caption(visible_range_summary(surface_frame, moneyness, iv_source))
         _heatmap_chart(surface_frame, iv_source, moneyness)
     else:
         observed_only = False
         keep_widget_values([HEATMAP_VALUES_KEY])
-        st.caption(visible_range_summary(surface_frame, moneyness))
+        st.caption(visible_range_summary(surface_frame, moneyness, iv_source))
         _surface_3d_chart(surface_frame, iv_source, moneyness)
-    st.caption(OBSERVED_CAPTION if observed_only else SURFACE_CAPTION)
+    st.caption(
+        observed_caption(iv_source) if observed_only else surface_caption(iv_source)
+    )
     _interpolation_notes()
 
 
@@ -118,11 +138,13 @@ def _interpolation_notes():
         )
 
 
-def visible_range_summary(frame, moneyness):
+def visible_range_summary(frame, moneyness, iv_source):
     counts = frame["surface_value_type"].value_counts()
+    label = iv_sources.observed_label(iv_source)
+    label = "observed" if label == "Observed" else label
     return (
         "Visible range: "
-        f"{counts.get('Observed', 0):,} observed · "
+        f"{counts.get('Observed', 0):,} {label} · "
         f"{counts.get('Interpolated', 0):,} interpolated · "
         f"{counts.get('Missing', 0):,} blank. "
         f"K / S: {moneyness[0]:.2f}–{moneyness[1]:.2f}."

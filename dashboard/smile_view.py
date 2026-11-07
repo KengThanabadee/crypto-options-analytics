@@ -5,7 +5,7 @@ import streamlit as st
 
 from options_analytics import visualization
 
-from dashboard.band_note import BAND_CAPTION, band_expander
+from dashboard.band_note import BAND_CAPTION, band_expander, combined_iv_name
 from dashboard.settings import smile_key
 from dashboard.state import widget_default
 
@@ -43,7 +43,7 @@ def smile_view(frame, snapshot_id, iv_source):
     else:
         st.info("Select an expiry to show its IV smile.")
     st.caption(
-        f"Observed Combined {iv_source} IV · all strikes · gaps preserved · "
+        f"{combined_iv_name(iv_source)} · all strikes · gaps preserved · "
         + BAND_CAPTION
     )
     band_expander()

@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from options_analytics.chain import DAYS_PER_YEAR
+from options_analytics.iv_source import observed_label
 from options_analytics.positioning import GEX_MODES, strikes_in_range
 from options_analytics.surface_transforms import MONEYNESS_RANGES
 
@@ -187,7 +188,7 @@ def _surface_hover_text(
     return "<br>".join(parts)
 
 
-def _heatmap_customdata(long_frame, iv_grid, strike_grid):
+def _heatmap_customdata(long_frame, iv_grid, strike_grid, iv_source=None):
     customdata = strike_grid.to_numpy(dtype=float)
     strike_hover = "Strike: %{hovertext}<br>"
     source_hover = ""
@@ -205,7 +206,9 @@ def _heatmap_customdata(long_frame, iv_grid, strike_grid):
         display_source = (
             long_frame["source"].copy()
             if "source" in long_frame.columns
-            else pd.Series("Observed IV", index=long_frame.index).mask(
+            else pd.Series(
+                f"{observed_label(iv_source)} IV", index=long_frame.index
+            ).mask(
                 long_frame["surface_value_type"].eq("Missing"), "missing"
             )
         )
@@ -219,7 +222,11 @@ def _heatmap_customdata(long_frame, iv_grid, strike_grid):
         ).reindex(index=iv_grid.index, columns=iv_grid.columns)
         fields.append(source_grid.to_numpy())
     if has_value_type:
-        value_type_grid = long_frame.pivot(
+        value_type_grid = long_frame.assign(
+            surface_value_type=long_frame["surface_value_type"].replace(
+                "Observed", observed_label(iv_source)
+            )
+        ).pivot(
             index="tau", columns="moneyness", values="surface_value_type"
         ).reindex(index=iv_grid.index, columns=iv_grid.columns)
         fields.append(value_type_grid.to_numpy())
@@ -262,7 +269,7 @@ def make_iv_heatmap(
     )
 
     customdata, strike_hover, source_hover, value_type_hover = (
-        _heatmap_customdata(long_frame, iv_grid, strike_grid)
+        _heatmap_customdata(long_frame, iv_grid, strike_grid, iv_source)
     )
     expiry_labels = _expiry_labels(long_frame, iv_grid.index)
     y_values = expiry_labels if equal_expiry_spacing else iv_grid.index.to_numpy(
@@ -352,7 +359,7 @@ def make_iv_surface_figure(
         .reindex(index=iv_grid.index, columns=iv_grid.columns)
     )
     customdata, strike_hover, source_hover, value_type_hover = (
-        _heatmap_customdata(long_frame, iv_grid, strike_grid)
+        _heatmap_customdata(long_frame, iv_grid, strike_grid, iv_source)
     )
     visible_taus = _spaced_tau_ticks(
         iv_grid.index, minimum_spacing_fraction=0.30 if compact_layout else 0.18
@@ -439,8 +446,8 @@ def make_iv_surface_figure(
                 source_label=(
                     "Value source" if value_type_hover else "IV from"
                 ) if source_hover else None,
-                source=getattr(row, "source", "Observed IV"),
-                value_type="Observed" if value_type_hover else None,
+                source=getattr(row, "source", f"{observed_label(iv_source)} IV"),
+                value_type=observed_label(iv_source) if value_type_hover else None,
                 iv_label=_iv_label(iv_source),
             )
             for maturity, row, iv in zip(
@@ -457,7 +464,7 @@ def make_iv_surface_figure(
                 text=observed_text,
                 hoverlabel={"align": "left"},
                 mode="markers",
-                name="Observed IV",
+                name=f"{observed_label(iv_source)} IV",
                 marker={
                     "size": 3,
                     "color": "#F97316",

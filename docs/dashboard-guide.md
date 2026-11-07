@@ -123,7 +123,9 @@ The **IV source** selector at the top of **Implied volatility** switches every
 IV chart between two sources:
 
 - **Exchange mark** is the `mark_iv` Deribit reports. It is the default IV
-  source and the gamma input.
+  source and the gamma input. Deribit computes it from its own fitted surface,
+  not from quotes, so the page calls these values **Deribit mark** where a
+  solved source's values are called **Observed**.
 - **Quote midpoint** is this repository's solver IV from usable bid/ask
   midpoints. It is the comparison source. A contract's midpoint IV counts
   only when its bid and ask also solve to IV; a bid below intrinsic value has
@@ -188,8 +190,9 @@ Three controls sit in a row above the chart:
   stays a row in every range. A cell beyond an expiry's own listed strikes is
   filled from the expiries around it when they list that moneyness, and stays
   blank otherwise.
-- **Heatmap values**: **Surface** (default) or **Observed**, shown only in the
-  Heatmap view; it keeps its value while 3D is shown.
+- **Heatmap values**: **Surface** (default) or **Observed** (**Deribit
+  mark** under Exchange mark), shown only in the Heatmap view; it keeps its
+  value while 3D is shown.
 
 The Heatmap colours IV across spot moneyness (`K / S`) and expiry, with
 expiry rows of equal height ordered by maturity. In Surface mode observed

@@ -595,6 +595,33 @@ def test_3d_surface_uses_same_values_and_true_tau_axis_as_heatmap():
     assert "Surface value: Observed" in observed.text[0]
 
 
+def test_exchange_mark_cells_are_labelled_deribit_mark():
+    frame = _with_filled_gap(
+        surface_to_long_frame(
+            [[0.30, np.nan, 0.50], [0.25, 0.35, 0.45]],
+            [0.25, 0.5],
+            [90, 100, 110],
+            100,
+            expiry_datetimes=["2026-06-01", "2026-09-01"],
+            source_grid=[
+                ["put", "missing", "call"],
+                ["put", "near_atm_average", "call"],
+            ],
+        )
+    )
+
+    heatmap = make_iv_heatmap(frame, iv_source="Exchange mark").data[0]
+    assert heatmap.customdata[0][0].tolist() == [90.0, "Put", "Deribit mark"]
+    surface, markers = make_iv_surface_figure(frame, iv_source="Exchange mark").data
+    assert markers.name == "Deribit mark IV"
+    assert "Surface value: Deribit mark" in markers.text[0]
+    assert "Surface value: Interpolated" in surface.text[0][1]
+
+    quote = make_iv_surface_figure(frame, iv_source="Quote midpoint").data[1]
+    assert quote.name == "Observed IV"
+    assert "Surface value: Observed" in quote.text[0]
+
+
 def test_surface_hover_text_is_aligned_on_a_nonsquare_grid():
     frame = surface_to_long_frame(
         [[.21, .22, .23, .24], [.31, .32, .33, .34]],

@@ -5,13 +5,13 @@ import streamlit as st
 from options_analytics import visualization
 from options_analytics.surface_transforms import atm_term_structure_frame
 
-from dashboard.band_note import BAND_CAPTION, band_expander
+from dashboard.band_note import BAND_CAPTION, band_expander, combined_iv_name
 
 
 def term_structure_view(frame, iv_source):
     atm_frame = atm_term_structure_frame(frame)
     st.caption(
-        f"Observed Combined {iv_source} IV nearest to spot within 2% · "
+        f"{combined_iv_name(iv_source)} nearest to spot within 2% · "
         "all expiries · " + BAND_CAPTION
     )
     st.plotly_chart(

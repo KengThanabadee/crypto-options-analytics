@@ -20,6 +20,15 @@ EXCHANGE_MARK = "Exchange mark"
 QUOTE_MIDPOINT = "Quote midpoint"
 IV_SOURCES = (EXCHANGE_MARK, QUOTE_MIDPOINT)
 DEFAULT_IV_SOURCE = EXCHANGE_MARK
+
+
+def observed_label(iv_source) -> str:
+    """Name a source's own IV values on screen.
+
+    Exchange mark values come from Deribit's fitted surface, not from quotes,
+    so they are called Deribit mark; every other source's values are Observed.
+    """
+    return "Deribit mark" if iv_source == EXCHANGE_MARK else "Observed"
 # A solved IV must reprice its USD premium within one cent, else it is missing.
 REPRICE_TOLERANCE_USD = 0.01
 

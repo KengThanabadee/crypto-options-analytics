@@ -1,6 +1,8 @@
-"""How to read the bid–ask IV shading, shared by the smile and ATM charts."""
+"""Caption pieces shared by the smile and ATM charts: the bid–ask shading and the IV name."""
 
 import streamlit as st
+
+from options_analytics import iv_source as iv_sources
 
 BAND_CAPTION = "shading = bid–ask IV band, wider where quotes are wider"
 
@@ -32,3 +34,11 @@ def band_expander():
     with st.expander("Reading the bid–ask shading"):
         for note in BAND_NOTES:
             st.caption(note)
+
+
+def combined_iv_name(iv_source):
+    """Name the Combined IV a caption shows: Observed only for solved quotes."""
+    name = f"Combined {iv_source} IV"
+    if iv_sources.observed_label(iv_source) == "Observed":
+        return f"Observed {name}"
+    return name
