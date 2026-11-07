@@ -7,10 +7,8 @@ from options_analytics.surface_transforms import (
     HEATMAP_VALUES,
     MONEYNESS_RANGES,
     SURFACE_VIEWS,
-    interpolate_surface_2d,
-    moneyness_range_bounds,
     moneyness_range_label,
-    moneyness_range_slice,
+    moneyness_range_surface,
     observed_surface_frame,
 )
 
@@ -47,7 +45,7 @@ OBSERVED_CAPTION = (
 
 def surface_view(frame, iv_source):
     """The IV surface as a Heatmap or in 3D, over the chosen K / S range."""
-    # The range control has three options with bounds; give it the most room.
+    # The range control's labels carry their bounds; give it the most room.
     view_column, range_column, values_column = st.columns([2, 3, 2])
     with view_column:
         view = _choice(
@@ -63,11 +61,8 @@ def surface_view(frame, iv_source):
             ),
             format_func=moneyness_range_label,
         )
-    moneyness = moneyness_range_bounds(range_name, frame)
     # One surface from every observation; the range only slices it.
-    surface_frame = moneyness_range_slice(
-        interpolate_surface_2d(frame), *moneyness
-    )
+    surface_frame, moneyness = moneyness_range_surface(frame, range_name)
 
     if view == HEATMAP:
         with values_column:
@@ -82,12 +77,12 @@ def surface_view(frame, iv_source):
         if observed_only:
             surface_frame = observed_surface_frame(surface_frame)
         st.caption(visible_range_summary(surface_frame, moneyness))
-        _heatmap_chart(surface_frame, iv_source)
+        _heatmap_chart(surface_frame, iv_source, moneyness)
     else:
         observed_only = False
         keep_widget_values([HEATMAP_VALUES_KEY])
         st.caption(visible_range_summary(surface_frame, moneyness))
-        _surface_3d_chart(surface_frame, iv_source)
+        _surface_3d_chart(surface_frame, iv_source, moneyness)
     st.caption(OBSERVED_CAPTION if observed_only else SURFACE_CAPTION)
     _interpolation_notes()
 
@@ -102,8 +97,9 @@ def _interpolation_notes():
         )
         st.caption(
             "The moneyness range only picks which part of that surface you "
-            "see, so a cell has the same value in every range, and cells at "
-            "a range's edge are filled from observations just outside it."
+            "see, so a cell has the same value in every range. A cell near "
+            "the edge is filled from the observations around it, including "
+            "any just outside the range."
         )
         st.caption(
             "Distance between observations uses a fixed strike–time scale: "
@@ -147,16 +143,17 @@ def _choice(label, options, key, help, format_func=str):
     ) or default
 
 
-def _heatmap_chart(heatmap_frame, iv_source):
+def _heatmap_chart(heatmap_frame, iv_source, moneyness):
     st.plotly_chart(
         visualization.make_iv_heatmap(
-            heatmap_frame, equal_expiry_spacing=True, iv_source=iv_source
+            heatmap_frame, equal_expiry_spacing=True, iv_source=iv_source,
+            moneyness_range=moneyness,
         ),
         width="stretch",
     )
 
 
-def _surface_3d_chart(surface_frame, iv_source):
+def _surface_3d_chart(surface_frame, iv_source, moneyness):
     """3D surface with observed IV as points, in a wide and a compact layout."""
     st.markdown(_SURFACE_LAYOUT_CSS, unsafe_allow_html=True)
     with st.container(key="surface-responsive"):
@@ -167,6 +164,7 @@ def _surface_3d_chart(surface_frame, iv_source):
                         surface_frame,
                         compact_layout=compact,
                         iv_source=iv_source,
+                        moneyness_range=moneyness,
                     ),
                     key=f"plot-{key}",
                     width="stretch",

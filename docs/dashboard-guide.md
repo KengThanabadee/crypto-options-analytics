@@ -166,10 +166,14 @@ tab and the put and call wings get equal width: K/S 0.5 and 2 are the same
 distance from 1, as are 0.8 and 1.25. Tick labels, hover and data stay in
 `K / S`. Ticks come from a fixed ladder (0.2, 0.25, 0.33, 0.5, 0.67, 0.8, 1,
 1.25, 1.5, 2, 3, 4, 5) and show the values inside the plotted range; when the
-range spans less than a factor of 2, as Core does, 0.9 and 1.1 are added. The
-0.33 and 0.67 ticks sit at exactly 1/3 and 2/3, mirroring 3 and 1.5. Heatmap
-cells are centred on their `K / S` in log space, and the Heatmap axis reaches
-the outer edges of its end cells, so Core still shows a 0.8 tick.
+range spans less than a factor of 2, as Core does, the ladder steps by 0.1
+around 1 (0.9, 1.1 and 1.2 in place of 1.25). The 0.33 and 0.67 ticks sit at
+exactly 1/3 and 2/3, mirroring 3 and 1.5. The Heatmap and the 3D surface plot
+their axis over the selected moneyness range's bounds, so both show the same
+ticks for a range and its ends are ticks: Core shows 0.8, 0.9, 1, 1.1 and
+1.2; Wide 0.5 to 2. Heatmap cells are centred on their `K / S` in log space,
+and its axis reaches past the range only as far as its end cells need to show
+whole. The IV smiles' axis fits the selected observations.
 
 ### IV surface
 
@@ -204,8 +208,9 @@ interpolated value source.
 
 One surface is built per snapshot and IV source, from every original finite
 observation in the snapshot, and the moneyness range shows a slice of it. A
-cell therefore has the same value in every range, and cells at a range's edge
-are filled from observations just outside it. The interpolation converts
+cell therefore has the same value in every range, and a cell near a range's
+edge is filled from the observations around it, including any just outside
+the range. The interpolation converts
 observed IV to total variance `w = IV² × tau`, interpolates it
 piecewise-linearly across spot moneyness and numerical `tau`, then converts
 back with `IV = sqrt(w / tau)`. Observed values stay unchanged, cells outside
@@ -279,8 +284,8 @@ The settings are:
 - `gex_view` (`Net`/`Gross`), `iv_source`, `heatmap_values`
   (`Surface`/`Observed`) and `surface_view` (`Heatmap`/`3D`).
 
-Saved files accept only the dashboard's own choices. A file without
-`surface_view` opens as Heatmap. Files of format version 1, which stored the
+Saved files accept only the dashboard's own choices, and every setting is
+required. Files of format version 1, which stored the
 moneyness range as numbers, are rejected as an unsupported format.
 
 **Reopen analysis** loads such a file, validates the snapshot and every

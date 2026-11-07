@@ -119,6 +119,39 @@ def test_switching_moneyness_range_keeps_each_cell_value(monkeypatch):
         )
 
 
+@pytest.mark.parametrize(
+    ("range_name", "bounds", "labels"),
+    [
+        ("Core", (0.8, 1.2), ["0.8", "0.9", "1", "1.1", "1.2"]),
+        ("Wide", (0.5, 2.0), ["0.5", "0.67", "0.8", "1", "1.25", "1.5", "2"]),
+        # The frozen snapshot lists K/S 0.243 to 3.040.
+        (
+            "All listed", (0.243, 3.040),
+            ["0.25", "0.33", "0.5", "0.67", "0.8", "1", "1.25", "1.5", "2", "3"],
+        ),
+    ],
+)
+def test_surface_views_plot_the_whole_moneyness_range_with_shared_ticks(
+    monkeypatch, range_name, bounds, labels,
+):
+    figures = _record_figures(
+        monkeypatch, ["make_iv_heatmap", "make_iv_surface_figure"]
+    )
+    app = _app()
+    app.segmented_control(key="moneyness_range").set_value(range_name).run()
+    heatmap = figures["make_iv_heatmap"].layout.xaxis
+    app.segmented_control(key="surface_view").set_value("3D").run()
+    assert not app.exception
+    scene = figures["make_iv_surface_figure"].layout.scene.xaxis
+
+    low, high = np.log10(bounds)
+    # The 3D axis spans the range; the Heatmap reaches at least as far, to
+    # show its end cells whole.
+    np.testing.assert_allclose(scene.range, [low, high], atol=1e-3)
+    assert heatmap.range[0] <= low + 1e-3 and heatmap.range[1] >= high - 1e-3
+    assert list(heatmap.ticktext) == list(scene.ticktext) == labels
+
+
 def test_moneyness_range_offers_core_wide_and_all_listed_and_opens_on_wide():
     app = _app()
     control = app.segmented_control(key="moneyness_range")

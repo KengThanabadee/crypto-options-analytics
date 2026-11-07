@@ -7,6 +7,7 @@ from plotly.subplots import make_subplots
 
 from options_analytics.chain import DAYS_PER_YEAR
 from options_analytics.positioning import GEX_MODES, strikes_in_range
+from options_analytics.surface_transforms import MONEYNESS_RANGES
 
 
 _LONG_FRAME_COLUMNS = {"tau", "strike", "iv", "moneyness"}
@@ -28,17 +29,22 @@ _MONEYNESS_TICKS = (
     (2 / 3, "0.67"), (0.8, "0.8"), (1.0, "1"), (1.25, "1.25"), (1.5, "1.5"),
     (2.0, "2"), (3.0, "3"), (4.0, "4"), (5.0, "5"),
 )
-# Extra ticks for a narrow range such as Core, where the ladder alone
-# leaves only 0.8 and 1.
-_NARROW_MONEYNESS_TICKS = ((0.9, "0.9"), (1.1, "1.1"))
+# A narrow range such as Core, where the ladder alone leaves only 0.8 and 1,
+# steps by 0.1 around 1 instead of 1.25, so Core's ends 0.8 and 1.2 are ticks.
+_NARROW_MONEYNESS_TICKS = ((0.9, "0.9"), (1.1, "1.1"), (1.2, "1.2"))
 _NARROW_LOG_SPAN = np.log(2.0)
+# Moneyness axis of a figure with no K/S to show.
+_EMPTY_MONEYNESS_RANGE = MONEYNESS_RANGES["Core"]
 
 
 def _moneyness_ticks(lower, upper):
     """Ladder tick values and K/S labels that fall inside ``[lower, upper]``."""
     ladder = list(_MONEYNESS_TICKS)
     if np.log(upper / lower) < _NARROW_LOG_SPAN:
-        ladder = sorted(ladder + list(_NARROW_MONEYNESS_TICKS))
+        ladder = sorted(
+            [tick for tick in ladder if tick[0] != 1.25]
+            + list(_NARROW_MONEYNESS_TICKS)
+        )
     tolerance = 1e-9
     inside = [
         (value, label) for value, label in ladder
@@ -67,7 +73,7 @@ def _log_cell_edges(moneyness):
     lowest and highest K/S.
     """
     if len(moneyness) == 0:
-        return 0.8, 1.2
+        return _EMPTY_MONEYNESS_RANGE
     if len(moneyness) < 2:
         return moneyness[0], moneyness[-1]
     return (
@@ -235,9 +241,14 @@ def _heatmap_customdata(long_frame, iv_grid, strike_grid):
 
 def make_iv_heatmap(
     long_frame: pd.DataFrame, *, equal_expiry_spacing: bool = False,
-    iv_source=None,
+    iv_source=None, moneyness_range=None,
 ) -> go.Figure:
-    """Create a moneyness-by-expiry heatmap without filling IV itself."""
+    """Create a moneyness-by-expiry heatmap without filling IV itself.
+
+    ``moneyness_range`` (low, high) sets the K/S axis and its ticks; the axis
+    reaches further only to show the end cells whole. Without it the axis
+    follows the cells.
+    """
     _require_columns(long_frame, _LONG_FRAME_COLUMNS, "long_frame")
 
     iv_grid = (
@@ -293,9 +304,11 @@ def make_iv_heatmap(
     )
     figure = go.Figure(data=[trace])
     lower, upper = _log_cell_edges(iv_grid.columns.to_numpy(dtype=float))
+    ticks_over = (lower, upper) if moneyness_range is None else moneyness_range
+    lower, upper = min(lower, ticks_over[0]), max(upper, ticks_over[1])
     figure.update_layout(
         xaxis={
-            **_log_moneyness_axis(lower, upper),
+            **_log_moneyness_axis(*ticks_over),
             "range": [np.log10(lower), np.log10(upper)],
         },
         yaxis_title="Expiry (UTC)" if equal_expiry_spacing else "tau (years)",
@@ -320,8 +333,13 @@ def make_iv_heatmap(
 
 def make_iv_surface_figure(
     long_frame: pd.DataFrame, *, compact_layout: bool = False, iv_source=None,
+    moneyness_range=None,
 ) -> go.Figure:
-    """Create a 3D IV surface from the same rectangular frame as the heatmap."""
+    """Create a 3D IV surface from the same rectangular frame as the heatmap.
+
+    ``moneyness_range`` (low, high) sets the K/S axis span and its ticks;
+    without it the axis follows the grid.
+    """
     _require_columns(long_frame, _LONG_FRAME_COLUMNS, "long_frame")
 
     iv_grid = (
@@ -461,6 +479,10 @@ def make_iv_surface_figure(
         # theme's grey tick colour readable on a light background.
         "tickfont": {"size": 13},
     }
+    moneyness_axis = (
+        (iv_grid.columns.min(), iv_grid.columns.max())
+        if moneyness_range is None else moneyness_range
+    )
     figure.update_layout(
         scene={
             # The scene stops short of the colorbar so the mesh can fill the
@@ -468,9 +490,8 @@ def make_iv_surface_figure(
             "domain": {"x": [0, 0.9] if compact_layout else [0, 0.93]},
             "bgcolor": "rgba(0, 0, 0, 0)",
             "xaxis": {
-                **_log_moneyness_axis(
-                    iv_grid.columns.min(), iv_grid.columns.max()
-                ),
+                **_log_moneyness_axis(*moneyness_axis),
+                "range": list(np.log10(moneyness_axis)),
                 "title": {"text": MONEYNESS_AXIS_TITLE, "font": {"size": 14}},
                 **axis_style,
             },
@@ -689,7 +710,7 @@ def make_smile_figure(
         padding = max((upper - lower) * 0.05, np.log10(1.01))
         x_range = [lower - padding, upper + padding]
     else:
-        x_range = [np.log10(0.8), np.log10(1.2)]
+        x_range = list(np.log10(_EMPTY_MONEYNESS_RANGE))
     figure.add_vline(x=1.0, line_dash="dot", line_color="gray", line_width=1)
     figure.update_layout(
         xaxis=_log_moneyness_axis(10 ** x_range[0], 10 ** x_range[1]),

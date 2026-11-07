@@ -17,18 +17,14 @@ Defaults to the frozen snapshot in data/.
 """
 
 import argparse
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from options_analytics import deribit, iv_source
-from options_analytics.surface_transforms import (
-    MONEYNESS_RANGES,
-    interpolate_surface_2d,
-    moneyness_range_bounds,
-    moneyness_range_slice,
-)
+from options_analytics.surface_transforms import MONEYNESS_RANGES, moneyness_range_surface
 
 SNAPSHOT = Path(__file__).resolve().parents[1] / "data" / "deribit_btc_options_snapshot.json"
 BUCKETS = [0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5, 2.0, 3.0, np.inf]
@@ -66,18 +62,25 @@ def by_bucket(frame):
     return table
 
 
+@dataclass(frozen=True)
+class ExpiryCells:
+    """Surface cells by expiry over one moneyness range."""
+
+    table: pd.DataFrame
+    blank: int
+    total: int
+    bounds: tuple[float, float]
+
+
 def by_expiry(chain, frame, moneyness_range, source):
-    """Cell counts by expiry over a range name or (low, high), and the bounds."""
+    """Cell counts by expiry over a range name or (low, high)."""
     result = iv_source.build_iv_source_surface(
         chain, source, bid_ask_iv=iv_source.solve_bid_ask_iv(chain)
     )
     # Build the whole surface, then slice the range, as the dashboard does.
-    surface = interpolate_surface_2d(iv_source.iv_source_long_frame(result))
-    if isinstance(moneyness_range, str):
-        low, high = moneyness_range_bounds(moneyness_range, surface)
-    else:
-        low, high = moneyness_range
-    surface = moneyness_range_slice(surface, low, high)
+    surface, bounds = moneyness_range_surface(
+        iv_source.iv_source_long_frame(result), moneyness_range
+    )
     cells = surface.groupby("tau")["surface_value_type"].value_counts().unstack(fill_value=0)
     span = frame.groupby("tau").agg(
         expiry=("expiry_dt", "first"),
@@ -85,8 +88,12 @@ def by_expiry(chain, frame, moneyness_range, source):
         listed_high=("moneyness", "max"),
     )
     table = span.join(cells).reset_index(drop=True).set_index("expiry")
-    blank = (int(cells.get("Missing", 0).sum()), int(cells.to_numpy().sum()))
-    return table.round(2), blank, (low, high)
+    return ExpiryCells(
+        table=table.round(2),
+        blank=int(cells.get("Missing", 0).sum()),
+        total=int(cells.to_numpy().sum()),
+        bounds=bounds,
+    )
 
 
 def parse_range(values):
@@ -94,12 +101,13 @@ def parse_range(values):
     text = " ".join(values)
     if text in MONEYNESS_RANGES:
         return text
+    usage = f"--range takes one of {', '.join(MONEYNESS_RANGES)} or LOW HIGH"
     try:
         low, high = (float(value) for value in values)
     except ValueError:
-        raise argparse.ArgumentTypeError(
-            f"--range takes one of {', '.join(MONEYNESS_RANGES)} or LOW HIGH"
-        ) from None
+        raise argparse.ArgumentTypeError(usage) from None
+    if not (np.isfinite([low, high]).all() and 0 < low < high):
+        raise argparse.ArgumentTypeError(f"{usage}, with 0 < LOW < HIGH")
     return low, high
 
 
@@ -114,8 +122,8 @@ def main():
         ),
     )
     parser.add_argument(
-        "--source", choices=iv_source.IV_SOURCES, default="Exchange mark",
-        help="IV source of the surface cell counts (default: Exchange mark)",
+        "--source", choices=iv_source.IV_SOURCES, default=iv_source.DEFAULT_IV_SOURCE,
+        help=f"IV source of the surface cell counts (default: {iv_source.DEFAULT_IV_SOURCE})",
     )
     args = parser.parse_args()
     try:
@@ -126,12 +134,14 @@ def main():
     frame = otm_contracts(chain)
     print(f"Index {chain['index_price'].iloc[0]:,.2f} · OTM contracts by K / S\n")
     print(by_bucket(frame).to_string())
-    table, blank, (low, high) = by_expiry(chain, frame, moneyness_range, args.source)
+    cells = by_expiry(chain, frame, moneyness_range, args.source)
+    low, high = cells.bounds
     print(
         f"\nSurface cells by expiry, {args.source}, K / S {low:.2f}–{high:.2f} "
-        f"· {blank[0]} of {blank[1]} cells blank ({blank[0] / blank[1]:.0%})\n"
+        f"· {cells.blank} of {cells.total} cells blank "
+        f"({cells.blank / cells.total:.0%})\n"
     )
-    print(table.to_string())
+    print(cells.table.to_string())
 
 
 if __name__ == "__main__":

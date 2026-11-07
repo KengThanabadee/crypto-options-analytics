@@ -963,8 +963,8 @@ def test_smile_draws_moneyness_on_a_log_axis_with_equal_wings():
 @pytest.mark.parametrize(
     ("strikes", "expected_labels"),
     [
-        # Core (0.8–1.2): the ladder adds 0.9 and 1.1 on a narrow range.
-        ([80, 90, 100, 110, 120], ["0.8", "0.9", "1", "1.1"]),
+        # Core (0.8–1.2): a narrow range steps by 0.1 around 1.
+        ([80, 90, 100, 110, 120], ["0.8", "0.9", "1", "1.1", "1.2"]),
         # All listed on the frozen snapshot spans about K/S 0.243–3.04.
         (
             [24.3, 50, 100, 200, 304],
@@ -983,17 +983,34 @@ def test_3d_ticks_stay_inside_core_and_all_listed_ranges(
     assert max(xaxis.tickvals) <= max(strikes) / 100
 
 
-def test_heatmap_axis_spans_its_cells_so_core_keeps_its_edge_ticks():
+def test_heatmap_axis_reaches_past_its_range_only_to_show_end_cells_whole():
     # Core's lowest and highest grid columns sit just inside 0.8 and 1.2,
     # but their cells reach past them. Plotly centres cells in log space.
     frame = surface_to_long_frame(
         [[0.4] * 5], [0.25], [80.5, 90, 100, 110, 119.5], 100,
     )
-    xaxis = make_iv_heatmap(frame).layout.xaxis
+    xaxis = make_iv_heatmap(frame, moneyness_range=(0.8, 1.2)).layout.xaxis
 
     lower_edge = 0.805 / np.sqrt(0.90 / 0.805)
     upper_edge = 1.195 * np.sqrt(1.195 / 1.10)
     assert list(xaxis.range) == pytest.approx(
         [_log_position(lower_edge), _log_position(upper_edge)]
     )
-    assert list(xaxis.ticktext) == ["0.8", "0.9", "1", "1.1"]
+    assert list(xaxis.ticktext) == ["0.8", "0.9", "1", "1.1", "1.2"]
+
+
+def test_heatmap_and_3d_span_a_range_wider_than_their_cells_with_its_ticks():
+    # Wide's grid on the frozen snapshot runs from about 0.55 to 1.95.
+    frame = surface_to_long_frame(
+        [[0.4] * 5], [0.25], [55, 58, 100, 190, 195], 100,
+    )
+    heatmap = make_iv_heatmap(frame, moneyness_range=(0.5, 2.0)).layout.xaxis
+    scene = make_iv_surface_figure(
+        frame, moneyness_range=(0.5, 2.0)
+    ).layout.scene.xaxis
+
+    wide = [_log_position(0.5), _log_position(2.0)]
+    assert list(heatmap.range) == pytest.approx(wide)
+    assert list(scene.range) == pytest.approx(wide)
+    labels = ["0.5", "0.67", "0.8", "1", "1.25", "1.5", "2"]
+    assert list(heatmap.ticktext) == list(scene.ticktext) == labels

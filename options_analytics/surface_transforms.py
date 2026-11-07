@@ -4,7 +4,6 @@ from scipy.interpolate import LinearNDInterpolator
 from scipy.spatial import QhullError
 
 
-# IV chart view choices; the dashboard and saved analyses share them.
 # Moneyness ranges by name, with (low, high) K/S bounds; All listed has none
 # and spans the snapshot's lowest to highest listed K/S.
 ALL_LISTED = "All listed"
@@ -14,12 +13,13 @@ MONEYNESS_RANGES = {
     ALL_LISTED: None,
 }
 DEFAULT_MONEYNESS_RANGE = "Wide"
-HEATMAP_VALUES = ("Surface", "Observed")
 # Strike–time scale of the 2D fill: 1 year of tau counts as 8 K/S units, for
 # every range and snapshot. Leave-one-out refill error on the frozen snapshot
 # stops improving from 8 upward; at 8, K/S 0.01 apart is as close as expiries
 # about half a day apart, so gaps borrow from their own expiry first.
 STRIKE_TIME_SCALE = 8.0
+# IV chart view choices; the dashboard and saved analyses share them.
+HEATMAP_VALUES = ("Surface", "Observed")
 SURFACE_VIEWS = ("Heatmap", "3D")
 
 _LONG_FRAME_COLUMNS = {"tau", "strike", "iv", "moneyness"}
@@ -192,15 +192,33 @@ def moneyness_range_label(range_name: str) -> str:
     return f"{range_name} ({bounds[0]:.1f}–{bounds[1]:.1f})"
 
 
-def moneyness_range_bounds(range_name: str, frame: pd.DataFrame) -> tuple[float, float]:
-    """The (low, high) K/S of a named range; All listed spans the frame's grid."""
-    if range_name not in MONEYNESS_RANGES:
-        raise ValueError(f"Unknown moneyness range: {range_name!r}")
-    bounds = MONEYNESS_RANGES[range_name]
-    if bounds is None:
+def resolve_moneyness_range(moneyness_range, frame: pd.DataFrame) -> tuple[float, float]:
+    """The (low, high) K/S of a range name, or of a (low, high) pair.
+
+    All listed spans the lowest to highest K/S of the frame's grid.
+    """
+    if isinstance(moneyness_range, str):
+        if moneyness_range not in MONEYNESS_RANGES:
+            raise ValueError(f"Unknown moneyness range: {moneyness_range!r}")
+        moneyness_range = MONEYNESS_RANGES[moneyness_range]
+    if moneyness_range is None:
         _require_columns(frame, {"moneyness"}, "frame")
         return float(frame["moneyness"].min()), float(frame["moneyness"].max())
-    return bounds
+    low, high = moneyness_range
+    return float(low), float(high)
+
+
+def moneyness_range_surface(
+    long_frame: pd.DataFrame, moneyness_range
+) -> tuple[pd.DataFrame, tuple[float, float]]:
+    """The surface filled from every observation, sliced to a range.
+
+    ``moneyness_range`` is a range name or a (low, high) pair; the resolved
+    bounds are returned with the slice.
+    """
+    surface = interpolate_surface_2d(long_frame)
+    bounds = resolve_moneyness_range(moneyness_range, surface)
+    return moneyness_range_slice(surface, *bounds), bounds
 
 
 def moneyness_range_slice(
