@@ -35,9 +35,15 @@ the way, so the result can be checked rather than trusted.
 - **One surface from Calls and Puts.** Each strike uses the out-of-the-money
   side (Puts below spot, Calls above, the average near spot), since
   in-the-money quotes are mostly intrinsic value and give unreliable IV.
-- **Honest interpolation.** Gaps in the surface are filled by linear
-  interpolation of total variance (`IV² × T`) across moneyness and maturity,
-  only inside observed data; filled cells are labelled and nothing is
+- **Log-moneyness axes.** The surface, heatmap and smiles space strikes by
+  log `K / S`, so put and call wings get equal width; labels and hover stay in
+  `K / S`. The range opens on Wide (0.5–2.0) and goes from Core (0.8–1.2) to
+  All listed, every strike Deribit lists.
+- **Honest interpolation.** One surface is built per snapshot from every
+  observed IV and each range shows a slice of it, so a cell has the same
+  value in every view. Gaps are filled by linear interpolation of total
+  variance (`IV² × T`) across moneyness and maturity at a fixed strike–time
+  scale, only inside observed data; filled cells are labelled and nothing is
   extrapolated.
 - **Gamma exposure with the assumption in plain sight.** GEX is in USD per 1%
   BTC move. Deribit does not publish who is long or short, so the dealer
@@ -46,7 +52,7 @@ the way, so the result can be checked rather than trusted.
 - **Missing stays missing.** Absent quotes and failed solves stay empty and
   charts show gaps, never zeros or silent substitutes.
 - **Reproducible and tested.** Saved analyses keep the raw snapshot, not
-  computed numbers. 258 tests run offline on the frozen snapshot in CI.
+  computed numbers. 278 tests run offline on the frozen snapshot in CI.
 
 ## Screenshots
 
