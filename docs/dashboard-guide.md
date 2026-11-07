@@ -185,8 +185,9 @@ Three controls sit in a row above the chart:
   smile beyond the near-the-money strikes; or **All listed**, from the open
   snapshot's lowest to highest listed strike (about 0.24–3.04 on the frozen
   snapshot), so a snapshot with wider listings is never cut off. Every expiry
-  stays a row in every range; cells beyond an expiry's listed strikes stay
-  blank.
+  stays a row in every range. A cell beyond an expiry's own listed strikes is
+  filled from the expiries around it when they list that moneyness, and stays
+  blank otherwise.
 - **Heatmap values**: **Surface** (default) or **Observed**, shown only in the
   Heatmap view; it keeps its value while 3D is shown.
 

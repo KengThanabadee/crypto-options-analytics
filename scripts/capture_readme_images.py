@@ -17,7 +17,8 @@ View control is switched to 3D for the surface image. The images are written to 
 `websockets` and `Pillow` packages, which the plain install brings.
 
 To check a chart in the light theme, pass `--scheme light --out <dir>` with a
-directory outside docs/images/; the README images stay dark.
+directory outside docs/images/; the script refuses docs/images/ there, so
+the README images stay dark.
 
 To check the IV surface in every state, pass `--states --out <dir>`: it saves
 the IV surface tab for each moneyness range in Heatmap and 3D
@@ -222,8 +223,11 @@ def main():
         help="save the IV surface for every moneyness range and view instead",
     )
     args = parser.parse_args()
-    if args.states and args.out.resolve() == OUT:
-        parser.error("--states needs --out with a directory outside docs/images/")
+    out = args.out.resolve()
+    if (args.states or args.scheme != "dark") and (out == OUT or OUT in out.parents):
+        parser.error(
+            "--states and --scheme light need --out with a directory outside docs/images/"
+        )
     OUT = args.out
     OUT.mkdir(parents=True, exist_ok=True)
     run = capture_states if args.states else capture

@@ -1,6 +1,6 @@
 # Log-moneyness axes and one IV surface for every range
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 Accepted 2026-11-07 after a grilling session (decisions summarised in
 `handoff.md` beside this file). Tickets go in `issues/` beside this file.
@@ -72,6 +72,7 @@ back): Core 0.93 → 0.26, Wide 0.51 → 0.24, All listed 0.30 → 0.25 vol pt.
 13. As Keng, I want Extended removed, so that the choices step clearly from narrow to wide.
 14. As a reader, I want every expiry shown as a row in every range, so that no expiry disappears when I widen the view.
 15. As a reader, I want cells outside an expiry's listed strikes to stay blank, so that the surface never invents values beyond the observations.
+    _Correction after review: the 2D fill keeps cells blank only outside the observations' convex hull. A cell beyond an expiry's own listed strikes is filled from the expiries before and after it when they list that moneyness (128 of 345 filled cells in Wide on the frozen snapshot). The code is as intended; this story and the guide sentence it produced were wrong._
 16. As Keng, I want a cell to have the same filled value in Core, Wide and All listed, so that changing the view never changes the data.
 17. As Keng, I want the fill to use observations just outside the visible range, so that cells at the edge of Core are filled from their real neighbours.
 18. As Keng, I want gaps to borrow from neighbouring strikes of the same expiry before other expiries, so that short-expiry gaps follow their own smile.
@@ -199,5 +200,6 @@ seam is added.
   expiries of 1–8 days (except 30 Oct) list only about K/S 0.85–1.2; December
   2026 to September 2027 list about 0.25–3.0. Most blank cells in Wide and
   All listed are short expiries beyond their listed strikes.
+  _Correction after review: this holds for the expiries at the edge of the surface. Expiries between two wider listings get their wings filled from those neighbours._
 - Terms used here are defined in `GLOSSARY.md`: Moneyness, Log-moneyness,
   Moneyness range.
