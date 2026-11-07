@@ -27,7 +27,7 @@ def _settings(chain):
         "signs": {"call": -1, "put": 1},
         "gex_view": "Gross",
         "iv_source": "Quote midpoint",
-        "moneyness_range": (0.7, 1.3),
+        "moneyness_range": "All listed",
         "heatmap_values": "Observed",
         "smile_expiries": [expiries[0], expiries[2], expiries[5]],
         "surface_view": "3D",
@@ -86,7 +86,7 @@ def test_the_file_holds_raw_responses_settings_and_one_version_but_no_numbers(sn
         "signs": {"call": -1, "put": 1},
         "gex_view": "Gross",
         "iv_source": "Quote midpoint",
-        "moneyness_range": [0.7, 1.3],
+        "moneyness_range": "All listed",
         "heatmap_values": "Observed",
         "smile_expiries": [f"{expiries[i]:%Y-%m-%dT%H:%M:%SZ}" for i in (0, 2, 5)],
         "surface_view": "3D",
@@ -105,11 +105,29 @@ def test_an_older_calculation_version_is_flagged(snapshot):
     assert str(saved["calculation_version"]) in reopened.version_notice()
 
 
+@pytest.mark.parametrize("range_name", ["Core", "Wide", "All listed"])
+def test_the_moneyness_range_is_saved_by_name(snapshot, range_name):
+    chain = parse_deribit_snapshot(snapshot)
+    settings = {**_settings(chain), "moneyness_range": range_name}
+    raw = saved_analysis.save_analysis(snapshot, settings)
+
+    assert json.loads(raw)["settings"]["moneyness_range"] == range_name
+    assert saved_analysis.open_analysis(raw).settings["moneyness_range"] == range_name
+
+
+def test_a_format_1_file_is_rejected_as_unsupported(snapshot):
+    chain = parse_deribit_snapshot(snapshot)
+    saved = json.loads(saved_analysis.save_analysis(snapshot, _settings(chain)))
+    saved["format_version"] = 1
+    saved["settings"]["moneyness_range"] = [0.8, 1.2]
+    with pytest.raises(ValueError, match="Unsupported saved-analysis format version"):
+        saved_analysis.open_analysis(json.dumps(saved))
+
+
 def test_a_file_saved_without_a_surface_view_opens_on_heatmap(snapshot):
     chain = parse_deribit_snapshot(snapshot)
     saved = json.loads(saved_analysis.save_analysis(snapshot, _settings(chain)))
     del saved["settings"]["surface_view"]
-    saved["format_version"] = 1
 
     reopened = saved_analysis.open_analysis(json.dumps(saved))
 
@@ -126,7 +144,8 @@ def _corrupt(snapshot, chain, change):
 @pytest.mark.parametrize("change", [
     lambda s: s.pop("snapshot"),
     lambda s: s.update(format="something else"),
-    lambda s: s.update(format_version=2),
+    lambda s: s.update(format_version=1),
+    lambda s: s.update(format_version=3),
     lambda s: s.update(calculation_version="1"),
     lambda s: s["snapshot"].update(schema_version=9),
     lambda s: s["settings"].pop("iv_source"),
@@ -138,6 +157,7 @@ def _corrupt(snapshot, chain, change):
     lambda s: s["settings"].update(oi_expiries=["2030-01-01T08:00:00Z"]),
     lambda s: s["settings"].update(smile_expiries=["not a date"]),
     lambda s: s["settings"].update(moneyness_range=[0.5, 2.0]),
+    lambda s: s["settings"].update(moneyness_range="Extended"),
     lambda s: s["settings"].update(heatmap_values="Both"),
     lambda s: s["settings"].update(surface_view="Contour"),
 ])

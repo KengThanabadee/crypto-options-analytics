@@ -8,6 +8,8 @@ from options_analytics.surface_transforms import (
     MONEYNESS_RANGES,
     SURFACE_VIEWS,
     interpolate_surface_2d,
+    moneyness_range_bounds,
+    moneyness_range_label,
     moneyness_range_slice,
     observed_surface_frame,
 )
@@ -45,7 +47,8 @@ OBSERVED_CAPTION = (
 
 def surface_view(frame, iv_source):
     """The IV surface as a Heatmap or in 3D, over the chosen K / S range."""
-    view_column, range_column, values_column = st.columns(3)
+    # The range control has three options with bounds; give it the most room.
+    view_column, range_column, values_column = st.columns([2, 3, 2])
     with view_column:
         view = _choice(
             "View", SURFACE_VIEWS, SURFACE_VIEW_KEY,
@@ -54,9 +57,13 @@ def surface_view(frame, iv_source):
     with range_column:
         range_name = _choice(
             "Moneyness range", list(MONEYNESS_RANGES), MONEYNESS_RANGE_KEY,
-            help="Applies to both views. IV smiles show all observed strikes.",
+            help=(
+                "Applies to both views. All listed spans every strike listed "
+                "in the snapshot. IV smiles show all observed strikes."
+            ),
+            format_func=moneyness_range_label,
         )
-    moneyness = MONEYNESS_RANGES[range_name]
+    moneyness = moneyness_range_bounds(range_name, frame)
     # One surface from every observation; the range only slices it.
     surface_frame = moneyness_range_slice(
         interpolate_surface_2d(frame), *moneyness
@@ -122,17 +129,18 @@ def visible_range_summary(frame, moneyness):
         f"{counts.get('Observed', 0):,} observed · "
         f"{counts.get('Interpolated', 0):,} interpolated · "
         f"{counts.get('Missing', 0):,} blank. "
-        f"K / S: {moneyness[0]:.1f}–{moneyness[1]:.1f}."
+        f"K / S: {moneyness[0]:.2f}–{moneyness[1]:.2f}."
     )
 
 
-def _choice(label, options, key, help):
+def _choice(label, options, key, help, format_func=str):
     """A required segmented control, defaulting to the setting's default."""
     default = WIDGET_DEFAULTS[key]
     return st.segmented_control(
         label,
         options,
         default=widget_default(key, default),
+        format_func=format_func,
         required=True,
         key=key,
         help=help,

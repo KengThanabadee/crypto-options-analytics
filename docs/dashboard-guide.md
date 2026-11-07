@@ -165,8 +165,13 @@ in USD with thousands separators.
 Three controls sit in a row above the chart:
 
 - **View**: **Heatmap** (default) or **3D**.
-- **Moneyness range**: **Core (0.8–1.2)** (default) or **Extended (0.7–1.3)**
-  in `K / S`, for both views.
+- **Moneyness range** in `K / S`, for both views: **Core (0.8–1.2)**, the
+  strikes every expiry lists; **Wide (0.5–2.0)** (default), the shape of the
+  smile beyond the near-the-money strikes; or **All listed**, from the open
+  snapshot's lowest to highest listed strike (about 0.24–3.04 on the frozen
+  snapshot), so a snapshot with wider listings is never cut off. Every expiry
+  stays a row in every range; cells beyond an expiry's listed strikes stay
+  blank.
 - **Heatmap values**: **Surface** (default) or **Observed**, shown only in the
   Heatmap view; it keeps its value while 3D is shown.
 
@@ -181,7 +186,7 @@ their original IV). It switches to a compact layout when its width is below
 700px.
 
 A caption above the chart counts the observed, interpolated and blank cells in
-the visible range; a one-line caption under it names the fill, and the
+the visible range and prints its `K / S` bounds to two decimals; a one-line caption under it names the fill, and the
 **Surface interpolation** expander explains it. Hover distinguishes Observed,
 Interpolated and Missing cells, with `2D linear total variance` as the
 interpolated value source.
@@ -248,7 +253,7 @@ raw snapshot, with every API response and its capture times, and the settings.
 It stores no computed numbers:
 
 ```text
-{"format": "btc-options-analysis", "format_version": 1,
+{"format": "btc-options-analysis", "format_version": 2,
  "calculation_version": N, "snapshot": {...}, "settings": {...}}
 ```
 
@@ -256,13 +261,16 @@ The settings are:
 
 - `oi_expiries` and `smile_expiries`: expiry datetimes saved as UTC
   `YYYY-MM-DDTHH:MM:SSZ`; empty OI expiries means All expiries;
-- `strike_range` and `moneyness_range`: `(low, high)`;
+- `strike_range`: `(low, high)` in USD;
+- `moneyness_range`: the range name, `Core`, `Wide` or `All listed`, so All
+  listed reopens against the file's own snapshot;
 - `signs`: `call` and `put` → `+1` (customer sells) or `−1` (customer buys);
 - `gex_view` (`Net`/`Gross`), `iv_source`, `heatmap_values`
   (`Surface`/`Observed`) and `surface_view` (`Heatmap`/`3D`).
 
 Saved files accept only the dashboard's own choices. A file without
-`surface_view` opens as Heatmap.
+`surface_view` opens as Heatmap. Files of format version 1, which stored the
+moneyness range as numbers, are rejected as an unsupported format.
 
 **Reopen analysis** loads such a file, validates the snapshot and every
 setting against it, restores every setting and recomputes every number from
@@ -297,7 +305,9 @@ snapshot and settings.
   (`experiments/capture_deribit_ticker_gamma.py`).
 - **Coverage is measurable.** `scripts/snapshot_coverage.py` prints, by
   `K / S` bucket and by expiry, how many contracts are listed, quoted and
-  solved, and how many surface cells are observed, interpolated or blank.
+  solved, and how many surface cells are observed, interpolated or blank
+  with the dashboard's build-then-slice fill (`--range` takes `Core`, `Wide`,
+  `All listed` or `LOW HIGH`; `--source` picks the IV source).
 
 ### Deribit input
 

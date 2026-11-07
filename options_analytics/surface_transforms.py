@@ -5,10 +5,15 @@ from scipy.spatial import QhullError
 
 
 # IV chart view choices; the dashboard and saved analyses share them.
+# Moneyness ranges by name, with (low, high) K/S bounds; All listed has none
+# and spans the snapshot's lowest to highest listed K/S.
+ALL_LISTED = "All listed"
 MONEYNESS_RANGES = {
-    "Core (0.8–1.2)": (0.8, 1.2),
-    "Extended (0.7–1.3)": (0.7, 1.3),
+    "Core": (0.8, 1.2),
+    "Wide": (0.5, 2.0),
+    ALL_LISTED: None,
 }
+DEFAULT_MONEYNESS_RANGE = "Wide"
 HEATMAP_VALUES = ("Surface", "Observed")
 # Strike–time scale of the 2D fill: 1 year of tau counts as 8 K/S units, for
 # every range and snapshot. Leave-one-out refill error on the frozen snapshot
@@ -177,6 +182,25 @@ def interpolate_surface_2d(long_frame: pd.DataFrame) -> pd.DataFrame:
     frame.loc[targets, "surface_value_type"] = "Interpolated"
     frame.loc[targets, "interpolation_method"] = "2D linear total variance"
     return finish()
+
+
+def moneyness_range_label(range_name: str) -> str:
+    """The range's name with its fixed bounds, e.g. "Wide (0.5–2.0)"."""
+    bounds = MONEYNESS_RANGES[range_name]
+    if bounds is None:
+        return range_name
+    return f"{range_name} ({bounds[0]:.1f}–{bounds[1]:.1f})"
+
+
+def moneyness_range_bounds(range_name: str, frame: pd.DataFrame) -> tuple[float, float]:
+    """The (low, high) K/S of a named range; All listed spans the frame's grid."""
+    if range_name not in MONEYNESS_RANGES:
+        raise ValueError(f"Unknown moneyness range: {range_name!r}")
+    bounds = MONEYNESS_RANGES[range_name]
+    if bounds is None:
+        _require_columns(frame, {"moneyness"}, "frame")
+        return float(frame["moneyness"].min()), float(frame["moneyness"].max())
+    return bounds
 
 
 def moneyness_range_slice(

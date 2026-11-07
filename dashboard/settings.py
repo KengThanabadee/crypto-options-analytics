@@ -13,7 +13,9 @@ from typing import Callable
 
 from options_analytics.iv_source import DEFAULT_IV_SOURCE
 from options_analytics.positioning import DEFAULT_SIGNS, GEX_MODES, near_spot_range
-from options_analytics.surface_transforms import HEATMAP_VALUES, MONEYNESS_RANGES, SURFACE_VIEWS
+from options_analytics.surface_transforms import (
+    DEFAULT_MONEYNESS_RANGE, HEATMAP_VALUES, SURFACE_VIEWS,
+)
 
 
 CUSTOMER_SIDES = {"Customer sells": 1, "Customer buys": -1}
@@ -46,7 +48,7 @@ def smile_key(snapshot_id, tau):
 WIDGET_DEFAULTS = {
     GEX_VIEW_KEY: GEX_MODES[0],
     IV_SOURCE_KEY: DEFAULT_IV_SOURCE,
-    MONEYNESS_RANGE_KEY: next(iter(MONEYNESS_RANGES)),
+    MONEYNESS_RANGE_KEY: DEFAULT_MONEYNESS_RANGE,
     HEATMAP_VALUES_KEY: HEATMAP_VALUES[0],
     SURFACE_VIEW_KEY: SURFACE_VIEWS[0],
     **{customer_side_key(flag): SIDE_OF_SIGN[sign] for flag, sign in DEFAULT_SIGNS.items()},
@@ -123,8 +125,6 @@ def _write_signs(value, chain, snapshot_id):
     return {customer_side_key(flag): SIDE_OF_SIGN[value[flag]] for flag in ("call", "put")}
 
 
-_RANGE_NAME = {value: name for name, value in MONEYNESS_RANGES.items()}
-
 # One row per saved-analysis setting, in SETTING_NAMES order (a test checks it).
 SETTINGS = (
     SavedSetting("oi_expiries", *_ticked_expiries(oi_expiry_key)),
@@ -136,12 +136,7 @@ SETTINGS = (
     SavedSetting("signs", _read_signs, _write_signs),
     _single_key("gex_view", GEX_VIEW_KEY),
     _single_key("iv_source", IV_SOURCE_KEY),
-    _single_key(
-        "moneyness_range",
-        MONEYNESS_RANGE_KEY,
-        to_saved=MONEYNESS_RANGES.__getitem__,
-        to_widget=_RANGE_NAME.__getitem__,
-    ),
+    _single_key("moneyness_range", MONEYNESS_RANGE_KEY),
     _single_key("heatmap_values", HEATMAP_VALUES_KEY),
     SavedSetting("smile_expiries", *_ticked_expiries(smile_key)),
     _single_key("surface_view", SURFACE_VIEW_KEY),

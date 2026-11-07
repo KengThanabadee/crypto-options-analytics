@@ -87,7 +87,7 @@ def _explore(app):
     _segmented(app, "Puts").set_value("Customer sells").run()
     _segmented(app, "GEX view").set_value("Gross").run()
     app.segmented_control(key="iv_source").set_value("Quote midpoint").run()
-    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.segmented_control(key="moneyness_range").set_value("All listed").run()
     app.segmented_control(key="heatmap_view").set_value("Observed").run()
     app.segmented_control(key="surface_view").set_value("3D").run()
     smile_boxes(app)[0].set_value(False).run()
@@ -197,7 +197,7 @@ def test_reopening_another_snapshot_switches_the_page_and_controls_keep_working(
         "signs": {"call": 1, "put": 1},
         "gex_view": "Net",
         "iv_source": "Exchange mark",
-        "moneyness_range": (0.8, 1.2),
+        "moneyness_range": "All listed",
         "heatmap_values": "Surface",
         "smile_expiries": [expiries[3]],
         "surface_view": "Heatmap",
@@ -216,6 +216,9 @@ def test_reopening_another_snapshot_switches_the_page_and_controls_keep_working(
     assert app.slider[0].value == (70_000.0, 100_000.0)
     assert _segmented(app, "Puts").value == "Customer sells"
     assert [box.value for box in smile_boxes(app)] == [i == 3 for i in range(len(expiries))]
+    assert app.segmented_control(key="moneyness_range").value == "All listed"
+    low, high = (chain["strike"] / chain["index_price"]).agg(["min", "max"])
+    assert any(f"K / S: {low:.2f}–{high:.2f}." in c.value for c in app.caption)
 
     _segmented(app, "Puts").set_value("Customer buys").run()
     smile_boxes(app)[0].set_value(True).run()
@@ -239,7 +242,7 @@ def test_a_failed_iv_build_keeps_the_iv_view_settings_and_saves_them(
     streamlit.cache_data.clear()
     monkeypatch.setattr(iv_source, "build_iv_source_surface", build_or_fail)
     app = _app()
-    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.segmented_control(key="moneyness_range").set_value("All listed").run()
     app.segmented_control(key="heatmap_view").set_value("Observed").run()
     app.segmented_control(key="surface_view").set_value("3D").run()
     smile_boxes(app)[0].set_value(False).run()

@@ -18,7 +18,7 @@ from options_analytics.surface_transforms import HEATMAP_VALUES, MONEYNESS_RANGE
 
 
 FILE_FORMAT = "btc-options-analysis"
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 # Raise when a change alters any number computed from the same snapshot and
 # settings, so reopening an older file shows a recompute notice.
 CALCULATION_VERSION = 4
@@ -26,7 +26,7 @@ SETTING_NAMES = (
     "oi_expiries", "strike_range", "signs", "gex_view", "iv_source",
     "moneyness_range", "heatmap_values", "smile_expiries", "surface_view",
 )
-# Settings added after format version 1, with the value a file without them opens on.
+# Settings a file may leave out, with the value a file without them opens on.
 OPTIONAL_SETTINGS = {"surface_view": SURFACE_VIEWS[0]}
 _EXPIRY_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -53,9 +53,10 @@ def save_analysis(snapshot: dict, settings: dict) -> str:
     """Return the saved-analysis JSON for a raw snapshot and its settings.
 
     Settings: ``oi_expiries`` and ``smile_expiries`` are expiry datetimes
-    (empty OI expiries means All expiries), ``strike_range`` and
-    ``moneyness_range`` are (low, high), ``signs`` maps call/put to ±1,
-    plus ``gex_view``, ``iv_source``, ``heatmap_values`` and ``surface_view``.
+    (empty OI expiries means All expiries), ``strike_range`` is
+    (low, high), ``moneyness_range`` is a range name (Core, Wide or All
+    listed), ``signs`` maps call/put to ±1, plus ``gex_view``, ``iv_source``,
+    ``heatmap_values`` and ``surface_view``.
     """
     stored = {
         "oi_expiries": [_expiry_text(e) for e in settings["oi_expiries"]],
@@ -63,7 +64,7 @@ def save_analysis(snapshot: dict, settings: dict) -> str:
         "signs": {flag: int(settings["signs"][flag]) for flag in ("call", "put")},
         "gex_view": settings["gex_view"],
         "iv_source": settings["iv_source"],
-        "moneyness_range": [float(v) for v in settings["moneyness_range"]],
+        "moneyness_range": settings["moneyness_range"],
         "heatmap_values": settings["heatmap_values"],
         "smile_expiries": [_expiry_text(e) for e in settings["smile_expiries"]],
         "surface_view": settings["surface_view"],
@@ -159,9 +160,6 @@ def _read_settings(stored, chain) -> dict:
     low, high = strike_zoom_bounds(chain)
     if strike_range[0] < low or strike_range[1] > high:
         raise ValueError("Setting strike_range lies outside the snapshot's strikes")
-    moneyness_range = _read_pair(stored["moneyness_range"], "moneyness_range")
-    if moneyness_range not in MONEYNESS_RANGES.values():
-        raise ValueError("Setting moneyness_range is not a dashboard range")
     signs = stored["signs"]
     if (not isinstance(signs, dict) or set(signs) != {"call", "put"}
             or any(type(s) is not int or s not in (1, -1) for s in signs.values())):
@@ -172,7 +170,9 @@ def _read_settings(stored, chain) -> dict:
         "signs": {"call": signs["call"], "put": signs["put"]},
         "gex_view": _read_choice(stored["gex_view"], GEX_MODES, "gex_view"),
         "iv_source": _read_choice(stored["iv_source"], IV_SOURCES, "iv_source"),
-        "moneyness_range": moneyness_range,
+        "moneyness_range": _read_choice(
+            stored["moneyness_range"], tuple(MONEYNESS_RANGES), "moneyness_range"
+        ),
         "heatmap_values": _read_choice(
             stored["heatmap_values"], HEATMAP_VALUES, "heatmap_values"
         ),

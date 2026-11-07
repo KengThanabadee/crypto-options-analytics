@@ -106,14 +106,31 @@ def _heatmap_cells(figure):
 def test_switching_moneyness_range_keeps_each_cell_value(monkeypatch):
     figures = _record_figures(monkeypatch, ["make_iv_heatmap"])
     app = _app()
+    control = app.segmented_control(key="moneyness_range")
+    control.set_value("Core").run()
     core = _heatmap_cells(figures["make_iv_heatmap"])
-    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    for wider in ["Wide", "All listed"]:
+        control.set_value(wider).run()
+        assert not app.exception
+        cells = _heatmap_cells(figures["make_iv_heatmap"])
+        assert set(core) < set(cells)
+        np.testing.assert_array_equal(
+            [core[cell] for cell in core], [cells[cell] for cell in core]
+        )
+
+
+def test_moneyness_range_offers_core_wide_and_all_listed_and_opens_on_wide():
+    app = _app()
+    control = app.segmented_control(key="moneyness_range")
+    assert list(control.options) == ["Core (0.8–1.2)", "Wide (0.5–2.0)", "All listed"]
+    assert control.value == "Wide"
+    assert any("K / S: 0.50–2.00." in caption.value for caption in app.caption)
+
+    control.set_value("All listed").run()
     assert not app.exception
-    extended = _heatmap_cells(figures["make_iv_heatmap"])
-    assert set(core) < set(extended)
-    np.testing.assert_array_equal(
-        [core[cell] for cell in core], [extended[cell] for cell in core]
-    )
+    assert any("K / S: 0.24–3.04." in caption.value for caption in app.caption)
+    control.set_value("Core").run()
+    assert any("K / S: 0.80–1.20." in caption.value for caption in app.caption)
 
 
 def _patch_iv_build(monkeypatch, adjust=lambda result: result):
@@ -147,11 +164,11 @@ def test_dashboard_opens_on_exchange_mark_without_rate_inputs(monkeypatch):
     assert counts[2] == np.isnan(result.iv_surface).sum()
     assert len(app.get("plotly_chart")) == 4
     assert app.segmented_control(key="surface_view").value == "Heatmap"
-    assert app.segmented_control(key="moneyness_range").value == "Core (0.8–1.2)"
+    assert app.segmented_control(key="moneyness_range").value == "Wide"
     assert app.segmented_control(key="heatmap_view").value == "Surface"
     assert [tab.label for tab in app.tabs] == ["IV surface", "IV smiles", "ATM term structure"]
     assert any(
-        "293 observed · 205 interpolated · 6 blank" in caption.value
+        "436 observed · 345 interpolated · 155 blank" in caption.value
         for caption in app.caption
     )
     assert any("Deribit BTC · Frozen snapshot:" in caption.value for caption in app.caption)
@@ -160,14 +177,14 @@ def test_dashboard_opens_on_exchange_mark_without_rate_inputs(monkeypatch):
     assert not app.exception
     assert app.segmented_control(key="heatmap_view").value == "Observed"
     assert any(
-        "293 observed · 0 interpolated · 211 blank" in caption.value
+        "436 observed · 0 interpolated · 500 blank" in caption.value
         for caption in app.caption
     )
 
-    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.segmented_control(key="moneyness_range").set_value("All listed").run()
     assert not app.exception
     assert any(
-        "355 observed · 0 interpolated · 317 blank" in caption.value
+        "468 observed · 0 interpolated · 624 blank" in caption.value
         for caption in app.caption
     )
 
@@ -176,7 +193,7 @@ def test_dashboard_opens_on_exchange_mark_without_rate_inputs(monkeypatch):
     assert len(app.get("plotly_chart")) == 5
     assert not [c for c in app.segmented_control if c.key == "heatmap_view"]
     assert any(
-        "355 observed · 272 interpolated · 45 blank" in caption.value
+        "468 observed · 361 interpolated · 263 blank" in caption.value
         for caption in app.caption
     )
 
@@ -246,7 +263,7 @@ def test_smile_selection_preserves_observations_and_other_views(monkeypatch):
     for name, before in other_views.items():
         assert figures[name].to_json() == before
 
-    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.segmented_control(key="moneyness_range").set_value("All listed").run()
     assert not app.exception
     assert figures["make_smile_figure"].to_json() == smile.to_json()
     assert [tau for tau, box in zip(ordered_expiries, smile_boxes(app)) if box.value] == [selected]
@@ -355,7 +372,7 @@ def test_atm_uses_raw_all_expiries_independent_of_view_controls(monkeypatch):
     before = figures[-1].to_json()
     for box in smile_boxes(app):
         box.uncheck()
-    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)")
+    app.segmented_control(key="moneyness_range").set_value("All listed")
     app.segmented_control(key="heatmap_view").set_value("Observed").run()
     assert not app.exception
     assert figures[-1].to_json() == before
@@ -419,7 +436,7 @@ def test_all_views_follow_the_raw_deribit_chain(monkeypatch):
     atm_before = figures["make_atm_term_structure_figure"].to_json()
     for box in smile_boxes(app):
         box.uncheck()
-    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.segmented_control(key="moneyness_range").set_value("All listed").run()
     assert not app.exception
     assert figures["make_atm_term_structure_figure"].to_json() == atm_before
 
@@ -458,7 +475,7 @@ def test_fetch_latest_switches_the_whole_page_and_controls_do_not_fetch(monkeypa
     assert not any("Frozen snapshot" in c.value for c in app.caption)
     assert any("16:18:14 UTC · Index $90,000.00" in c.value for c in app.caption)
 
-    app.segmented_control(key="moneyness_range").set_value("Extended (0.7–1.3)").run()
+    app.segmented_control(key="moneyness_range").set_value("All listed").run()
     app.segmented_control(key="heatmap_view").set_value("Observed").run()
     smile_boxes(app)[0].set_value(not smile_boxes(app)[0].value).run()
     assert not app.exception
